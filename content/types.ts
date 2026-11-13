@@ -1,3 +1,5 @@
+export type SourceRef = { id: string; title: string; url: string; publisher: string };
+
 export type Exhibit = {
   slug: string;
   catalogNo: string; // 'SM-M-004'
@@ -9,7 +11,8 @@ export type Exhibit = {
   agency: string;
   status: "silent" | "still-active";
   dates: { launch?: string; landing: string; lastContact?: string; missionEnd?: string }; // ISO 8601
-  location: { site: string; lat: number; lon: number };
+  statusLabel?: string; // badge text override, e.g. "IMPACT SITE"
+  location: { site: string; lat?: number; lon?: number }; // coordinates only where COPY gives them
   stats: { label: string; value: string; sourceId: string }[];
   plaque: string; // <= 60 words
   story: string[];
@@ -23,8 +26,9 @@ export type Exhibit = {
     fallbackImage: string;
     then: { src: string; alt: string; credit: string };
     now?: { src: string; alt: string; credit: string };
+    extra?: { src: string; alt: string; credit: string }[]; // additional Then images (e.g. final selfie)
   };
-  sources: { id: string; title: string; url: string; publisher: string }[];
+  sources: SourceRef[];
   verified: boolean;
 };
 
