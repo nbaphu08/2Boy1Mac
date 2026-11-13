@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+:root {
+  --void: #04060b;
+  --surface: #0a0e18;
+  --raised: #111726;
+  --line: #1e2638;
+  --text: #e8ecf4;
+  --mute: #8089a0;
+  --platinum: #c7cdd8;
+  --starlight: #9db8ff;
+  --ignite: #ff6a3d;
+  --lunar: #b9bec8;
+  --oxide: #c8603a;
+  --spot: #dce6ff;
+}
+
+@theme inline {
+  --color-void: var(--void);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-line: var(--line);
+  --color-text: var(--text);
+  --color-mute: var(--mute);
+  --color-platinum: var(--platinum);
+  --color-starlight: var(--starlight);
+  --color-ignite: var(--ignite);
+  --color-lunar: var(--lunar);
+  --color-oxide: var(--oxide);
+  --color-spot: var(--spot);
+  --font-display: var(--font-archivo), sans-serif;
+  --font-sans: var(--font-inter), sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+}
+
+html,
+body {
+  background: var(--void);
+  color: var(--text);
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 17px;
+  line-height: 1.6;
+}
+
+.font-display {
+  font-family: var(--font-display);
+  font-variation-settings: "wdth" 125;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.font-hud {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--starlight);
+  outline-offset: 3px;
+}
