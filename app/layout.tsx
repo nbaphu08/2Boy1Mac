@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = { themeColor: "#04060B" };
 
-export const DISCLAIMER =
+const DISCLAIMER =
   "SpaceMuse is an independent project for the NASA Space Apps Challenge 2026. It is not affiliated with or endorsed by NASA. Images and footage courtesy of NASA and partners; see Sources & Credits.";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
