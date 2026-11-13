@@ -1,0 +1,47 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(pnpm *)",
+      "Bash(node *)",
+      "Bash(ffmpeg *)",
+      "Bash(ffprobe *)",
+      "Bash(sips *)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git switch *)",
+      "Bash(git checkout -b *)",
+      "Bash(git branch*)",
+      "Bash(vercel deploy)",
+      "Bash(vercel ls*)",
+      "Bash(vercel inspect *)",
+      "Bash(ls *)",
+      "Bash(du *)",
+      "Bash(mkdir *)",
+      "Bash(cp *)",
+      "Edit(app/**)",
+      "Edit(components/**)",
+      "Edit(content/**)",
+      "Edit(lib/**)",
+      "Edit(public/**)",
+      "Edit(docs/PROGRESS.md)",
+      "Edit(docs/CHANGE_REQUESTS.md)"
+    ],
+    "deny": [
+      "Bash(rm -rf materials*)",
+      "Bash(rm -rf docs*)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git reset --hard*)",
+      "Bash(vercel --prod*)",
+      "Bash(vercel deploy --prod*)",
+      "Edit(materials/**)",
+      "Edit(docs/COPY.md)",
+      "Edit(docs/EXHIBITS.md)"
+    ]
+  }
+}
