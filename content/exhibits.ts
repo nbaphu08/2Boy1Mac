@@ -178,7 +178,7 @@ export const exhibits: Exhibit[] = [
       }
     },
     "sources": pickSources(["S1","S8","S9"]),
-    "verified": false
+    "verified": true
   },
   {
     "slug": "moon-apollo-15-lrv",
@@ -277,7 +277,7 @@ export const exhibits: Exhibit[] = [
       }
     },
     "sources": pickSources(["S1","S6","S10","S11","S12","S13","S14","S15","S16","S17"]),
-    "verified": false
+    "verified": true
   },
   {
     "slug": "moon-apollo-17",
@@ -342,7 +342,7 @@ export const exhibits: Exhibit[] = [
       }
     },
     "sources": pickSources(["S18","S19","S20","S21","S42"]),
-    "verified": false
+    "verified": true
   },
   {
     "slug": "moon-grail",
@@ -396,7 +396,7 @@ export const exhibits: Exhibit[] = [
       "then": {
         "src": "/media/thennow/SM-L-005_then_PIA13965-1600.avif",
         "alt": "Artist's concept of the twin GRAIL spacecraft, Ebb and Flow, orbiting the Moon.",
-        "credit": "NASA/JPL-Caltech"
+        "credit": "Artist's concept · NASA/JPL-Caltech/MIT"
       },
       "now": {
         "src": "/media/thennow/SM-L-005_now_GRAIL_impacts_before_after-1600.avif",
@@ -692,7 +692,7 @@ export const exhibits: Exhibit[] = [
       "then": {
         "src": "/media/thennow/SM-M-004_then_PIA17759-1600.avif",
         "alt": "Self-portrait, January 2014.",
-        "credit": "NASA/JPL-Caltech/Cornell/Arizona State Univ."
+        "credit": "NASA/JPL-Caltech/Cornell Univ./Arizona State Univ."
       },
       "now": {
         "src": "/media/thennow/SM-M-004_now_PIA22549-1600.avif",
@@ -703,12 +703,12 @@ export const exhibits: Exhibit[] = [
         {
           "src": "/media/thennow/SM-M-004_then-lastmessage_PIA22929-1600.avif",
           "alt": "Opportunity's last image, 2018.",
-          "credit": "NASA/JPL-Caltech"
+          "credit": "NASA/JPL-Caltech/Cornell/ASU"
         }
       ]
     },
     "sources": pickSources(["S47","S48","S49","S50","S51","S52"]),
-    "verified": false
+    "verified": true
   },
   {
     "slug": "mars-phoenix",
