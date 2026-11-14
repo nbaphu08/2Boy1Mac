@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useMemo, useRef } from "react";
+import { Suspense, useEffect, useMemo, useRef } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useMuseum } from "@/lib/store";
@@ -171,6 +171,31 @@ function SceneChoreographer({
   );
 }
 
+/**
+ * AG-5: Pre-compiles and warms up all scene materials & shaders once mounted and after
+ * lazy GLB preload so fast scrolling across transitions (6->7, 12->13->14, 22->23) has zero stutter.
+ */
+function MaterialPrewarmer() {
+  const gl = useThree((s) => s.gl);
+  const scene = useThree((s) => s.scene);
+  const camera = useThree((s) => s.camera);
+
+  useEffect(() => {
+    const t1 = window.setTimeout(() => {
+      gl.compile(scene, camera);
+    }, 350);
+    const t2 = window.setTimeout(() => {
+      gl.compile(scene, camera);
+    }, 1800);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
+  }, [gl, scene, camera]);
+
+  return null;
+}
+
 export default function SpaceScene() {
   const reducedMotion = useMuseum((s) => s.reducedMotion);
   const rocketRef = useRef<THREE.Group | null>(null);
@@ -197,6 +222,7 @@ export default function SpaceScene() {
           <LaunchComplex />
           <SLSRocket rocketRef={rocketRef} reducedMotion={reducedMotion} />
           <ExhibitStage3D reducedMotion={reducedMotion} />
+          <MaterialPrewarmer />
         </Suspense>
       </Canvas>
     </div>

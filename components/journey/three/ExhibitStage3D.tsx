@@ -571,7 +571,15 @@ function BeyondSilhouettes3D({ reducedMotion }: { reducedMotion: boolean }) {
   useFrame(() => {
     if (!groupRef.current) return;
     const p = scrollState.current;
-    groupRef.current.visible = p > 21.1 && p < 22.85;
+    // AG-5 (22->23): Smoothly reveal from Hall of Silence and glide/part into Finale Earthrise
+    const enterVis = smoothstep(21.15, 21.65, p);
+    const exitProgress = smoothstep(22.15, 22.82, p);
+    const vis = enterVis * (1 - exitProgress);
+    groupRef.current.visible = vis > 0.01;
+    if (groupRef.current.visible) {
+      groupRef.current.position.set(0, 540.1 - exitProgress * 2.8, -522 + exitProgress * 14);
+      groupRef.current.scale.setScalar(0.92 + 0.08 * enterVis + exitProgress * 0.28);
+    }
   });
 
   // Evenly spaced left->right in catalogue order SM-B-001..SM-B-004 directly above the 4 DOM tiles

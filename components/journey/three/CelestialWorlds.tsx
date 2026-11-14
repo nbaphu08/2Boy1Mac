@@ -292,6 +292,7 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
   const finaleMoonGroupRef = useRef<THREE.Group>(null);
   const lunarApproachArcRef = useRef<THREE.Group>(null);
   const transitArcRef = useRef<THREE.Group>(null);
+  const transitCruiseDotRef = useRef<THREE.Group>(null);
 
   const trajTmp = useMemo(
     () => ({
@@ -316,14 +317,28 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
     return curve.getPoints(56);
   }, []);
 
-  // Moon -> Mars Hohmann transfer arc (beat 13)
-  const transitPoints = useMemo(() => {
+  // Moon -> Mars Hohmann transfer arc + 7 mission tick markers (1976..2021, beat 13, AG-5)
+  const { transitCurve, transitPoints, transitTicks } = useMemo(() => {
     const curve = new THREE.QuadraticBezierCurve3(
       new THREE.Vector3(-4, 372, -196),
       new THREE.Vector3(24, 425, -295),
       new THREE.Vector3(4, 472, -366),
     );
-    return curve.getPoints(48);
+    const pts = curve.getPoints(48);
+    // 7 tick markers along the transfer arc corresponding to the 7 Hall II Mars landings (1976..2021)
+    const tickFractions = [0.14, 0.26, 0.38, 0.5, 0.62, 0.74, 0.86];
+    const ticks = tickFractions.map((u) => {
+      const pos = curve.getPoint(u);
+      const tan = curve.getTangent(u).normalize();
+      const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), tan);
+      const euler = new THREE.Euler().setFromQuaternion(quat);
+      return {
+        u,
+        pos: [pos.x, pos.y, pos.z] as [number, number, number],
+        rot: [euler.x, euler.y, euler.z] as [number, number, number],
+      };
+    });
+    return { transitCurve: curve, transitPoints: pts, transitTicks: ticks };
   }, []);
 
   useFrame((_, delta) => {
@@ -331,8 +346,22 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
     const spin = reducedMotion ? 0 : delta * 0.014;
 
     if (earthRef.current) {
-      earthRef.current.visible = p > 2.3 && p < 7.8;
-      earthRef.current.rotation.y += spin * 0.55;
+      // AG-5 (6->7): Smoothly shrink and recede Earth behind the spacecraft during Trans-Lunar Injection — no hard cuts
+      const enterVis = smoothstep(2.2, 2.8, p);
+      const tliRecede = smoothstep(5.85, 7.65, p);
+      const fadeOut = 1 - smoothstep(7.45, 7.88, p);
+      const earthVis = enterVis * fadeOut;
+      earthRef.current.visible = earthVis > 0.01;
+      if (earthRef.current.visible) {
+        const shrinkScale = (1 - tliRecede * 0.84) * Math.min(1, fadeOut * 1.35);
+        earthRef.current.scale.setScalar(Math.max(0.08, shrinkScale));
+        earthRef.current.position.set(
+          WORLD_ANCHORS.earthCenter[0] - tliRecede * 14,
+          WORLD_ANCHORS.earthCenter[1] + tliRecede * 240,
+          WORLD_ANCHORS.earthCenter[2] - tliRecede * 135,
+        );
+        earthRef.current.rotation.y += spin * 0.55;
+      }
     }
 
     if (lunarSkyEarthRef.current) {
@@ -381,7 +410,12 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
     }
 
     if (transitArcRef.current) {
-      transitArcRef.current.visible = p > 12.2 && p < 13.75;
+      transitArcRef.current.visible = p > 12.15 && p < 13.82;
+      if (transitArcRef.current.visible && transitCruiseDotRef.current) {
+        const cruiseU = Math.min(0.96, Math.max(0.04, smoothstep(12.25, 13.68, p)));
+        const pt = transitCurve.getPoint(cruiseU);
+        transitCruiseDotRef.current.position.copy(pt);
+      }
     }
     if (finaleRef.current) {
       const finaleVis = smoothstep(22.15, 22.65, p);
@@ -464,18 +498,53 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
         <AtmosphereRim radius={WORLD_ANCHORS.moonRadius * 1.022} color="#B9BEC8" intensity={0.32} power={4.2} />
       </group>
 
-      {/* ─── TRANSIT TRAJECTORY ARC (Moon -> Mars, beat 13) ─── */}
+      {/* ─── TRANSIT TRAJECTORY ARC + 7 MISSION TICK MARKERS (Moon -> Mars, beat 13, AG-5) ─── */}
       <group ref={transitArcRef} visible={false}>
         <Line
           points={transitPoints}
           color="#9DB8FF"
-          lineWidth={1.5}
+          lineWidth={1.6}
           dashed
-          dashSize={2.4}
-          gapSize={1.4}
+          dashSize={2.2}
+          gapSize={1.2}
           transparent
-          opacity={0.65}
+          opacity={0.68}
         />
+        {/* 7 subtle orbital tick markers along the Moon->Mars arc (1976..2021) */}
+        {transitTicks.map((tick, idx) => (
+          <group key={idx} position={tick.pos} rotation={tick.rot}>
+            <mesh>
+              <ringGeometry args={[0.52, 0.68, 24]} />
+              <meshBasicMaterial
+                color={idx >= 4 ? "#C8603A" : "#9DB8FF"}
+                transparent
+                opacity={0.72}
+                side={THREE.DoubleSide}
+              />
+            </mesh>
+            <mesh>
+              <sphereGeometry args={[0.18, 12, 10]} />
+              <meshBasicMaterial color="#DCE6FF" transparent opacity={0.9} />
+            </mesh>
+          </group>
+        ))}
+        {/* Live interplanetary cruise position pulse gliding along the transfer arc */}
+        <group ref={transitCruiseDotRef}>
+          <mesh>
+            <sphereGeometry args={[0.34, 16, 12]} />
+            <meshBasicMaterial color="#9DB8FF" toneMapped={false} />
+          </mesh>
+          <mesh>
+            <sphereGeometry args={[0.95, 16, 12]} />
+            <meshBasicMaterial
+              color="#9DB8FF"
+              transparent
+              opacity={0.38}
+              depthWrite={false}
+              blending={THREE.AdditiveBlending}
+            />
+          </mesh>
+        </group>
       </group>
 
       {/* ─── 3D MARS (Hall II — beats 13..21) ─── */}

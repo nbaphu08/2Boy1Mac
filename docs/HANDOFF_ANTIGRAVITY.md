@@ -120,6 +120,17 @@ See `GEMINI.md` §1–2 (architecture). Merged to `main` in commit a5633df.
 **Files changed:**
 - `components/journey/three/ExhibitStage3D.tsx`, `CelestialWorlds.tsx`
 
+## AG-5 — Transitions (beats 6→7, 12→13→14, 22→23) — 14/11 — branch `ag/5-transitions`
+**Done:**
+1. **Beat `6→7` (`ascent-4` → `deep-space` → `moon-apollo-11`, `CelestialWorlds.tsx`)**: Replaced the hard visibility toggle on `earthRef` with continuous Trans-Lunar Injection recession (`tliRecede = smoothstep(5.85, 7.65, p)`), smoothly shrinking and receding Earth behind Orion while the TLI trajectory arc and 3D Moon fade in seamlessly.
+2. **Beat `12→13→14` (`moon-grail` → `transit` → `mars-viking-1`, `CelestialWorlds.tsx`)**: Added 7 orbital waypoint tick markers (`ringGeometry` + starlight core nodes) along `transitCurve` corresponding to the 7 Hall II Mars landings (`1976…2021`) plus a live traveling cruise pulse (`transitCruiseDotRef`) that glides along the transfer arc from the receding Moon into Mars approach.
+3. **Beat `22→23` (`beyond` → `finale`, `ExhibitStage3D.tsx`, `CelestialWorlds.tsx`)**: Smoothly dollies the camera forward through the frosted-glass Beyond doorway (`exitProgress = smoothstep(22.15, 22.82, p)`) as the Artemis Era Earthrise rises into view.
+4. **Shader & Material Pre-Warm (`MaterialPrewarmer` in `SpaceScene.tsx`)**: Calls `gl.compile(scene, camera)` on mount (`350 ms`) and after lazy GLB preload (`1800 ms`) to eliminate shader-compile stutter during fast scrolling.
+
+**Files changed:**
+- `components/journey/three/CelestialWorlds.tsx`, `ExhibitStage3D.tsx`, `SpaceScene.tsx`
+
+
 
 
 
