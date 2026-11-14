@@ -258,7 +258,7 @@ function SingleExhibitPlinth({
     // Show landing site early for Moon (8) & Mars (14) orbital landings, and keep contiguous
     // half-open [minB, maxB) intervals so shared-crest midpoints swap identically without black gap.
     if (!rootRef.current) return;
-    const minB = beatIndex === 8 ? 7.12 : beatIndex === 14 ? 13.18 : beatIndex - 0.5;
+    const minB = beatIndex === 8 ? 7.3 : beatIndex === 14 ? 13.35 : beatIndex - 0.5; // Opus: only once the ground is in view (no floating exhibit next to the globe)
     const maxB = beatIndex === 12 ? 12.6 : beatIndex === 20 ? 20.55 : beatIndex + 0.5;
     const visibleNow = p >= minB && p < maxB;
     rootRef.current.visible = visibleNow;

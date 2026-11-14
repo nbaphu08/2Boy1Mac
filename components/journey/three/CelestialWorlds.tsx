@@ -499,7 +499,7 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
 
     if (moonRef.current) {
       // Continuous space -> Moon landing (6.25..7.55) and Moon -> Mars departure (12.22..13.5)
-      const approachVis = smoothstep(6.25, 6.85, p) * (1 - smoothstep(7.24, 7.56, p));
+      const approachVis = smoothstep(6.25, 6.85, p) * (1 - smoothstep(7.22, 7.33, p)); // Opus: globe gone before the surface takes over
       const departVis = smoothstep(12.6, 12.85, p) * (1 - smoothstep(13.3, 14.2, p)); // Opus: only after the lunar surface is gone (no double Moon)
       const moonVis = Math.max(approachVis, departVis);
       moonRef.current.visible = moonVis > 0.01;
