@@ -5,7 +5,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { beatIndexById, beats } from "@/content/beats";
-import { journey } from "@/content/journey";
+import { journey, narration, transitTimeline } from "@/content/journey";
 import { exhibitBySlug } from "@/content/exhibits";
 import { silence } from "@/content/silence";
 import { site } from "@/content/site";
@@ -15,6 +15,106 @@ import { scrollState, scrollToBeat } from "@/lib/scroll/progress";
 import { useMuseum } from "@/lib/store";
 
 gsap.registerPlugin(ScrollTrigger);
+
+
+const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
+
+/** Audio-guide line: fades in as the camera settles on the beat (|current - index| < ~0.3). */
+function Narration({ beat }: { beat: Beat }) {
+  const ref = useRef<HTMLParagraphElement>(null);
+  const reducedMotion = useMuseum((s) => s.reducedMotion);
+  const index = beatIndexById(beat.id);
+  const text = narration[beat.id];
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (reducedMotion) {
+      el.style.opacity = "1";
+      el.style.transform = "none";
+      return;
+    }
+    const apply = () => {
+      const d = Math.abs(scrollState.current - index);
+      const r = clamp01((0.38 - d) / 0.2);
+      el.style.opacity = r.toFixed(3);
+      el.style.transform = `translateY(${((1 - r) * 8).toFixed(2)}px)`;
+    };
+    apply();
+    gsap.ticker.add(apply);
+    return () => {
+      gsap.ticker.remove(apply);
+    };
+  }, [reducedMotion, index]);
+
+  // Silence: the card intro already says this line, so skip it there.
+  if (!text || beat.id === "silence") return null;
+  // The Beyond card fills small screens; the line would collide, so it is desktop-only there.
+  const desktopOnly = beat.id === "beyond";
+  return (
+    <p
+      ref={ref}
+      aria-hidden
+      className={`narration pointer-events-none absolute left-6 top-[4.75rem] z-10 max-w-[34ch] text-base leading-snug text-text sm:left-12 sm:top-24 sm:text-[clamp(1.125rem,1.4vw,1.375rem)] ${
+        desktopOnly ? "hidden sm:block" : ""
+      }`}
+      style={{ opacity: 0, textShadow: "0 1px 14px rgba(5,6,10,0.9), 0 0 3px rgba(5,6,10,0.8)" }}
+    >
+      {text}
+    </p>
+  );
+}
+
+/** Transit: years appear left to right along a platinum hairline while the beat scrolls through. */
+function TransitTimeline({ index }: { index: number }) {
+  const ref = useRef<HTMLOListElement>(null);
+  const lineRef = useRef<HTMLDivElement>(null);
+  const reducedMotion = useMuseum((s) => s.reducedMotion);
+
+  useLayoutEffect(() => {
+    const list = ref.current;
+    const line = lineRef.current;
+    if (!list || !line) return;
+    const items = Array.from(list.querySelectorAll<HTMLElement>("[data-year]"));
+    const n = items.length;
+    const apply = () => {
+      const t = reducedMotion ? 1 : clamp01((scrollState.current - (index - 0.7)) / 0.6);
+      line.style.transform = `scaleX(${t.toFixed(3)})`;
+      items.forEach((el, i) => {
+        const r = clamp01(t * (n + 0.5) - i);
+        el.style.opacity = r.toFixed(3);
+      });
+    };
+    apply();
+    if (reducedMotion) return;
+    gsap.ticker.add(apply);
+    return () => {
+      gsap.ticker.remove(apply);
+    };
+  }, [reducedMotion, index]);
+
+  return (
+    <div className="relative mt-6 w-full max-w-2xl">
+      <div
+        ref={lineRef}
+        aria-hidden
+        className="absolute left-0 right-0 top-[0.4rem] h-px origin-left bg-platinum/60"
+        style={{ transform: "scaleX(0)" }}
+      />
+      <ol ref={ref} className="relative flex justify-between gap-1" aria-label="Mars landings timeline">
+        {transitTimeline.map((t) => (
+          <li key={t.year} data-year className="flex flex-col items-start gap-1" style={{ opacity: 0 }}>
+            <span aria-hidden className="block h-1.5 w-1.5 rounded-full bg-platinum" />
+            <span className="font-hud text-[11px] text-text sm:text-xs">
+              {t.year}
+            </span>
+            <span className="font-hud hidden text-[9px] text-mute sm:block">{t.name}</span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
 
 function HeroOverlay({ beat }: { beat: Beat }) {
   return (
@@ -96,9 +196,6 @@ function EnterOverlay({ beat }: { beat: Beat }) {
           <span className="text-line">·</span>
           <span className="text-starlight">{journey.enter.location}</span>
         </div>
-        <p className="font-display text-shadow-display text-[clamp(1.5rem,4.2vw,3rem)] leading-tight text-white">
-          {beat.caption}
-        </p>
       </div>
     </div>
   );
@@ -165,7 +262,6 @@ function AscentOverlay({ beat }: { beat: Beat }) {
               {beat.title}
             </h2>
           ) : null}
-          <p className="text-shadow-copy text-base font-medium text-white/95 sm:text-lg">{beat.caption}</p>
         </div>
       </div>
     </div>
@@ -195,6 +291,7 @@ function HallTitleOverlay({ beat }: { beat: Beat }) {
           {beat.title}
         </h2>
         <p className="text-shadow-copy mt-4 text-base font-medium text-white/95 sm:text-xl">{beat.caption}</p>
+        {beat.id === "transit" ? <TransitTimeline index={beatIndexById("transit")} /> : null}
       </div>
     </div>
   );
@@ -291,10 +388,11 @@ function SilenceOverlay() {
   }, [reducedMotion]);
 
   return (
-    <div className="relative flex h-full w-full items-center px-4 py-14 pr-12 sm:px-12 sm:pr-32">
+    <div className="relative flex h-full w-full items-start px-4 pb-6 pt-[4.75rem] pr-12 sm:items-center sm:px-12 sm:py-14 sm:pr-32">
       <div
         data-hud-card
-        className="pointer-events-auto w-full max-w-4xl rounded-lg border border-platinum/25 bg-surface/80 p-4 backdrop-blur-lg sm:p-8"
+        data-lenis-prevent
+        className="pointer-events-auto max-h-[calc(100dvh-6.5rem)] w-full max-w-4xl overflow-y-auto rounded-lg border border-platinum/25 bg-surface/80 p-4 backdrop-blur-lg sm:p-8"
       >
         <p className="font-hud text-[10px] text-mute sm:text-[11px]">{journey.silence.eyebrow}</p>
         <h2 className="font-display mt-1.5 text-xl text-text sm:mt-2 sm:text-4xl">{silence.title}</h2>
@@ -407,7 +505,7 @@ function BeyondOverlay() {
   );
 }
 
-function FinaleOverlay({ beat }: { beat: Beat }) {
+function FinaleOverlay() {
   return (
     <div className="relative flex h-full w-full items-end px-6 pb-14 pr-14 sm:px-12 sm:pb-20 sm:pr-32">
       <div
@@ -416,7 +514,6 @@ function FinaleOverlay({ beat }: { beat: Beat }) {
       />
       <div data-hud-card className="pointer-events-auto relative z-10 max-w-2xl">
         <p className="font-hud mb-3 text-[11px] text-platinum">{journey.finale.eyebrow}</p>
-        <p className="text-lg leading-relaxed text-text sm:text-2xl">{beat.caption}</p>
         <div className="mt-6 flex flex-wrap items-center gap-4">
           <Link
             href="/gallery"
@@ -484,7 +581,7 @@ export function BeatSection({ beat }: { beat: Beat }) {
   else if (beat.exhibitSlug) content = <ExhibitBeatOverlay beat={beat} />;
   else if (beat.id === "silence") content = <SilenceOverlay />;
   else if (beat.id === "beyond") content = <BeyondOverlay />;
-  else if (beat.id === "finale") content = <FinaleOverlay beat={beat} />;
+  else if (beat.id === "finale") content = <FinaleOverlay />;
 
   return (
     <section
@@ -494,6 +591,7 @@ export function BeatSection({ beat }: { beat: Beat }) {
       className="pointer-events-none relative h-dvh w-full shrink-0"
     >
       {content}
+      <Narration beat={beat} />
     </section>
   );
 }

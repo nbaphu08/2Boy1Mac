@@ -7,7 +7,7 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "lenis";
 import { beats, beatIndexById } from "@/content/beats";
-import { journey } from "@/content/journey";
+import { journey, narration } from "@/content/journey";
 import { site } from "@/content/site";
 import type { Beat } from "@/content/types";
 import {
@@ -131,7 +131,7 @@ function ScrollLiveCaption() {
   const beat = beats[beatIndex] ?? beats[0];
   return (
     <p aria-live="polite" className="sr-only">
-      {[beat.title, beat.caption ?? beat.sub].filter(Boolean).join(". ")}
+      {[beat.title, narration[beat.id], beat.caption ?? beat.sub].filter(Boolean).join(". ")}
     </p>
   );
 }
@@ -412,9 +412,22 @@ export default function Stage() {
     };
     window.addEventListener("keydown", onKeyDown);
 
+    // Pause the shared GSAP ticker (Lenis, portal, narration, 3D readers) while the tab is hidden.
+    const onVisibility = () => {
+      if (document.hidden) {
+        gsap.ticker.sleep();
+        lenis?.stop();
+      } else {
+        gsap.ticker.wake();
+        if (useMuseum.getState().activeExhibit === null) lenis?.start();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
     ScrollTrigger.refresh();
 
     return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("keydown", onKeyDown);
       window.clearTimeout(hashTimer);
       registerScroller(null);

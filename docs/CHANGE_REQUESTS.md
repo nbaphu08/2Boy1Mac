@@ -28,3 +28,9 @@
 ## Opus verdict on "Unverified strings" (14/11 12:10)
 - KEEP (accurate technical terms / verified): `HIGH BAY 3` (NASA photo captions KSC-20220803-PH-FMX01_0001 etc.), `PAD LC-39B` (S40), `SLS BLOCK 1`, `ROFI SPARK IGNITION`, `5-SEG RSRMV`, `4× RS-25`, `PITCH & ROLL PROGRAM`, `MAX-Q`, `SUPERSONIC`, `CORE THROTTLE BUCKET`, `ESM FAIRING & LAS JETTISON` (adapter fairing jettison seen in NASA clip art002m1200912231B; LAS jettison in Artemis press kit S44), `ORION MPCV EXPOSED TO VACUUM`, `ARTEMIS ERA EARTHRISE · 6 APR 2026` (NASA image art002e009280b), `EST. VISIT 10 MIN` (UX estimate, not a fact).
 - FIXED: `HOHMANN TRANSFER` → `7 TO 10 MONTHS` (S46; Mars landers did not fly strict Hohmann transfers).
+
+## Requests for Antigravity (from Sonnet, S-6, 14/11)
+- `three/**` logs `THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.` (console warning on every load, all viewports). Replace `THREE.Clock`/`useFrame` clock usage if it is coming from our code (may also come from a drei/r3f dependency).
+- Desktop headless Chrome logs "GPU stall due to ReadPixels" once; check for `gl.readPixels` / render-target readback in the scene (non-blocking).
+- Reduced motion: Sonnet's layer disables Lenis smoothing and all overlay motion (everything static). The 3D layer must also honour `useMuseum().reducedMotion` (no ship/plume/camera drift, damped `scrollState.current` should snap, stars static). Please confirm.
+- Pause the R3F loop when `document.hidden` (Sonnet now calls `gsap.ticker.sleep()` on hidden, which stops anything driven by gsap; R3F's own rAF loop needs `frameloop="never"`/`invalidate` handling on `visibilitychange`).
