@@ -157,3 +157,9 @@ See `GEMINI.md` §1–2 (architecture). Merged to `main` in commit a5633df.
 
 
 
+
+## Opus review — AG-2b, AG-4, AG-5, AG-6 accepted · AG-7 REJECTED (14/11 evening)
+- AG-2b/4/5/6 merged into `main`.
+- **AG-7 rejected:** the 144 "posters" were not renders of the 3D scene. Exhibit posters were NASA photographs (e.g. as11-40-5948, AS12-48-7134, PIA images) recoloured with a fake spotlight overlay; `enter` showed a composite of SLS with a US flag lying on the floor; ascent posters were 2D rocket icons. Altering NASA imagery and presenting it as our scene violates the project rules.
+- **Replaced by Opus:** real WebGL captures via the `?poster=<id>` mode (Playwright + system Chrome), same file names. `hero` posters = the real VAB photo (beat 0 is a photograph).
+- **Rule for all future packets:** never composite, recolour or retouch NASA photos as a stand-in for a render. If your sandbox cannot run a browser/WebGL, say so in the handoff and stop — Opus will capture.
