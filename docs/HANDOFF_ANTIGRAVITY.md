@@ -444,3 +444,6 @@ If anything is not finished by 12:00, hand off what is stable and stop. Do NOT g
 5. **Verification**: `npx tsc --noEmit`, `npx eslint components/journey/three` (0 errors, 0 warnings), and `npx next build --webpack` all pass cleanly; zero posters generated or modified.
 
 **Files changed:** `CelestialWorlds.tsx`, `ExhibitStage3D.tsx`, `ExpeditionEffects.tsx`, `GrailSimulation.tsx`, `MarsDioramas.tsx`, `MoonDioramas.tsx`, `PathfinderLandscape.tsx`, `RenderPipeline.tsx`, `SpaceScene.tsx`, `expeditionCamera.ts`, `landscapeMaterials.tsx`, `perfTier.ts`, `simulationBus.ts`, `trajectory.ts`, `docs/HANDOFF_ANTIGRAVITY.md`.
+
+## Opus review — AG-13 accepted (15/11)
+- Full-journey wheel scroll from beat 1 (real flow, prewarm during launch): median 16.7 ms, max 283 ms (finale), lunar touchdown 83 ms; Earth removed from the Moon; descent and site hops continuous. Merged; all posters re-captured.
