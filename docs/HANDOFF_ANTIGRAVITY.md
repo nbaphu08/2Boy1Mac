@@ -450,3 +450,16 @@ If anything is not finished by 12:00, hand off what is stable and stop. Do NOT g
 
 ## Opus hotfix (15/11)
 - `SpaceScene.tsx` MOON_SITE_SLUGS had `"moon-lrv"` instead of `"moon-apollo-15-lrv"` → `sampleInterpolatedSitePos` threw every frame from p≈9 to 12 and froze the 3D between Surveyor 3 and GRAIL. Fixed on main — **pull main before any further work**.
+
+---
+
+## AG-14 (`ag/14-grail`, GRAIL Ebb & Flow model + orbital/impact simulation)
+
+1. **Procedural GRAIL Ebb & Flow Spacecraft (`GrailSimulation.tsx`, shared instanced assets)**:
+   - Built shared geometry & PBR material assets (`getGrailSharedAssets`) instanced identically across Ebb and Flow: `0.95 × 1.09 × 0.76 m` composite bus wrapped in crinkled gold MLI (`MeshPhysicalMaterial` with procedural 256×256 tangent-space `getCrinkledGoldNormalMap()`, anisotropy `0.65`, clearcoat & gold sheen), black composite corner edge rails, chamfered white radiator decks (`+Z` & `±X` louvers), gold-ringed Ka-band LGRS waveguide horn + carbon-fiber feed struts pointing twin-to-twin, aft `22 N` engine bell + `0.8 N` RCS thruster quads + MoonKAM optics, and two fixed vertical (`+Y` / `−Y`) GaAs solar wings (`512×512` crisp silver-gridded dark cells in aluminum frames) matching `PIA14157`, `KSC-2011-6345`, `PIA12009`, and `PIA13966`.
+2. **14 s Simulation Choreography (`GrailSimulation.tsx`, `RenderPipeline.tsx`)**:
+   - **Mapping (`0–6 s`)**: Enlarged `11.2 m` sunlit Moon globe rotating beneath the sunlit polar orbit (`orbitBasis`, `scale = 0.88` spacecraft aligned radially); chase camera (`0–4.6 s`) flies behind & slightly above Flow looking along the bidirectional pulsing blue Ka-band carrier link (`ShaderMaterial` with opposing Flow⇄Ebb wave packets attached directly to both horns) toward Ebb ahead & the curving Moon below; `18`-strip swath shader progressively paints the Bouguer gravity map (`grail_gravity_4k/2k.webp`) while making positive red **mascons** glow crimson-red; pulls back smoothly (`4.6–6.0 s`) to frame the full painted Moon globe for `~1 s`. Boosted `environmentIntensity` (`0.43`) and subtle bloom (`0.18`) during active mapping only in `RenderPipeline.tsx`.
+   - **Descent (`6–11 s`) & Impacts (`11–13 s`) → Rest**: Dives smoothly with Ebb leading Flow onto the north-polar Goldschmidt massif slope (`scale = 0.62`), triggering sequential hypervelocity additive flashes, `PointLight` bounce, ballistic vacuum ejecta arcs, and two dark-ejecta impact craters (`castShadow={false}` vertical-wing wireframe guides at rest). Preserved beat 12 autoplay (`distFromBeat < 0.08`), `replayGrailSim()`, and `reducedMotion`.
+3. **Verification**: Verified `npx tsc --noEmit`, `npx eslint components/journey/three` (0 errors, 0 warnings), and `npx next build --webpack` (`36/36` routes) pass cleanly; zero posters generated or modified.
+
+**Files changed:** `components/journey/three/GrailSimulation.tsx`, `components/journey/three/RenderPipeline.tsx`, `docs/HANDOFF_ANTIGRAVITY.md`.

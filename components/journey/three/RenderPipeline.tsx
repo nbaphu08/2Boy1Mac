@@ -43,9 +43,11 @@ export function HallEnvironment() {
       smoothstep(22.15, 22.65, p);
     const marsMask = smoothstep(13.2, 13.55, p) * (1 - smoothstep(20.1, 20.5, p));
     const clampedMoon = Math.min(1, moonMask);
+    const grailOrbitBoost =
+      grailSimState.active && grailSimState.phase === "mapping" ? grailSimState.camBlend * 0.34 : 0;
     const targetIntensity = THREE.MathUtils.lerp(
       THREE.MathUtils.lerp(0.92, 0.82, marsMask),
-      0.09,
+      0.09 + grailOrbitBoost,
       clampedMoon,
     );
     envIntensityRef.current = THREE.MathUtils.damp(
@@ -123,10 +125,13 @@ export function PostEffects() {
   useFrame((_, delta) => {
     const p = scrollState.current;
     // Moon Apollo optics & airless vacuum: mute bloom haze on lunar surface beats 8..12 (AG-12b)
+    // Allow subtle crisp bloom (0.18) only during GRAIL orbital mapping for pulsing Ka-band link & red mascons
     if (bloomRef.current) {
       const inMoon = smoothstep(7.55, 7.9, p) * (1 - smoothstep(12.1, 12.5, p));
+      const grailOrbitBloom =
+        grailSimState.active && grailSimState.phase === "mapping" ? 0.16 * grailSimState.camBlend : 0;
       const baseBloom = budget.tier === "medium" ? 0.44 : 0.58;
-      bloomRef.current.intensity = THREE.MathUtils.lerp(baseBloom, 0.02, inMoon);
+      bloomRef.current.intensity = THREE.MathUtils.lerp(baseBloom, 0.02 + grailOrbitBloom, inMoon);
     }
 
     if (budget.tier !== "high" || !dofRef.current) return;
