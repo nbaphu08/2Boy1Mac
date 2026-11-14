@@ -373,3 +373,13 @@ Do NOT generate posters.
 4. **Verification**: Verified `npx tsc --noEmit`, `npx eslint components/journey/three`, and `npx next build --webpack` pass cleanly; zero posters generated or modified.
 
 **Files changed:** `CelestialWorlds.tsx`, `ExhibitStage3D.tsx`, `GrailSimulation.tsx`, `MoonDioramas.tsx`, `RenderPipeline.tsx`, `SpaceScene.tsx`, `landscapeMaterials.tsx`, `simulationBus.ts`, `trajectory.ts`, `docs/HANDOFF_ANTIGRAVITY.md` (plus `ScaleSilhouette.tsx` removed).
+
+## Opus review — AG-12 accepted, AG-12b polish (15/11)
+Merged. Grid: `docs/antigravity/shots/review-AG12-grid.jpg` (Apollo 11, Surveyor 3 / Apollo 15 LRV, Apollo 17 / GRAIL, mid-flight p = 8.5).
+Scale figures gone, black sky, hard shadows, smooth bright massifs — a real step toward the photos. **AG-12b (branch `ag/12b-polish`, ≤ 90 min, hand off by Sun 11:00):**
+1. **Crater field looks like bubble-wrap / a golf ball:** near-identical round pits evenly tiled everywhere. In `moon-ref-AS15-86-11603.png` the ground is mostly **fine lumpy grain** with only *occasional* soft craters of very different sizes. Cut the micro-crater density by ~70 %, randomise size (heavy-tailed: many tiny, few big), soften/erode rims, break the regular spacing, and let the fine grain + clods carry the texture.
+2. **Bright diagonal dash artifacts** on the distant massif (rows of white "///" marks) at Apollo 15, Apollo 17 and GRAIL — remove (probably track/footprint decals or rock instances projected onto the hill).
+3. **GRAIL pebbles render as bright white sparkles** floating over the ground — darken to soil tone and seat them in the ground.
+4. **Surveyor 3:** the upper half of the frame looks hazy/washed out (bright beige glow) — the Moon has no haze; check bloom/exposure there.
+5. **Mid-flight between sites (p ≈ 8.5) the screen dips almost to black** — the humans dislike dark screens passing while scrolling. Keep the veil dip very short and shallow (or replace it with flying over a ridge), so the ground stays visible.
+Do NOT generate posters.
