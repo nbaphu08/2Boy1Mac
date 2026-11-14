@@ -18,9 +18,17 @@ const jetbrains = JetBrains_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://spacemuse.vercel.app"),
-  title: "SpaceMuse — A museum of the machines we left behind",
-  description:
-    "An interactive museum of NASA hardware left on the Moon and Mars — from Apollo 11's laser mirror to the Ingenuity helicopter — told with real NASA footage, images and data.",
+  title: { default: site.title, template: "%s — SpaceMuse" },
+  description: site.description,
+  applicationName: "SpaceMuse",
+  openGraph: {
+    type: "website",
+    siteName: "SpaceMuse",
+    title: site.title,
+    description: site.description,
+    locale: "en_US",
+  },
+  twitter: { card: "summary_large_image", title: site.title, description: site.description },
 };
 
 export const viewport: Viewport = { themeColor: "#04060B" };

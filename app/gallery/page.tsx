@@ -4,7 +4,7 @@ import { exhibitsByHall } from "@/content/exhibits";
 import { site } from "@/content/site";
 import { statusLabel } from "@/components/museum/ExhibitContent";
 
-export const metadata: Metadata = { title: "Gallery — SpaceMuse", description: site.description };
+export const metadata: Metadata = { title: "Gallery", description: `All twelve exhibits: ${site.tagline}`, alternates: { canonical: "/gallery" } };
 
 export default function GalleryPage() {
   return (

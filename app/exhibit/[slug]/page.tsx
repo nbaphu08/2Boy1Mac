@@ -17,9 +17,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const ex = exhibitBySlug(slug);
   if (!ex) return {};
   return {
-    title: `${ex.name} — SpaceMuse`,
+    title: ex.name,
     description: ex.plaque,
-    openGraph: { title: `${ex.name} — SpaceMuse`, description: ex.plaque, images: [ex.media.then.src] },
+    alternates: { canonical: `/exhibit/${ex.slug}` },
+    openGraph: { title: `${ex.name} — SpaceMuse`, description: ex.plaque, url: `/exhibit/${ex.slug}` },
+    twitter: { card: "summary_large_image", title: `${ex.name} — SpaceMuse`, description: ex.plaque },
   };
 }
 

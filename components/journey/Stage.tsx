@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "lenis";
@@ -18,6 +18,7 @@ import {
 } from "@/lib/scroll/progress";
 import { useMuseum } from "@/lib/store";
 import { ExhibitPanel } from "@/components/museum/ExhibitPanel";
+import { PassportSheet } from "@/components/museum/PassportSheet";
 import { BeatSection } from "./BeatOverlays";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -42,6 +43,7 @@ function TopHudBar() {
   const visitedCount = useMuseum((s) => s.visited.length);
   const beat = beats[beatIndex] ?? beats[0];
   const pad = String(beatIndex).padStart(2, "0");
+  const [passportOpen, setPassportOpen] = useState(false);
 
   return (
     <header className="pointer-events-none fixed inset-x-0 top-0 z-30 flex items-center justify-between px-5 py-4 sm:px-10">
@@ -63,10 +65,16 @@ function TopHudBar() {
         aria-label={journey.ui.navLabel}
         className="pointer-events-auto flex items-center gap-3 rounded-full border border-line/80 bg-surface/65 px-3.5 py-1.5 backdrop-blur-md"
       >
-        <span className="font-hud hidden text-[10px] text-mute sm:inline">
+        <button
+          type="button"
+          onClick={() => setPassportOpen(true)}
+          aria-haspopup="dialog"
+          aria-label={`Open museum passport, ${visitedCount} of 12 stamps`}
+          className="font-hud cursor-pointer text-[10px] text-mute transition-colors hover:text-text"
+        >
           {journey.ui.stamps(visitedCount)}
-        </span>
-        <span aria-hidden className="hidden text-line sm:inline">|</span>
+        </button>
+        <span aria-hidden className="text-line">|</span>
         <Link href="/gallery" className="font-hud text-[10px] text-text transition-colors hover:text-starlight">
           {journey.ui.gallery}
         </Link>
@@ -74,6 +82,7 @@ function TopHudBar() {
           {journey.ui.about}
         </Link>
       </nav>
+      {passportOpen ? <PassportSheet onClose={() => setPassportOpen(false)} /> : null}
     </header>
   );
 }
@@ -83,13 +92,19 @@ function ProgressRail() {
   return (
     <nav
       aria-label={journey.ui.railLabel}
-      className="fixed right-3 top-1/2 z-30 flex -translate-y-1/2 flex-col items-end gap-3 sm:right-6"
+      className="fixed right-2 top-1/2 z-30 flex -translate-y-1/2 flex-col items-end gap-2.5 sm:right-6"
     >
       {railGroups.map((group) => {
         const current = group.items.some((it) => it.index === beatIndex);
         return (
-          <div key={group.rail} className="flex items-center gap-3">
-            <span className={`font-hud hidden text-[10px] sm:block ${current ? "text-text" : "text-mute"}`}>
+          <div key={group.rail} className="group/rail relative flex items-center">
+            <span
+              className={`font-hud pointer-events-none absolute right-full mr-2 hidden whitespace-nowrap text-[10px] transition-opacity sm:block ${
+                current
+                  ? "text-text opacity-100"
+                  : "text-mute opacity-0 group-focus-within/rail:opacity-100 group-hover/rail:opacity-100"
+              }`}
+            >
               {group.rail}
             </span>
             <ul className="flex flex-col items-center">

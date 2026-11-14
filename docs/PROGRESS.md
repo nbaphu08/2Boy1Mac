@@ -36,3 +36,8 @@
 **Reduced motion:** Lenis is not created (native scroll), overlay reveals/narration/timeline/silence rows render static. The Vab portal zoom is off. 3D layer behaviour is Antigravity's (request logged).
 **Security:** `npm audit --omit=dev` = 0 vulnerabilities.
 **Risks:** FPS/LCP on real devices unmeasured. No deploy.
+
+## S-5 / S-7 + rail + gallery polish (Sonnet, main)
+- Done: rail labels only for active group (others on hover/focus, hidden on mobile); passport sheet (header "n/12 STAMPS" opens dialog, focus trap, Esc, dates in `spacemuse:visited-at`, 12/12 canvas PNG certificate); per-page metadata + title template; `next/og` images for `/` and `/exhibit/[slug]`; `app/sitemap.ts`, `app/robots.ts`; gallery cards (badge, hall, lift hover).
+- Next: hand-test passport at 390px; deploy preview by humans.
+- Risks: OG routes render dynamically (read public JPG via fs); certificate uses system fonts.

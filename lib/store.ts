@@ -12,6 +12,18 @@ function loadVisited(): string[] {
   }
 }
 
+const KEY_AT = "spacemuse:visited-at";
+
+function loadVisitedAt(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(KEY_AT);
+    const v = raw ? JSON.parse(raw) : {};
+    return v && typeof v === "object" && !Array.isArray(v) ? v : {};
+  } catch {
+    return {};
+  }
+}
+
 export type MuseumState = {
   beatIndex: number; // Fable writes
   beatId: string;
@@ -20,6 +32,7 @@ export type MuseumState = {
   openExhibit: (slug: string) => void;
   closeExhibit: () => void;
   visited: string[]; // passport (persisted to localStorage)
+  visitedAt: Record<string, string>; // slug -> ISO date (YYYY-MM-DD)
   markVisited: (slug: string) => void;
   reducedMotion: boolean;
   // setters (engine / providers)
@@ -40,18 +53,21 @@ export const useMuseum = create<MuseumState>((set, get) => ({
   },
   closeExhibit: () => set({ activeExhibit: null }),
   visited: [],
+  visitedAt: {},
   markVisited: (slug) => {
     const cur = get().visited;
     if (cur.includes(slug)) return;
     const next = [...cur, slug];
-    set({ visited: next });
+    const at = { ...get().visitedAt, [slug]: new Date().toISOString().slice(0, 10) };
+    set({ visited: next, visitedAt: at });
     try {
       localStorage.setItem(KEY, JSON.stringify(next));
+      localStorage.setItem(KEY_AT, JSON.stringify(at));
     } catch {}
   },
   reducedMotion: false,
   setBeat: (beatIndex, beatId) => set({ beatIndex, beatId }),
   setTransitioning: (isTransitioning) => set({ isTransitioning }),
   setReducedMotion: (reducedMotion) => set({ reducedMotion }),
-  hydrateVisited: () => set({ visited: loadVisited() }),
+  hydrateVisited: () => set({ visited: loadVisited(), visitedAt: loadVisitedAt() }),
 }));

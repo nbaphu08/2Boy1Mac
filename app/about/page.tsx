@@ -4,7 +4,7 @@ import { site } from "@/content/site";
 import { SOURCES } from "@/content/sources";
 import { SourceList } from "@/components/museum/SourceList";
 
-export const metadata: Metadata = { title: "About & Sources — SpaceMuse", description: site.about.body };
+export const metadata: Metadata = { title: "About & Sources", description: site.about.body };
 
 const allSources = () =>
   Object.values(SOURCES).sort((x, y) => Number(x.id.slice(1)) - Number(y.id.slice(1)));
