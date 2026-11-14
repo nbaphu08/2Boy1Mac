@@ -316,3 +316,12 @@ Merged into `main`; 0 console errors. Grid: `docs/antigravity/shots/review-AG10-
 - `components/journey/three/expeditionState.ts`, `expeditionCamera.ts`, `ScaleSilhouette.tsx`, `ExpeditionEffects.tsx` (new)
 - `components/journey/three/CelestialWorlds.tsx`, `ExhibitStage3D.tsx`, `SpaceScene.tsx`
 - `docs/HANDOFF_ANTIGRAVITY.md`
+
+## Opus review — AG-11 (+9b) accepted, AG-11b fixes (15/11)
+Merged into `main`; 0 console errors; Sonnet's tracker now reads `expeditionState`. Grids (scroll p = 7, 7.35, 7.6, 7.85, 8, 8.3, 8.7, 9, 12 / 13, 13.3, 13.6, 13.85, 14, 15, 16, 18, 20): `docs/antigravity/shots/review-AG11-moon.jpg`, `review-AG11-mars.jpg`.
+The story now reads clearly: orbit pins → touchdown → low search → machine on real ground. Great work. **AG-11b — fix by Sun 11:00 (branch `ag/11b-fixes`):**
+1. **Scale silhouette is wrong at several sites** — it must be exactly 1.8 m tall *in the same world units as the exhibit model*, standing at the **same distance from the camera** as the exhibit (beside it, not in front of it). Now: at Ingenuity (0.49 m tall, 1.2 m rotors) the figure is many times taller than the helicopter; at Pathfinder and Phoenix it towers over the lander because it is placed closer to the camera. Check every site against real sizes (`REF_MOON.md`, `REF_MARS.md`; LM descent stage ≈ 3.2 m tall, Surveyor ≈ 3 m, LRV ≈ 3.1 m long, Viking ≈ 2 m, MER 1.5 m tall, InSight deck ≈ 1 m, Ingenuity 0.49 m). Do not "calibrate" it per mission — one true scale.
+2. **Ground streaks:** both Moon and Mars terrain show strong radial stripes converging to the vanishing point (stretched UVs / anisotropic sampling or a stretched noise), even at rest. Use world-space (triplanar or planar XZ) UVs with isotropic tiling + detail texture + anisotropy, and break up repetition. It should look like regolith/soil, not brushed metal.
+3. **GRAIL rest (beat 12):** the rest shot shows only flat ground and the silhouette — the mountain slope and the **two impact craters with dark ejecta** must be the clear subject, and the AG-10 simulation must still auto-play when settled (it did not start within 3.5 s in my capture at p = 12).
+4. **Mars orbit (p ≈ 13):** two large white ring halos near Mars' upper-left limb look like artifacts — remove or make them subtle pins like the Moon's.
+Do NOT generate posters.

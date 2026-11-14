@@ -2,6 +2,7 @@ import { beats } from "@/content/beats";
 import { narration } from "@/content/journey";
 import { narrationV5 } from "@/content/guide";
 import { scrollState, clamp01 } from "@/lib/scroll/progress";
+import { expeditionState } from "@/components/journey/three/expeditionState";
 
 /** Narration with the v5 "Expedition" overrides applied. */
 export function narrationFor(id: string): string | undefined {
@@ -39,5 +40,11 @@ function derive(): ExpeditionSnapshot {
  *   `return expeditionState;`  (import { expeditionState } from "@/components/journey/three/expeditionState")
  */
 export function readExpedition(): ExpeditionSnapshot {
-  return derive();
+  // AG-11 live state from the 3D scene; fall back to the scroll-derived target if the scene hasn't set one.
+  if (!expeditionState.targetSlug) return derive();
+  return {
+    phase: expeditionState.phase === "arrived" ? "arrived" : "approach",
+    targetSlug: expeditionState.targetSlug,
+    proximity: expeditionState.proximity,
+  };
 }
