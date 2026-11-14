@@ -72,6 +72,7 @@ export function ExhibitPanel() {
   return (
     <div
       ref={root}
+      data-step-ignore
       role="dialog"
       aria-modal="true"
       aria-labelledby="exhibit-title"

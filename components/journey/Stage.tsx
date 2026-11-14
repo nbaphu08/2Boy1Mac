@@ -5,6 +5,8 @@ import { beats } from "@/content/beats";
 import type { Beat } from "@/content/types";
 import { useMuseum } from "@/lib/store";
 import { goTo, mountStepEngine } from "@/lib/step";
+import { scenes } from "./acts";
+import { ExhibitPanel } from "@/components/museum/ExhibitPanel";
 
 // Rail groups: consecutive beats that share the same `rail` label.
 const railGroups = beats.reduce<{ rail: Beat["rail"]; items: { beat: Beat; index: number }[] }[]>(
@@ -117,7 +119,7 @@ function RestHud() {
       <p aria-live="polite" className="sr-only">
         {isTransitioning ? "" : [beat.title, beat.caption ?? beat.sub].filter(Boolean).join(". ")}
       </p>
-      {!isTransitioning && !isLast ? (
+      {!isTransitioning && !isLast && beatIndex !== 0 ? (
         <p
           key={beatIndex}
           aria-hidden
@@ -162,9 +164,10 @@ export default function Stage() {
         @keyframes step-hint-in { to { opacity: 1; } }
         @media (prefers-reduced-motion: reduce) { .step-hint { animation: step-hint-in 0.4s linear 3s 1 forwards; } }
       `}</style>
-      {beats.map((beat, index) => (
-        <DummyPanel key={beat.id} beat={beat} index={index} />
-      ))}
+      {beats.map((beat, index) => {
+        const Scene = scenes[beat.id];
+        return Scene ? <Scene key={beat.id} beat={beat} index={index} /> : <DummyPanel key={beat.id} beat={beat} index={index} />;
+      })}
       {/* warp veil: above the beats, below the rail */}
       <div
         ref={veilRef}
@@ -174,6 +177,7 @@ export default function Stage() {
       />
       <ProgressRail />
       <RestHud />
+      <ExhibitPanel />
     </div>
   );
 }

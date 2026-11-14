@@ -10,3 +10,8 @@
 ## Creative Director review (Opus) — content
 - Credits confirmed from NASA image metadata: PIA22929 = NASA/JPL-Caltech/Cornell/ASU; PIA13965 = NASA/JPL-Caltech/MIT (labelled Artist's concept); PIA17759 = NASA/JPL-Caltech/Cornell Univ./Arizona State Univ.
 - SM-L-002, L-003, L-004, M-004 set to verified: the flagged sentences are interpretive (no numbers/dates) and approved by the Creative Director.
+
+## M1 — Act I–II scenes (Sonnet, 14 Nov 2026)
+**Done:** beats 0–6 as real scenes in `components/journey/acts/**` (hero with SplitText title + push-in + fog; enter dolly→footage crossfade + letterbox; ignition with ambient loop, T-5…T-1 countdown, T-0 flash/shake/MET; ascent-1..4 with event HUD + captions), registered via `registerBeat`. Footage uses 720p on ≤768 px, lazy `src` within [-1,+2] beats, poster as rest frame; reduced motion = posters only. ExhibitPanel mounted on Stage (`data-step-ignore`); disclaimer on hero; `metadataBase` set. Stage renders scenes via a `scenes` map (`acts/index.ts`). Build + lint pass; headless-Chrome smoke test of hero → enter → ignition → ascent-1 (keyboard), no console errors.
+**Next:** F2/F3 beats ≥ 7 (Fable), mobile pass, real-device tests.
+**Risks:** MET values indicative (see CHANGE_REQUESTS); iOS Low Power Mode / autoplay unverified; countdown timing vs footage unverified by eye on a real device; edge-blur uses `backdrop-filter` (check perf on phones). Preview URL: none (not deployed).
