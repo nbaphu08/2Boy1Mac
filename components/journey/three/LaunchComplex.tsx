@@ -125,9 +125,9 @@ export function LaunchComplex() {
   useFrame((_, delta) => {
     const p = scrollState.current;
     if (groupRef.current) {
-      groupRef.current.visible = p < 4.4;
+      groupRef.current.visible = p < 3.6; // Opus: hide pad + VAB once climbing (ascent-2 sits on the cloud deck)
     }
-    if (p >= 4.4) return;
+    if (p >= 3.6) return;
     elapsedRef.current += Math.min(delta, 0.05);
 
     // Swing arms retract smoothly before T-0 (progress 1.4 -> 1.92)
