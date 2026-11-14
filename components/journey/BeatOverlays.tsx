@@ -116,73 +116,6 @@ function TransitTimeline({ index }: { index: number }) {
   );
 }
 
-function HeroOverlay({ beat }: { beat: Beat }) {
-  return (
-    <div className="relative flex h-full w-full flex-col justify-between px-6 pb-8 pt-20 pr-12 sm:px-12 sm:pb-10 sm:pt-20 sm:pr-20 lg:pr-24">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-void/90 via-void/15 to-void/45"
-      />
-      {/* Directional dark-charcoal sky scrim on the right side to separate white typography from bright dawn clouds */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(ellipse 56% 48% at 74% 34%, rgba(6, 9, 16, 0.62) 0%, rgba(6, 9, 16, 0.34) 54%, transparent 84%)",
-        }}
-      />
-
-      <div
-        data-hud-card
-        className="font-hud text-shadow-copy relative z-10 flex flex-wrap items-center justify-end gap-3 text-right text-[11px] text-platinum"
-      >
-        <span>{beat.sub}</span>
-        <span className="text-line">·</span>
-        <span className="text-starlight">{journey.hero.location}</span>
-      </div>
-
-      <div
-        data-hud-card
-        className="relative z-10 mt-[10dvh] mb-auto ml-auto flex w-fit flex-col items-end text-right sm:mt-[12dvh] sm:mr-6 lg:mr-10"
-      >
-        {/* Soft feathered charcoal halo directly behind heading & subtitle */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -inset-x-10 -inset-y-7 -z-10 rounded-3xl bg-void/45 blur-2xl"
-        />
-        <h1 className="font-display text-shadow-display mr-[-0.06em] text-[clamp(2.1rem,5.2vw,4.85rem)] leading-none text-white">
-          {beat.title}
-        </h1>
-        <p className="text-shadow-copy mt-3.5 text-right text-base font-medium text-white/95 sm:whitespace-nowrap sm:text-xl">
-          {beat.caption}
-        </p>
-      </div>
-
-      <div
-        data-hud-card
-        className="text-shadow-copy relative z-10 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"
-      >
-        <div className="pointer-events-auto flex max-w-xl flex-col gap-2.5">
-          <p className="font-hud text-[11px] text-platinum">{journey.hero.admission}</p>
-          <button
-            type="button"
-            onClick={() => scrollToBeat("deep-space")}
-            className="font-hud w-fit cursor-pointer border-b border-platinum/40 pb-0.5 text-xs text-text transition-colors hover:border-starlight hover:text-starlight"
-          >
-            {site.skip}
-          </button>
-          <p className="font-hud text-[9px] leading-relaxed text-platinum/85 normal-case tracking-normal">
-            {site.disclaimer} {site.illustrative}
-          </p>
-        </div>
-
-        <p className="font-hud text-xs text-starlight">{journey.hero.scrollHint}</p>
-      </div>
-    </div>
-  );
-}
-
 function EnterOverlay({ beat }: { beat: Beat }) {
   return (
     <div className="relative flex h-full w-full items-end px-6 pb-14 pr-14 sm:px-12 sm:pb-16 sm:pr-36">
@@ -516,7 +449,7 @@ function FinaleOverlay() {
         <p className="font-hud mb-3 text-[11px] text-platinum">{journey.finale.eyebrow}</p>
         <div className="mt-6 flex flex-wrap items-center gap-4">
           <Link
-            href="/gallery"
+            href="/collection"
             className="font-hud rounded border border-starlight/60 bg-raised/85 px-4 py-2 text-xs text-starlight transition-colors hover:bg-starlight hover:text-void"
           >
             {journey.finale.revisit}
@@ -529,7 +462,7 @@ function FinaleOverlay() {
           </Link>
           <button
             type="button"
-            onClick={() => scrollToBeat(0)}
+            onClick={() => scrollToBeat(1)}
             className="font-hud cursor-pointer px-2 py-2 text-xs text-mute transition-colors hover:text-text"
           >
             {journey.finale.back}
@@ -573,8 +506,7 @@ export function BeatSection({ beat, poster }: { beat: Beat; poster?: React.React
   }, []);
 
   let content: React.ReactNode = null;
-  if (beat.id === "hero") content = <HeroOverlay beat={beat} />;
-  else if (beat.id === "enter") content = <EnterOverlay beat={beat} />;
+  if (beat.id === "enter") content = <EnterOverlay beat={beat} />;
   else if (beat.id === "ignition") content = <IgnitionOverlay beat={beat} />;
   else if (beat.act === "ascent") content = <AscentOverlay beat={beat} />;
   else if (beat.id === "deep-space" || beat.id === "transit") content = <HallTitleOverlay beat={beat} />;

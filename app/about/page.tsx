@@ -15,7 +15,7 @@ export default function AboutPage() {
     <main className="mx-auto w-full max-w-3xl flex-1 px-5 py-10 md:px-8">
       <nav className="font-hud mb-8 flex justify-between text-[11px] text-mute">
         <Link href="/" className="hover:text-text">← {site.wordmark}</Link>
-        <Link href="/gallery" className="hover:text-text">Gallery</Link>
+        <Link href="/collection" className="hover:text-text">Collection</Link>
       </nav>
       <h1 className="font-display text-3xl md:text-5xl">{a.heading}</h1>
       <p className="mt-6">{a.body}</p>

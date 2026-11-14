@@ -38,7 +38,7 @@ export default async function ExhibitPage({ params }: Props) {
     <main className="mx-auto w-full max-w-6xl flex-1 px-5 py-8 md:px-8">
       <PageVisit slug={ex.slug} />
       <nav className="font-hud mb-6 flex justify-between text-[11px] text-mute">
-        <Link href="/gallery" className="hover:text-text">← Gallery</Link>
+        <Link href="/collection" className="hover:text-text">← Collection</Link>
         <Link href="/" className="hover:text-text">SPACEMUSE</Link>
       </nav>
       <div className="grid gap-8 md:grid-cols-[1.1fr_1fr]">
@@ -50,7 +50,7 @@ export default async function ExhibitPage({ params }: Props) {
       {beatId && (
         <p className="mt-8">
           <Link
-            href={`/#${beatId}`}
+            href={`/journey#${beatId}`}
             className="font-hud inline-block rounded border border-starlight/60 bg-raised/85 px-4 py-2 text-xs text-starlight transition-colors hover:bg-starlight hover:text-void"
           >
             View in the journey →

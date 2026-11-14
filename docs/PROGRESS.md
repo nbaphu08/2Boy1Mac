@@ -57,3 +57,8 @@ Done: Yogi boulder scaled 0.5 and moved beside Sojourner (MarsModels.tsx only; p
 - PASS Lighthouse desktop: /gallery Perf 0.96, A11y 1.00; /exhibit/moon-apollo-11 Perf 0.97, A11y 0.96 -> fixed color-contrast (text-mute/80 credits -> text-mute); expected 1.0 after fix (not re-run).
 - NOT RUN: step-engine swipe counts, poster-frame screenshots of all 24 beats, preview deploy, `/` Lighthouse, real-device checks.
 Remaining: THREE.Clock warning (Antigravity); beat-0 location tag sits at y~88 under the header on small phones (checked visually only mid-transition); Yogi poster needs Opus re-capture with `?poster=`.
+
+## Landing / journey split (Sonnet)
+- Done: `/` is now a light landing page (hero + About the gallery, no WebGL). `/journey` is the 3D journey, track clamped to start at beat 1 (`enter`; hero beat/overlay/portal removed from Stage). `/gallery` -> `/collection` (308), `/?poster=X` -> `/journey?poster=X`, `/#<beatId>` -> `/journey#<beatId>` (client). Sitemap, nav and exhibit links updated.
+- Next: preview deploy by Opus; poster script should use `/journey?poster=`.
+- Risks: Nav label "Collection" is hard-coded (journey.ui.gallery still says "Gallery"); hero beat 0 is still in `content/beats.ts` and three/trajectory.

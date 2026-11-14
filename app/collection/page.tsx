@@ -4,16 +4,16 @@ import { exhibitsByHall } from "@/content/exhibits";
 import { site } from "@/content/site";
 import { statusLabel } from "@/components/museum/ExhibitContent";
 
-export const metadata: Metadata = { title: "Gallery", description: `All twelve exhibits: ${site.tagline}`, alternates: { canonical: "/gallery" } };
+export const metadata: Metadata = { title: "Collection", description: `All twelve exhibits: ${site.tagline}`, alternates: { canonical: "/collection" } };
 
-export default function GalleryPage() {
+export default function CollectionPage() {
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 px-5 py-10 md:px-8">
       <nav className="font-hud mb-8 flex justify-between text-[11px] text-mute">
         <Link href="/" className="hover:text-text">← {site.wordmark}</Link>
         <Link href="/about" className="hover:text-text">About &amp; Sources</Link>
       </nav>
-      <h1 className="font-display text-3xl md:text-5xl">Gallery</h1>
+      <h1 className="font-display text-3xl md:text-5xl">Collection</h1>
       <p className="mt-2 text-mute">{site.tagline}</p>
       {(["moon", "mars"] as const).map((hall) => (
         <section key={hall} className="mt-12" aria-labelledby={`h-${hall}`}>

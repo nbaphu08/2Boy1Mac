@@ -119,3 +119,27 @@ button:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .grain, .fog { animation: none; }
 }
+
+/* ── Landing page ── */
+.reveal {
+  opacity: 0;
+  transform: translate3d(0, 22px, 0);
+  transition: opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1), transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal-in {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.landing-root) { scroll-behavior: smooth; }
+}
+.cta-visit {
+  font-family: var(--font-display);
+  font-variation-settings: "wdth" 125;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
