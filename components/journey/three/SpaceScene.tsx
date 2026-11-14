@@ -12,6 +12,7 @@ import { LaunchComplex } from "./LaunchComplex";
 import { HallEnvironment, PostEffects } from "./RenderPipeline";
 import { SLSRocket } from "./SLSRocket";
 import { detectInitialPerfTier, updatePerfFpsMonitor, usePerfBudget } from "./perfTier";
+import { grailSimState } from "./simulationBus";
 import { EXHIBIT_PLINTH_ANCHORS, sampleTrajectory, type SampledTrajectory } from "./trajectory";
 
 function SceneChoreographer({
@@ -30,8 +31,10 @@ function SceneChoreographer({
   const ambRef = useRef<THREE.AmbientLight>(null);
   const hemiRef = useRef<THREE.HemisphereLight>(null);
   const elapsedRef = useRef(0);
-  const shadowModeRef = useRef<"pad" | "exhibit">("pad");
+  const shadowModeRef = useRef<"pad" | "exhibit" | "pilot">("pad");
   const sunTarget = useMemo(() => new THREE.Object3D(), []);
+  const simCamPos = useMemo(() => new THREE.Vector3(), []);
+  const simCamLook = useMemo(() => new THREE.Vector3(), []);
   const duskSunColor = useMemo(() => new THREE.Color("#FF9852"), []);
   const orbitalSunColor = useMemo(() => new THREE.Color("#F5F8FF"), []);
   const moonSunColor = useMemo(() => new THREE.Color("#FFFDF5"), []);
@@ -102,12 +105,25 @@ function SceneChoreographer({
     const orbitedZ = traj.camLook.z + dx * sinA + dz * cosA;
     const orbitLiftY = Math.cos(t * 0.28) * 0.12 * orbitWeight;
 
-    camera.position.set(
+    simCamPos.set(
       orbitedX + breathX + shakeX,
       traj.camPos.y + breathY + shakeY + orbitLiftY,
       orbitedZ,
     );
-    camera.lookAt(traj.camLook);
+    simCamLook.copy(traj.camLook);
+
+    // Smoothly blend camera toward GRAIL 14 s simulation when settled on beat 12 (yields instantly on scroll)
+    if (grailSimState.active && grailSimState.camBlend > 0.001) {
+      const scrollMask = 1 - smoothstep(0.04, 0.14, Math.abs(p - 12));
+      const blend = grailSimState.camBlend * scrollMask;
+      if (blend > 0.001) {
+        simCamPos.lerp(grailSimState.camPos, blend);
+        simCamLook.lerp(grailSimState.camLook, blend);
+      }
+    }
+
+    camera.position.copy(simCamPos);
+    camera.lookAt(simCamLook);
 
     if (rocketRef.current) {
       rocketRef.current.position.copy(traj.rocketPos);
@@ -127,13 +143,25 @@ function SceneChoreographer({
     const nearestIdx = Math.max(0, Math.min(beats.length - 1, Math.round(p)));
     const nearestSlug = beats[nearestIdx]?.exhibitSlug;
     const exhibitAnchor = nearestSlug ? EXHIBIT_PLINTH_ANCHORS[nearestSlug] : undefined;
+    const isPilotExhibit = nearestSlug === "mars-pathfinder" || nearestSlug === "moon-grail";
 
     if (sunRef.current) {
-      const targetMode: "pad" | "exhibit" = inAnyExhibit ? "exhibit" : "pad";
+      const targetMode: "pad" | "exhibit" | "pilot" = inAnyExhibit
+        ? isPilotExhibit
+          ? "pilot"
+          : "exhibit"
+        : "pad";
       if (shadowModeRef.current !== targetMode) {
         shadowModeRef.current = targetMode;
         const sc = sunRef.current.shadow.camera;
-        if (targetMode === "exhibit") {
+        if (targetMode === "pilot") {
+          sc.left = -8.5;
+          sc.right = 8.5;
+          sc.top = 8.5;
+          sc.bottom = -8.5;
+          sc.near = 1;
+          sc.far = 36;
+        } else if (targetMode === "exhibit") {
           sc.left = -5.2;
           sc.right = 5.2;
           sc.top = 5.2;
@@ -156,16 +184,17 @@ function SceneChoreographer({
         sunTarget.position.set(ax, ay + 0.35, az);
         sunTarget.updateMatrixWorld();
         if (inMoonHall) {
-          // One hard crisp low white lunar sun -> long sharp Apollo shadows
-          sunRef.current.position.set(ax - 8.4, ay + 3.6, az + 5.2);
+          // One hard crisp low white lunar sun -> long sharp Apollo/GRAIL shadows
+          sunRef.current.position.set(ax - 8.4, ay + 3.4, az + 5.2);
           sunRef.current.color.copy(moonSunColor);
           sunRef.current.intensity = THREE.MathUtils.damp(sunRef.current.intensity, 4.6 * dim, 8, dt);
         } else {
-          // Warm low Martian sun (softened during Opportunity storm ~beat 17)
+          // Warm low Martian sun (even lower on Ares Vallis pilot for long shadows across plain & rocks)
           const stormT = smoothstep(16.3, 16.85, p) * (1 - smoothstep(17.15, 17.7, p));
-          sunRef.current.position.set(ax - 7.4, ay + 4.5, az + 5.6);
+          const marsSunY = nearestSlug === "mars-pathfinder" ? 3.15 : 4.5;
+          sunRef.current.position.set(ax - 8.2, ay + marsSunY, az + 5.4);
           sunRef.current.color.copy(marsSunColor);
-          const marsIntensity = THREE.MathUtils.lerp(3.75, 2.75, stormT) * dim;
+          const marsIntensity = THREE.MathUtils.lerp(3.85, 2.75, stormT) * dim;
           sunRef.current.intensity = THREE.MathUtils.damp(sunRef.current.intensity, marsIntensity, 8, dt);
         }
         sunRef.current.castShadow = useShadows;

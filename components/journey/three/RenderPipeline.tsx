@@ -15,6 +15,7 @@ import { type DepthOfFieldEffect, ToneMappingMode } from "postprocessing";
 import * as THREE from "three";
 import { scrollState, smoothstep } from "@/lib/scroll/progress";
 import { usePerfBudget } from "./perfTier";
+import { grailSimState } from "./simulationBus";
 import { sampleTrajectory } from "./trajectory";
 
 export type HallEnv = "launch" | "deep" | "moon" | "mars";
@@ -223,7 +224,8 @@ export function PostEffects() {
     const inMoon = smoothstep(7.65, 8.0, p) * (1 - smoothstep(12.05, 12.45, p));
     const inMars = smoothstep(13.65, 14.0, p) * (1 - smoothstep(20.05, 20.45, p));
     const isResting = 1 - smoothstep(0.08, 0.45, Math.abs(scrollState.velocity));
-    const targetBokeh = Math.max(inMoon, inMars) * isResting * 1.35;
+    const simMute = grailSimState.active ? 1 - grailSimState.camBlend : 1;
+    const targetBokeh = Math.max(inMoon, inMars) * isResting * simMute * 1.35;
 
     dofRef.current.bokehScale = THREE.MathUtils.damp(
       dofRef.current.bokehScale,

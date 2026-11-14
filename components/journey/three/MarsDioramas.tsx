@@ -8,11 +8,11 @@ import { usePerfBudget } from "./perfTier";
 import {
   InSightSurfaceInstruments,
   IngenuityAndBackshellProps,
-  PathfinderAndSojournerModel,
   PhoenixLanderModel,
   Viking1SiteProps,
   getMarsRoverTrackTexture,
 } from "./MarsModels";
+import { PathfinderLandscape } from "./PathfinderLandscape";
 
 let cachedMarsColor: THREE.CanvasTexture | null = null;
 let cachedMarsBump: THREE.CanvasTexture | null = null;
@@ -412,6 +412,11 @@ export function HallTwoMarsDiorama({
   const trackTex = useMemo(() => getMarsRoverTrackTexture(), []);
   const terrainGeo = useMemo(() => createMarsTerrainGeometry(slug), [slug]);
 
+  // AG-10 / AG-9b pilot: mars-pathfinder renders its own continuous Ares Vallis flood plain + Twin Peaks to the horizon (no plinth)
+  if (slug === "mars-pathfinder") {
+    return <PathfinderLandscape reducedMotion={reducedMotion} />;
+  }
+
   const rockCount =
     slug === "mars-viking-1"
       ? 28
@@ -476,30 +481,6 @@ export function HallTwoMarsDiorama({
         <group>
           {children}
           <Viking1SiteProps baseY={DIORAMA_SURFACE_Y} />
-        </group>
-      ) : null}
-
-      {/* ─── 2. SM-M-002 · MARS PATHFINDER + SOJOURNER (Ares Vallis outwash plain + Twin Peaks) ─── */}
-      {slug === "mars-pathfinder" ? (
-        <group>
-          {/* Distant Twin Peaks hills on the Ares Vallis horizon (PIA00632) */}
-          <SculptedMarsLandform
-            position={[-0.85, DIORAMA_SURFACE_Y + 0.02, -2.15]}
-            width={1.85}
-            depth={1.2}
-            height={0.62}
-            seed={21}
-            color="#85452C"
-          />
-          <SculptedMarsLandform
-            position={[0.75, DIORAMA_SURFACE_Y + 0.02, -2.2]}
-            width={1.65}
-            depth={1.15}
-            height={0.54}
-            seed={22}
-            color="#7E4028"
-          />
-          <PathfinderAndSojournerModel baseY={DIORAMA_SURFACE_Y} />
         </group>
       ) : null}
 
