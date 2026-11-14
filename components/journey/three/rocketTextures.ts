@@ -15,6 +15,11 @@ let kaptonBumpCache: THREE.CanvasTexture | null = null;
 let solarCache: THREE.CanvasTexture | null = null;
 let sparkTexCache: THREE.CanvasTexture | null = null;
 let smokeTexCache: THREE.CanvasTexture | null = null;
+let vabCache: TexturePair | null = null;
+let steelCache: TexturePair | null = null;
+let padConcreteCache: TexturePair | null = null;
+let gravelCache: TexturePair | null = null;
+let cloudLayerCache: THREE.CanvasTexture | null = null;
 
 /** Draw a NASA photogrammetry black/white quadrant calibration target. */
 function drawCalibrationTarget(ctx: CanvasRenderingContext2D, x: number, y: number, r: number) {
@@ -645,5 +650,338 @@ export function getSmokePuffTexture(): THREE.CanvasTexture {
   ctx.fillRect(0, 0, S, S);
   const tex = new THREE.CanvasTexture(canvas);
   smokeTexCache = tex;
+  return tex;
+}
+
+/** 10. VAB Corrugated Aluminum Panels + Panel Seams + Weathered Grime (1024x1024) */
+export function getVabFacadeTextures(): TexturePair {
+  if (vabCache) return vabCache;
+  const W = 1024;
+  const H = 1024;
+  const colorCanvas = document.createElement("canvas");
+  colorCanvas.width = W;
+  colorCanvas.height = H;
+  const ctx = colorCanvas.getContext("2d")!;
+
+  const bumpCanvas = document.createElement("canvas");
+  bumpCanvas.width = W;
+  bumpCanvas.height = H;
+  const bCtx = bumpCanvas.getContext("2d")!;
+
+  // Base warm-cool KSC aluminum panel wash (top slightly brighter, bottom weathered)
+  const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+  bgGrad.addColorStop(0, "#BCC6D4");
+  bgGrad.addColorStop(0.55, "#A9B4C4");
+  bgGrad.addColorStop(1, "#8A94A3");
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  bCtx.fillStyle = "#808080";
+  bCtx.fillRect(0, 0, W, H);
+
+  // Subtle vertical corrugated siding ribs (256 ribs across panel)
+  for (let x = 0; x < W; x += 4) {
+    const shade = (x % 8 === 0) ? 10 : -8;
+    ctx.fillStyle = shade > 0 ? "rgba(255,255,255,0.05)" : "rgba(18,24,38,0.06)";
+    ctx.fillRect(x, 0, 2, H);
+    bCtx.fillStyle = shade > 0 ? "#9C9C9C" : "#646464";
+    bCtx.fillRect(x, 0, 2, H);
+  }
+
+  // Horizontal & vertical structural panel grid seams + subtle per-panel tone variance
+  const cols = 16;
+  const rows = 20;
+  const cw = W / cols;
+  const rh = H / rows;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const n = Math.sin(r * 13.7 + c * 7.3) * 0.5 + 0.5;
+      if (n > 0.55) {
+        ctx.fillStyle = `rgba(28,36,52,${((n - 0.55) * 0.14).toFixed(3)})`;
+        ctx.fillRect(c * cw, r * rh, cw, rh);
+      } else {
+        ctx.fillStyle = `rgba(235,242,255,${((0.55 - n) * 0.08).toFixed(3)})`;
+        ctx.fillRect(c * cw, r * rh, cw, rh);
+      }
+    }
+  }
+
+  ctx.strokeStyle = "rgba(22, 28, 40, 0.34)";
+  ctx.lineWidth = 1.5;
+  bCtx.strokeStyle = "#484848";
+  bCtx.lineWidth = 2;
+  for (let r = 0; r <= rows; r++) {
+    const y = Math.round(r * rh);
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(W, y);
+    ctx.stroke();
+    bCtx.beginPath();
+    bCtx.moveTo(0, y);
+    bCtx.lineTo(W, y);
+    bCtx.stroke();
+  }
+  for (let c = 0; c <= cols; c++) {
+    const x = Math.round(c * cw);
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, H);
+    ctx.stroke();
+  }
+
+  const map = new THREE.CanvasTexture(colorCanvas);
+  map.colorSpace = THREE.SRGBColorSpace;
+  map.wrapS = THREE.RepeatWrapping;
+  map.wrapT = THREE.RepeatWrapping;
+  map.anisotropy = 8;
+
+  const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+  bumpMap.wrapS = THREE.RepeatWrapping;
+  bumpMap.wrapT = THREE.RepeatWrapping;
+  bumpMap.anisotropy = 8;
+
+  vabCache = { map, bumpMap };
+  return vabCache;
+}
+
+/** 11. Structural Steel Girder & Rivet Texture (512x512, ML-1 Tower / MLP / Water Tower) */
+export function getSteelLatticeTextures(): TexturePair {
+  if (steelCache) return steelCache;
+  const S = 512;
+  const colorCanvas = document.createElement("canvas");
+  colorCanvas.width = S;
+  colorCanvas.height = S;
+  const ctx = colorCanvas.getContext("2d")!;
+
+  const bumpCanvas = document.createElement("canvas");
+  bumpCanvas.width = S;
+  bumpCanvas.height = S;
+  const bCtx = bumpCanvas.getContext("2d")!;
+
+  ctx.fillStyle = "#5B6578";
+  ctx.fillRect(0, 0, S, S);
+  bCtx.fillStyle = "#808080";
+  bCtx.fillRect(0, 0, S, S);
+
+  // Subtle salt-air corrosion & welded plate mottling
+  for (let i = 0; i < 480; i++) {
+    const x = (Math.sin(i * 19.3) * 0.5 + 0.5) * S;
+    const y = (Math.cos(i * 31.7) * 0.5 + 0.5) * S;
+    const r = 4 + (i % 14);
+    ctx.fillStyle = i % 3 === 0 ? "rgba(128,88,62,0.10)" : "rgba(18,24,36,0.11)";
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Painted structural girder seams & gusset bolts
+  ctx.strokeStyle = "rgba(18, 24, 34, 0.48)";
+  ctx.lineWidth = 2;
+  bCtx.strokeStyle = "#464646";
+  bCtx.lineWidth = 3;
+  for (let i = 0; i < S; i += 64) {
+    ctx.strokeRect(i + 2, 2, 60, S - 4);
+    bCtx.strokeRect(i + 2, 2, 60, S - 4);
+    for (let y = 12; y < S; y += 32) {
+      ctx.fillStyle = "#8C98AD";
+      ctx.fillRect(i + 6, y, 3, 3);
+      ctx.fillRect(i + 54, y, 3, 3);
+      bCtx.fillStyle = "#CCCCCC";
+      bCtx.fillRect(i + 6, y, 3, 3);
+      bCtx.fillRect(i + 54, y, 3, 3);
+    }
+  }
+
+  const map = new THREE.CanvasTexture(colorCanvas);
+  map.colorSpace = THREE.SRGBColorSpace;
+  map.wrapS = THREE.RepeatWrapping;
+  map.wrapT = THREE.RepeatWrapping;
+  map.repeat.set(3, 3);
+
+  const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+  bumpMap.wrapS = THREE.RepeatWrapping;
+  bumpMap.wrapT = THREE.RepeatWrapping;
+  bumpMap.repeat.set(3, 3);
+
+  steelCache = { map, bumpMap };
+  return steelCache;
+}
+
+/** 12. Scored Launchpad Concrete & Flame-Trench Scorch Apron (1024x1024) */
+export function getPadConcreteTextures(): TexturePair {
+  if (padConcreteCache) return padConcreteCache;
+  const S = 1024;
+  const colorCanvas = document.createElement("canvas");
+  colorCanvas.width = S;
+  colorCanvas.height = S;
+  const ctx = colorCanvas.getContext("2d")!;
+
+  const bumpCanvas = document.createElement("canvas");
+  bumpCanvas.width = S;
+  bumpCanvas.height = S;
+  const bCtx = bumpCanvas.getContext("2d")!;
+
+  ctx.fillStyle = "#2A303B";
+  ctx.fillRect(0, 0, S, S);
+  bCtx.fillStyle = "#808080";
+  bCtx.fillRect(0, 0, S, S);
+
+  // Concrete aggregate speckle & expansion-joint slabs
+  for (let i = 0; i < 2400; i++) {
+    const x = (Math.sin(i * 41.3) * 0.5 + 0.5) * S;
+    const y = (Math.cos(i * 17.9) * 0.5 + 0.5) * S;
+    const sz = 2 + (i % 5);
+    ctx.fillStyle = i % 2 === 0 ? "rgba(255,255,255,0.045)" : "rgba(8,10,16,0.14)";
+    ctx.fillRect(x, y, sz, sz);
+    bCtx.fillStyle = i % 2 === 0 ? "#9A9A9A" : "#646464";
+    bCtx.fillRect(x, y, sz, sz);
+  }
+
+  // Scored concrete expansion grid
+  ctx.strokeStyle = "rgba(10, 14, 22, 0.52)";
+  ctx.lineWidth = 2;
+  bCtx.strokeStyle = "#3C3C3C";
+  bCtx.lineWidth = 3;
+  for (let g = 0; g <= S; g += 64) {
+    ctx.beginPath();
+    ctx.moveTo(g, 0);
+    ctx.lineTo(g, S);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, g);
+    ctx.lineTo(S, g);
+    ctx.stroke();
+    bCtx.beginPath();
+    bCtx.moveTo(g, 0);
+    bCtx.lineTo(g, S);
+    bCtx.stroke();
+    bCtx.beginPath();
+    bCtx.moveTo(0, g);
+    bCtx.lineTo(S, g);
+    bCtx.stroke();
+  }
+
+  // Exhaust blast scorch streaks radiating toward the flame trench center
+  const scorch = ctx.createRadialGradient(S / 2, S / 2, 18, S / 2, S / 2, S * 0.36);
+  scorch.addColorStop(0, "rgba(12, 10, 10, 0.72)");
+  scorch.addColorStop(0.5, "rgba(42, 32, 26, 0.32)");
+  scorch.addColorStop(1, "rgba(0, 0, 0, 0)");
+  ctx.fillStyle = scorch;
+  ctx.fillRect(0, 0, S, S);
+
+  const map = new THREE.CanvasTexture(colorCanvas);
+  map.colorSpace = THREE.SRGBColorSpace;
+  map.anisotropy = 8;
+
+  const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+  bumpMap.anisotropy = 8;
+
+  padConcreteCache = { map, bumpMap };
+  return padConcreteCache;
+}
+
+/** 13. KSC Crawlerway Crushed Alabama River-Rock Gravel (512x512) */
+export function getCrawlerwayGravelTextures(): TexturePair {
+  if (gravelCache) return gravelCache;
+  const S = 512;
+  const colorCanvas = document.createElement("canvas");
+  colorCanvas.width = S;
+  colorCanvas.height = S;
+  const ctx = colorCanvas.getContext("2d")!;
+
+  const bumpCanvas = document.createElement("canvas");
+  bumpCanvas.width = S;
+  bumpCanvas.height = S;
+  const bCtx = bumpCanvas.getContext("2d")!;
+
+  ctx.fillStyle = "#5B564D";
+  ctx.fillRect(0, 0, S, S);
+  bCtx.fillStyle = "#767676";
+  bCtx.fillRect(0, 0, S, S);
+
+  // Coarse river pebbles & Crawler-Transporter tread ruts
+  for (let i = 0; i < 3600; i++) {
+    const x = (Math.sin(i * 73.1) * 0.5 + 0.5) * S;
+    const y = (Math.cos(i * 29.7) * 0.5 + 0.5) * S;
+    const r = 1.2 + (i % 4) * 0.85;
+    const warm = i % 3 === 0 ? "#766D61" : i % 3 === 1 ? "#45413A" : "#67635B";
+    ctx.fillStyle = warm;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    bCtx.fillStyle = i % 2 === 0 ? "#B8B8B8" : "#525252";
+    bCtx.beginPath();
+    bCtx.arc(x, y, r, 0, Math.PI * 2);
+    bCtx.fill();
+  }
+
+  // Twin Crawler-Transporter cleat track depressions
+  [0.24, 0.76].forEach((tx) => {
+    const xCenter = tx * S;
+    ctx.fillStyle = "rgba(22, 20, 18, 0.25)";
+    ctx.fillRect(xCenter - 26, 0, 52, S);
+    bCtx.fillStyle = "#565656";
+    bCtx.fillRect(xCenter - 26, 0, 52, S);
+    for (let y = 0; y < S; y += 16) {
+      bCtx.fillStyle = "#3E3E3E";
+      bCtx.fillRect(xCenter - 22, y, 44, 5);
+    }
+  });
+
+  const map = new THREE.CanvasTexture(colorCanvas);
+  map.colorSpace = THREE.SRGBColorSpace;
+  map.wrapS = THREE.RepeatWrapping;
+  map.wrapT = THREE.RepeatWrapping;
+  map.repeat.set(1, 10);
+
+  const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+  bumpMap.wrapS = THREE.RepeatWrapping;
+  bumpMap.wrapT = THREE.RepeatWrapping;
+  bumpMap.repeat.set(1, 10);
+
+  gravelCache = { map, bumpMap };
+  return gravelCache;
+}
+
+/** 14. Atmospheric Cumulus / Cirrus Cloud Sheet for Ascent Context (1024x1024) */
+export function getCloudLayerTexture(): THREE.CanvasTexture {
+  if (cloudLayerCache) return cloudLayerCache;
+  const S = 1024;
+  const canvas = document.createElement("canvas");
+  canvas.width = S;
+  canvas.height = S;
+  const ctx = canvas.getContext("2d")!;
+  ctx.clearRect(0, 0, S, S);
+
+  // Soft overlapping cumulus clusters leaving wide blue-ocean windows
+  for (let i = 0; i < 190; i++) {
+    const cx = S * (0.14 + 0.72 * (Math.sin(i * 17.3) * 0.5 + 0.5));
+    const cy = S * (0.14 + 0.72 * (Math.cos(i * 23.7) * 0.5 + 0.5));
+    const r = 34 + (i % 7) * 16;
+    const g = ctx.createRadialGradient(cx, cy, r * 0.12, cx, cy, r);
+    const alpha = 0.22 + (i % 4) * 0.08;
+    g.addColorStop(0, `rgba(232, 240, 255, ${alpha.toFixed(2)})`);
+    g.addColorStop(0.55, `rgba(210, 224, 246, ${(alpha * 0.45).toFixed(2)})`);
+    g.addColorStop(1, "rgba(185, 204, 234, 0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Soft outer fade so cloud sheet edges never clip visibly
+  ctx.globalCompositeOperation = "destination-in";
+  const edgeMask = ctx.createRadialGradient(S / 2, S / 2, S * 0.16, S / 2, S / 2, S * 0.49);
+  edgeMask.addColorStop(0, "rgba(255,255,255,1)");
+  edgeMask.addColorStop(0.7, "rgba(255,255,255,0.85)");
+  edgeMask.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = edgeMask;
+  ctx.fillRect(0, 0, S, S);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  cloudLayerCache = tex;
   return tex;
 }

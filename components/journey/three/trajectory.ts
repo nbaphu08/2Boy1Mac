@@ -38,51 +38,51 @@ export const BEAT_POSES: BeatPose[] = [
     rocketRot: [0, 0.2, 0],
     rocketScale: 1,
   },
-  // 1: enter — Inside the VAB / Launch Complex perimeter directly in front of the floodlit SLS + Orion on the launchpad
+  // 1: enter — Inside the Launch Complex perimeter framing the full dusk-lit SLS + Orion & ML-1 tower on LC-39B
   {
-    camPos: [-6.4, 8.6, 11.8],
-    camLook: [0, 9.4, 0],
+    camPos: [-10.8, 5.0, 17.6],
+    camLook: [-0.6, 7.2, -1.0],
     rocketPos: [0, 0, 0],
     rocketRot: [0, 0.15, 0],
     rocketScale: 1,
   },
-  // 2: ignition — liftoff! Rocket rises cleanly off LC-39B while camera tilts up
+  // 2: ignition — liftoff! Rocket rises above ground-lit deluge steam with VAB silhouetted against western sunset
   {
-    camPos: [9.5, 6.5, 16.5],
-    camLook: [0, 14, 0],
+    camPos: [12.5, 6.2, 21.5],
+    camLook: [-0.5, 11.8, -1.5],
     rocketPos: [0, 10, 0],
     rocketRot: [0, 0.08, -0.02],
     rocketScale: 1,
   },
-  // 3: ascent-1 — Clear the tower, climbing into bright blue sky
+  // 3: ascent-1 — Clear the tower, Space Coast shoreline & cumulus deck dropping below
   {
-    camPos: [10, 46, 21],
-    camLook: [1.5, 52, -3],
-    rocketPos: [1.5, 50, -3],
+    camPos: [14, 59, 22],
+    camLook: [1.5, 49, -4],
+    rocketPos: [1.5, 52, -3],
     rocketRot: [-0.08, 0.1, -0.14],
     rocketScale: 1,
   },
-  // 4: ascent-2 — Max-Q supersonic pitch-over, stratosphere darkening
+  // 4: ascent-2 — Max-Q supersonic pitch-over with vapor collar & ocean clouds receding below
   {
-    camPos: [11, 104, 19],
-    camLook: [6, 114, -10],
-    rocketPos: [6.5, 112, -10],
+    camPos: [15, 121, 18],
+    camLook: [6.5, 111, -10],
+    rocketPos: [6.5, 113, -10],
     rocketRot: [-0.22, 0.12, -0.34],
     rocketScale: 1,
   },
   // 5: ascent-3 — Side booster separation (~2 min)
   {
-    camPos: [14, 166, 14],
-    camLook: [13, 178, -22],
-    rocketPos: [13.5, 176, -22],
+    camPos: [18, 182, 8],
+    camLook: [13, 174, -22],
+    rocketPos: [13.5, 177, -22],
     rocketRot: [-0.42, 0.1, -0.58],
     rocketScale: 1,
   },
-  // 6: ascent-4 — Edge of space (above 100 km), curved blue Earth below, fairing jettison
+  // 6: ascent-4 — Edge of space (above 100 km), curved blue Earth limb & atmosphere halo below, fairing jettison
   {
-    camPos: [17, 232, -30],
-    camLook: [14, 240, -56],
-    rocketPos: [17.5, 244, -46],
+    camPos: [21, 247, -33],
+    camLook: [19.5, 239, -54],
+    rocketPos: [16, 240, -48],
     rocketRot: [-0.65, 0.15, -0.82],
     rocketScale: 0.92,
   },

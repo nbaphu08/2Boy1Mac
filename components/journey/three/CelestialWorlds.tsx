@@ -6,6 +6,7 @@ import { Line, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import { scrollState, smoothstep } from "@/lib/scroll/progress";
 import { usePerfBudget } from "./perfTier";
+import { getCloudLayerTexture } from "./rocketTextures";
 import { EXHIBIT_PLINTH_ANCHORS, WORLD_ANCHORS, sampleTrajectory } from "./trajectory";
 
 /** Fresnel atmosphere / rim glow shader for Earth, Moon & Mars limbs. */
@@ -64,22 +65,30 @@ function AtmosphereRim({
   );
 }
 
-const DAWN_ZENITH = new THREE.Color("#071630");
-const DAWN_HORIZON = new THREE.Color("#3D374B");
-const DAY_ZENITH = new THREE.Color("#0C2858");
-const DAY_HORIZON = new THREE.Color("#3262A2");
+const DAWN_ZENITH = new THREE.Color("#102752");
+const DAWN_MID = new THREE.Color("#2C3C68");
+const DAWN_HORIZON = new THREE.Color("#B86246");
+const DAWN_SUN_GLOW = new THREE.Color("#FF9E54");
+const DAY_ZENITH = new THREE.Color("#0D2F6E");
+const DAY_MID = new THREE.Color("#2358A6");
+const DAY_HORIZON = new THREE.Color("#6AA2E0");
 const HIGH_ZENITH = new THREE.Color("#040712");
-const HIGH_HORIZON = new THREE.Color("#0E2044");
+const HIGH_MID = new THREE.Color("#091532");
+const HIGH_HORIZON = new THREE.Color("#183568");
 
-/** Dynamic Earth sky dome that clears smoothly into Deep Field space during ascent. */
+/** Dynamic Earth sky dome: 6:35 p.m. EDT KSC sunset dusk -> stratosphere cobalt -> orbital black. */
 function AscentSkyDome() {
   const meshRef = useRef<THREE.Mesh>(null);
   const matRef = useRef<THREE.ShaderMaterial>(null);
 
   const uniforms = useMemo(
     () => ({
-      uZenith: { value: new THREE.Color("#050B1A") },
-      uHorizon: { value: new THREE.Color("#252236") },
+      uZenith: { value: DAWN_ZENITH.clone() },
+      uMid: { value: DAWN_MID.clone() },
+      uHorizon: { value: DAWN_HORIZON.clone() },
+      uSunGlow: { value: DAWN_SUN_GLOW.clone() },
+      uSunDir: { value: new THREE.Vector3(-0.82, 0.11, -0.56).normalize() },
+      uSunsetStrength: { value: 1 },
       uOpacity: { value: 1 },
     }),
     [],
@@ -88,23 +97,28 @@ function AscentSkyDome() {
   useFrame(({ camera }) => {
     const p = scrollState.current;
     if (!meshRef.current || !matRef.current) return;
-    const opacity = 1 - smoothstep(5.0, 6.6, p);
+    const opacity = 1 - smoothstep(5.2, 6.4, p);
     meshRef.current.visible = opacity > 0.01;
     if (!meshRef.current.visible) return;
 
     meshRef.current.position.copy(camera.position);
 
-    const launchDay = smoothstep(1.9, 3.3, p);
-    const upperStrat = smoothstep(3.3, 5.2, p);
+    const launchDay = smoothstep(2.05, 3.55, p);
+    const upperStrat = smoothstep(3.6, 5.5, p);
 
     matRef.current.uniforms.uZenith.value
       .copy(DAWN_ZENITH)
       .lerp(DAY_ZENITH, launchDay)
       .lerp(HIGH_ZENITH, upperStrat);
+    matRef.current.uniforms.uMid.value
+      .copy(DAWN_MID)
+      .lerp(DAY_MID, launchDay)
+      .lerp(HIGH_MID, upperStrat);
     matRef.current.uniforms.uHorizon.value
       .copy(DAWN_HORIZON)
       .lerp(DAY_HORIZON, launchDay)
       .lerp(HIGH_HORIZON, upperStrat);
+    matRef.current.uniforms.uSunsetStrength.value = 1 - smoothstep(1.9, 3.6, p);
     matRef.current.uniforms.uOpacity.value = opacity;
   });
 
@@ -126,17 +140,131 @@ function AscentSkyDome() {
         `}
         fragmentShader={`
           uniform vec3 uZenith;
+          uniform vec3 uMid;
           uniform vec3 uHorizon;
+          uniform vec3 uSunGlow;
+          uniform vec3 uSunDir;
+          uniform float uSunsetStrength;
           uniform float uOpacity;
           varying vec3 vLocalPos;
           void main() {
-            float h = clamp(vLocalPos.y * 1.45 + 0.15, 0.0, 1.0);
-            vec3 col = mix(uHorizon, uZenith, pow(h, 0.78));
+            vec3 dir = normalize(vLocalPos);
+            float h = clamp(dir.y, -0.25, 1.0);
+            float skyT = clamp((h + 0.04) / 0.85, 0.0, 1.0);
+
+            vec3 lowMix = mix(uHorizon, uMid, smoothstep(0.0, 0.28, skyT));
+            vec3 col = mix(lowMix, uZenith, smoothstep(0.22, 0.92, skyT));
+
+            // Western sunset horizon azimuth glow (6:35 p.m. EDT)
+            float sunDot = max(dot(dir, uSunDir), 0.0);
+            float horizonBand = exp(-abs(dir.y - 0.04) * 6.5);
+            float sunsetArc = (pow(sunDot, 2.2) * 0.65 + pow(sunDot, 12.0) * 0.55) * horizonBand;
+            col += uSunGlow * sunsetArc * uSunsetStrength * 1.15;
+
+            // Darken cleanly below the sea/land horizon
+            float groundFade = smoothstep(-0.18, 0.01, dir.y);
+            col = mix(uZenith * 0.35, col, groundFade);
+
             gl_FragColor = vec4(col, uOpacity);
+            #include <tonemapping_fragment>
+            #include <colorspace_fragment>
           }
         `}
       />
     </mesh>
+  );
+}
+
+/**
+ * Ascent visual context (beats 2..5): Florida Space Coast shoreline + two parallax cloud decks
+ * dropping away below the vehicle before giving way to space black & curved Earth in beat 6.
+ */
+function AscentCoastAndCloudDeck() {
+  const groupRef = useRef<THREE.Group>(null);
+  const coastMatRef = useRef<THREE.MeshBasicMaterial>(null);
+  const oceanMatRef = useRef<THREE.MeshStandardMaterial>(null);
+  const cloudLowMatRef = useRef<THREE.MeshBasicMaterial>(null);
+  const cloudHighMatRef = useRef<THREE.MeshBasicMaterial>(null);
+  const cloudTex = useMemo(() => getCloudLayerTexture(), []);
+
+  useFrame(() => {
+    const p = scrollState.current;
+    if (!groupRef.current) return;
+    const active = p >= 1.5 && p <= 6.2;
+    groupRef.current.visible = active;
+    if (!active) return;
+
+    // Fade in once camera pitches up around liftoff / ascent-1, fade out before Earth limb beat 6
+    const fadeIn = smoothstep(1.75, 2.55, p);
+    const fadeOut = 1 - smoothstep(4.85, 6.0, p);
+    const vis = fadeIn * fadeOut;
+
+    const duskTint = 1 - smoothstep(2.1, 3.6, p);
+    if (coastMatRef.current) {
+      coastMatRef.current.opacity = vis * 0.9;
+    }
+    if (oceanMatRef.current) {
+      oceanMatRef.current.opacity = vis * 0.94;
+    }
+    if (cloudLowMatRef.current) {
+      const cFade = fadeIn * (1 - smoothstep(4.1, 5.2, p));
+      cloudLowMatRef.current.opacity = cFade * 0.85;
+      cloudLowMatRef.current.color.setRGB(
+        0.92 + duskTint * 0.08,
+        0.93 - duskTint * 0.14,
+        0.98 - duskTint * 0.25,
+      );
+    }
+    if (cloudHighMatRef.current) {
+      const c2Fade = smoothstep(2.5, 3.3, p) * (1 - smoothstep(4.9, 5.95, p));
+      cloudHighMatRef.current.opacity = c2Fade * 0.72;
+    }
+  });
+
+  return (
+    <group ref={groupRef} visible={false}>
+      {/* Atlantic ocean expanse far below the ascent corridor */}
+      <mesh position={[12, -24, -40]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={-6}>
+        <circleGeometry args={[620, 48]} />
+        <meshStandardMaterial
+          ref={oceanMatRef}
+          color="#0F2A54"
+          roughness={0.34}
+          metalness={0.22}
+          transparent
+          opacity={0.9}
+        />
+      </mesh>
+      {/* Florida Space Coast & Banana River coastal shelf silhouette */}
+      <mesh position={[-42, -23.4, -36]} rotation={[-Math.PI / 2, 0, -0.32]} renderOrder={-5}>
+        <circleGeometry args={[145, 36]} />
+        <meshBasicMaterial ref={coastMatRef} color="#17242A" transparent opacity={0.9} />
+      </mesh>
+      {/* Lower cumulus deck (~y=28): drops away quickly during ascent-1 */}
+      <mesh position={[2, 28, -14]} rotation={[-Math.PI / 2, 0, 0.24]} renderOrder={-3}>
+        <planeGeometry args={[280, 280]} />
+        <meshBasicMaterial
+          ref={cloudLowMatRef}
+          map={cloudTex}
+          color="#EBF1FA"
+          transparent
+          depthWrite={false}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+      {/* High cirrus / anvil deck (~y=78): drops away during ascent-2 & ascent-3 */}
+      <mesh position={[8, 78, -28]} rotation={[-Math.PI / 2, 0, -0.58]} renderOrder={-3}>
+        <planeGeometry args={[360, 360]} />
+        <meshBasicMaterial
+          ref={cloudHighMatRef}
+          map={cloudTex}
+          color="#DCE8FC"
+          transparent
+          depthWrite={false}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+    </group>
   );
 }
 
@@ -246,9 +374,9 @@ function SpaceBackdrop({ reducedMotion }: { reducedMotion: boolean }) {
 
     if (skyRef.current) {
       skyRef.current.position.copy(camera.position);
-      const starVis = smoothstep(2.4, 5.2, p);
+      const starVis = smoothstep(3.2, 5.4, p);
       const mat = skyRef.current.material as THREE.MeshBasicMaterial;
-      mat.opacity = (0.25 + starVis * 0.75) * marsDayMask;
+      mat.opacity = (0.04 + starVis * 0.96) * marsDayMask;
       skyRef.current.visible = mat.opacity > 0.01;
     }
     if (pointsRef.current) {
@@ -258,7 +386,7 @@ function SpaceBackdrop({ reducedMotion }: { reducedMotion: boolean }) {
         pointsRef.current.rotation.y = elapsedRef.current * 0.0035;
       }
       const pMat = pointsRef.current.material as THREE.PointsMaterial;
-      pMat.opacity = (0.25 + smoothstep(2.2, 4.8, p) * 0.65) * marsDayMask;
+      pMat.opacity = (0.05 + smoothstep(3.0, 5.2, p) * 0.85) * marsDayMask;
       pointsRef.current.visible = pMat.opacity > 0.01;
     }
   });
@@ -350,19 +478,22 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
     const spin = reducedMotion ? 0 : delta * 0.014;
 
     if (earthRef.current) {
-      // AG-5 (6->7): Smoothly shrink and recede Earth behind the spacecraft during Trans-Lunar Injection — no hard cuts
-      const enterVis = smoothstep(2.2, 2.8, p);
-      const tliRecede = smoothstep(5.85, 7.65, p);
+      // AG-8 / AG-5: Bring curved blue Earth limb smoothly into view in upper ascent (beat 6),
+      // then shrink and recede behind Orion during Trans-Lunar Injection (beats 6->7).
+      const enterVis = smoothstep(3.3, 4.35, p);
+      const ascentLift = smoothstep(3.4, 6.0, p);
+      const tliRecede = smoothstep(6.05, 7.65, p);
       const fadeOut = 1 - smoothstep(7.45, 7.88, p);
       const earthVis = enterVis * fadeOut;
       earthRef.current.visible = earthVis > 0.01;
       if (earthRef.current.visible) {
-        const shrinkScale = (1 - tliRecede * 0.84) * Math.min(1, fadeOut * 1.35);
+        const ascentScale = 1 + ascentLift * 0.24;
+        const shrinkScale = ascentScale * (1 - tliRecede * 0.86) * Math.min(1, fadeOut * 1.35);
         earthRef.current.scale.setScalar(Math.max(0.08, shrinkScale));
         earthRef.current.position.set(
-          WORLD_ANCHORS.earthCenter[0] - tliRecede * 14,
-          WORLD_ANCHORS.earthCenter[1] + tliRecede * 240,
-          WORLD_ANCHORS.earthCenter[2] - tliRecede * 135,
+          WORLD_ANCHORS.earthCenter[0] + ascentLift * 10 - tliRecede * 24,
+          WORLD_ANCHORS.earthCenter[1] + ascentLift * 94 + tliRecede * 145,
+          WORLD_ANCHORS.earthCenter[2] - ascentLift * 124 - tliRecede * 15,
         );
         earthRef.current.rotation.y += spin * 0.55;
       }
@@ -386,8 +517,8 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
     }
 
     if (moonRef.current) {
-      // Visible during orbital approach (beat 7) and departure (beat 13), hidden while on the lunar surface (beats 8..12) so the sky is black with stars (AG-1b #2)
-      const approachVis = smoothstep(4.8, 5.8, p) * (1 - smoothstep(7.2, 7.62, p));
+      // Visible during orbital approach (beat 7) and departure (beat 13), hidden during ascent (<= 6.3) and on the lunar surface (beats 8..12)
+      const approachVis = smoothstep(6.35, 7.05, p) * (1 - smoothstep(7.2, 7.62, p));
       const departVis = smoothstep(12.38, 12.75, p) * (1 - smoothstep(13.8, 15.0, p));
       const moonVis = Math.max(approachVis, departVis);
       moonRef.current.visible = moonVis > 0.02;
@@ -446,6 +577,7 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
     <>
       <SpaceBackdrop reducedMotion={reducedMotion} />
       <AscentSkyDome />
+      <AscentCoastAndCloudDeck />
       <MarsDaytimeSkyDome />
 
       {/* ─── 3D EARTH (Below ascent & visible during edge-of-space / deep-space) ─── */}
