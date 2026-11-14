@@ -481,3 +481,17 @@ Do NOT generate posters.
 5. **Verification**: `npx tsc --noEmit`, `npx eslint components/journey/three` (0 errors, 0 warnings), and `npx next build --webpack` (`36/36` routes) all exited `0`; zero posters generated or modified.
 
 **Files changed:** `components/journey/three/GrailSimulation.tsx`, `docs/HANDOFF_ANTIGRAVITY.md`.
+
+## AG-15 (`ag/15-surveyor`, Rebuild Surveyor 3 per `AS12-48-7133`, `AS12-48-7121`, `S69-55553`)
+
+1. **Vertex-Jointed Tetrahedral Space-Frame & Mast (`MoonModels.tsx`)**:
+   - Replaced all Euler-guessed sticks with exact vertex-to-vertex tubular struts (`computeStrut` + shared `UNIT_STRUT_GEO`): lower base triangle + hub cross-spider (`y = 0.56`), 3 primary tripod columns converging at machined apex collar hub (`y = 1.82`), mid-level triangle collar + diagonal K-braces, continuous central mast rising unbroken to the AOPP masthead gimbal (`y = 2.78`), plus 3 mast guy-struts meeting a collar sleeve (`y = 2.12`).
+   - Hinged BOTH top flat panels directly onto the AOPP crossbar (`[-0.08, 2.80, 0.01]` & `[+0.08, 2.84, 0.01]`): tilted **planar high-gain antenna** (`getSurveyorPlanarTexture` slotted array + waveguide feed box) and **792-cell solar panel** (`getSurveyorSolarTexture` + ribbed aluminum backing truss per `AS12-48-7121`).
+2. **Splayed Landing Legs & Slope-Matched Terrain Grounding (`MoonModels.tsx`, `MoonDioramas.tsx`)**:
+   - Built 3 hinged A-frame leg booms with twin cross-ties, coaxial telescoping shock absorbers (outer barrel + polished piston), lower crushable honeycomb damper drums, and compact **~0.32 m diameter** beveled dish footpads (`0.145–0.165 m` radius).
+   - Fixed inverted crater slope roll sign and passed `groundHeightFn` (`getMoonTerrainHeight("moon-surveyor-3", lx, lz)`) into `Surveyor3Model` so every footpad sits flush on the regolith (zero floating, zero ground clipping); raised rock clearance to `2.2 m` and snapped Apollo 12 bootprint strip onto terrain height.
+3. **Spacecraft Details (`AS12-48-7133` / `AS12-48-7121`)**:
+   - Added louvered Thermal Compartments A & B with pitched radiator hoods (`getSurveyorCompartmentTexture`), 3 recessed propellant/helium spheres inside the base truss, 2 hinged folding omnidirectional conical antennas, clamped empty TV camera pedestal + open saddle yoke (camera head removed by Apollo 12), and a 5-bay pin-jointed pantograph surface sampler arm extending cleanly without scoop. Zero retrorocket motor.
+4. **Verification**: `npx tsc --noEmit`, `npx eslint components/journey/three` (0 errors, 0 warnings), and `npx next build --webpack` (`36/36` routes) all exited `0`. Browser screenshot tool could not attach (no active Chrome `DevToolsActivePort`). Zero posters generated or modified; beat 9 camera unchanged.
+
+**Files changed:** `components/journey/three/MoonModels.tsx`, `components/journey/three/MoonDioramas.tsx`, `docs/HANDOFF_ANTIGRAVITY.md`.
