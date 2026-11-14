@@ -111,6 +111,16 @@ See `GEMINI.md` §1–2 (architecture). Merged to `main` in commit a5633df.
 **Files changed:**
 - `components/journey/three/ExhibitStage3D.tsx`, `CelestialWorlds.tsx`, `MarsModels.tsx`, `trajectory.ts`
 
+## AG-4 — Hall of Silence (21), Hall III "Beyond" (22), Finale (23) — 14/11 — branch `ag/4-endings`
+**Done:**
+1. **Beat 21 (`silence`) — `HallOfSilence3D` (`ExhibitStage3D.tsx`)**: Added a quiet memorial field of 12 luminous beacon points (one per Moon/Mars exhibit along a low platinum horizon arc at `[0, 533.8, -486]`). As the visitor scrolls across Beat 21 (`20.48 -> 21.18`), the 11 silent spacecraft points dim sequentially to faint embers while the **Apollo 11 reflector point (`moon-apollo-11`, `still-active`) stays brightly lit** (`#9DB8FF`) with a gentle upward laser return filament.
+2. **Beat 22 (`beyond`) — `BeyondSilhouettes3D` (`ExhibitStage3D.tsx`)**: Added a tall frosted-glass museum doorway (`meshPhysicalMaterial` translucent pane + brushed `#C7CDD8` platinum frame and 3 vertical mullion dividers) at `[0, 540.1, -522]`. Positioned the 4 spacecraft silhouettes (`SM-B-001`..`SM-B-004` in `#04060B` dark silhouette material + `#9DB8FF`/`#DCE6FF` cold rim lighting) evenly left→right (`x = [-5.25, -1.75, 1.75, 5.25]`) directly above the 4 DOM tiles near the bottom of the viewport. Added a blinking `#9DB8FF` "still talking" beacon on **Voyager 1 (`SM-B-004`, rightmost)**.
+3. **Beat 23 (`finale`) — Artemis Era Earthrise (`CelestialWorlds.tsx`)**: Enhanced `finaleRef` with grazing solar key lighting across a high-relief cratered lunar limb (`bumpScale = 0.62`) in the lower foreground while the luminous blue Earth (`emissiveMap` + `#7EB6FF` `AtmosphereRim`) smoothly rises above the lunar horizon (`22.2 -> 23.0`).
+
+**Files changed:**
+- `components/journey/three/ExhibitStage3D.tsx`, `CelestialWorlds.tsx`
+
+
 
 
 

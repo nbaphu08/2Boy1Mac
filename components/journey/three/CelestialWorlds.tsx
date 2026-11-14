@@ -288,6 +288,8 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
   const moonRef = useRef<THREE.Group>(null);
   const marsRef = useRef<THREE.Group>(null);
   const finaleRef = useRef<THREE.Group>(null);
+  const finaleEarthGroupRef = useRef<THREE.Group>(null);
+  const finaleMoonGroupRef = useRef<THREE.Group>(null);
   const lunarApproachArcRef = useRef<THREE.Group>(null);
   const transitArcRef = useRef<THREE.Group>(null);
 
@@ -382,7 +384,23 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
       transitArcRef.current.visible = p > 12.2 && p < 13.75;
     }
     if (finaleRef.current) {
-      finaleRef.current.visible = p > 21.5;
+      const finaleVis = smoothstep(22.15, 22.65, p);
+      finaleRef.current.visible = finaleVis > 0.01;
+      if (finaleRef.current.visible) {
+        const riseT = smoothstep(22.2, 23.0, p);
+        if (finaleEarthGroupRef.current) {
+          // Earth slowly rises over the cratered lunar limb as the visitor arrives at Beat 23
+          finaleEarthGroupRef.current.position.set(
+            WORLD_ANCHORS.finaleEarthCenter[0],
+            WORLD_ANCHORS.finaleEarthCenter[1] - (1 - riseT) * 9.5,
+            WORLD_ANCHORS.finaleEarthCenter[2],
+          );
+          finaleEarthGroupRef.current.rotation.y += spin * 0.45;
+        }
+        if (finaleMoonGroupRef.current) {
+          finaleMoonGroupRef.current.rotation.y += spin * 0.12;
+        }
+      }
     }
   });
 
@@ -469,20 +487,45 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
         <AtmosphereRim radius={WORLD_ANCHORS.marsRadius * 1.032} color="#C8603A" intensity={0.68} power={3.8} />
       </group>
 
-      {/* ─── FINALE EARTHRISE (Moon limb + rising blue Earth, beat 23) ─── */}
+      {/* ─── FINALE EARTHRISE (Artemis Era Earthrise: cratered Moon limb + rising blue Earth, beat 23) ─── */}
       <group ref={finaleRef} visible={false}>
-        <group position={WORLD_ANCHORS.finaleMoonCenter} rotation={[0.2, -1.6, 0]}>
+        {/* Grazing solar key light across the lunar horizon limb & rising Earth */}
+        <directionalLight position={[-45, 595, -590]} intensity={3.2} color="#FFF5E4" />
+        <pointLight position={[-18, 575, -610]} intensity={140} distance={160} color="#88B8FF" />
+
+        {/* Foreground Lunar Limb sweeping across the lower-right horizon */}
+        <group ref={finaleMoonGroupRef} position={[8, 535.5, -566]} rotation={[0.25, -1.55, 0.12]}>
           <mesh>
-            <sphereGeometry args={[26, 56, 42]} />
-            <meshStandardMaterial map={moonTex} bumpMap={moonBump} bumpScale={0.4} roughness={0.94} />
+            <sphereGeometry args={[28.5, 72, 56]} />
+            <meshStandardMaterial
+              map={moonTex}
+              bumpMap={moonBump}
+              bumpScale={0.62}
+              roughness={0.93}
+              metalness={0.04}
+            />
           </mesh>
+          <AtmosphereRim radius={28.5 * 1.015} color="#C7CDD8" intensity={0.28} power={4.8} />
         </group>
-        <group position={WORLD_ANCHORS.finaleEarthCenter} rotation={[0.2, -1.2, 0.25]}>
+
+        {/* Luminous Blue Earth rising above the lunar horizon */}
+        <group
+          ref={finaleEarthGroupRef}
+          position={WORLD_ANCHORS.finaleEarthCenter}
+          rotation={[0.18, -1.25, 0.22]}
+        >
           <mesh>
-            <sphereGeometry args={[18, 56, 42]} />
-            <meshStandardMaterial map={earthTex} roughness={0.68} metalness={0.1} />
+            <sphereGeometry args={[18.5, 72, 56]} />
+            <meshStandardMaterial
+              map={earthTex}
+              emissiveMap={earthTex}
+              emissive="#4A84E8"
+              emissiveIntensity={0.44}
+              roughness={0.62}
+              metalness={0.12}
+            />
           </mesh>
-          <AtmosphereRim radius={18 * 1.035} color="#7EB6FF" intensity={0.95} power={3.0} />
+          <AtmosphereRim radius={18.5 * 1.04} color="#7EB6FF" intensity={1.15} power={2.8} />
         </group>
       </group>
     </>
