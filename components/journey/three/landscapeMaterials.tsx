@@ -32,6 +32,7 @@ export function getWorldFbmNoiseTexture(): THREE.DataTexture {
   tex.magFilter = THREE.LinearFilter;
   tex.minFilter = THREE.LinearMipmapLinearFilter;
   tex.generateMipmaps = true;
+  tex.anisotropy = 8;
   tex.needsUpdate = true;
 
   cachedNoiseTex = tex;
@@ -149,34 +150,84 @@ export function applyWorldTerrainShader(
         uniform float uIsRipples;
         varying vec3 vTerrainWorldPos;
 
-        float sampleFbm4(vec2 p, out float detailGrain) {
-          vec2 uv0 = p * 0.022;
-          vec2 uv1 = mat2(0.8, -0.6, 0.6, 0.8) * (p * 0.073);
-          vec2 uv2 = mat2(-0.52, 0.85, -0.85, -0.52) * (p * 0.24);
-          vec2 uv3 = mat2(0.31, -0.95, 0.95, 0.31) * (p * 0.88);
-          float n0 = texture2D(uFbmNoise, uv0).r;
-          float n1 = texture2D(uFbmNoise, uv1).g;
-          float n2 = texture2D(uFbmNoise, uv2).b;
-          float n3 = texture2D(uFbmNoise, uv3).a;
-          detailGrain = n2 * 0.65 + n3 * 0.35;
-          return n0 * 0.45 + n1 * 0.30 + n2 * 0.16 + n3 * 0.09;
+        float terrainHash(vec2 p) {
+          vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+          p3 += dot(p3, p3.yzx + 33.33);
+          return fract((p3.x + p3.y) * p3.z);
+        }
+
+        vec2 terrainHash2(vec2 p) {
+          vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973));
+          p3 += dot(p3, p3.yzx + 33.33);
+          return fract((p3.xx + p3.yz) * p3.zy);
+        }
+
+        // Smooth C1 isotropic 2D value noise with analytic XZ gradient (zero texture streaking)
+        vec3 terrainNoiseD(vec2 x) {
+          vec2 i = floor(x);
+          vec2 f = fract(x);
+          vec2 u = f * f * (3.0 - 2.0 * f);
+          vec2 du = 6.0 * f * (1.0 - f);
+
+          float a = terrainHash(i);
+          float b = terrainHash(i + vec2(1.0, 0.0));
+          float c = terrainHash(i + vec2(0.0, 1.0));
+          float d = terrainHash(i + vec2(1.0, 1.0));
+
+          float k0 = a;
+          float k1 = b - a;
+          float k2 = c - a;
+          float k3 = a - b - c + d;
+
+          float val = k0 + k1 * u.x + k2 * u.y + k3 * u.x * u.y;
+          vec2 grad = du * (vec2(k1, k2) + k3 * u.yx);
+          return vec3(val, grad);
+        }
+
+        float sampleFbm4(vec2 p, out float detailGrain, out vec2 worldGrad) {
+          mat2 rot = mat2(0.80, -0.60, 0.60, 0.80);
+          float sum = 0.0;
+          float amp = 0.48;
+          vec2 q = p * 0.19;
+          vec2 gAccum = vec2(0.0);
+          mat2 m = mat2(1.0, 0.0, 0.0, 1.0);
+          float fineVal = 0.5;
+
+          for (int k = 0; k < 4; k++) {
+            vec3 n = terrainNoiseD(q);
+            sum += amp * n.x;
+            gAccum += amp * (m * n.yz);
+            if (k >= 2) fineVal = mix(fineVal, n.x, 0.55);
+            q = rot * q * 2.07;
+            m = transpose(rot) * m * 2.07;
+            amp *= 0.52;
+          }
+
+          // Extra fine sub-decimeter mineral regolith grit (faded cleanly with range)
+          vec3 grit = terrainNoiseD(p * 6.4);
+          detailGrain = mix(fineVal, grit.x, 0.45);
+          worldGrad = gAccum * 0.19 + grit.yz * 0.42;
+          return clamp(sum / 0.90, 0.0, 1.0);
         }`,
       )
       .replace(
         "#include <color_fragment>",
         `#include <color_fragment>
         float grain = 0.5;
-        float fbm = sampleFbm4(vTerrainWorldPos.xz, grain);
-        vec3 soil = mix(uBaseDark, uBaseLight, smoothstep(0.24, 0.78, fbm));
+        vec2 terrainGradXZ = vec2(0.0);
+        float fbm = sampleFbm4(vTerrainWorldPos.xz, grain, terrainGradXZ);
+        vec3 soil = mix(uBaseDark, uBaseLight, smoothstep(0.22, 0.78, fbm));
+        // Subtle multi-scale pebble/mineral grit variation
+        soil *= (0.93 + 0.14 * grain);
 
         if (uIsRipples > 0.5) {
           vec2 rp = vTerrainWorldPos.xz - uAnchorXZ;
-          float rip = 0.5 + 0.5 * sin(rp.x * 3.6 + rp.y * 1.7 + fbm * 4.5);
-          soil = mix(soil * 0.86, soil * 1.14, rip * 0.55);
+          float rip = 0.5 + 0.5 * sin(rp.x * 2.4 + rp.y * 1.15 + fbm * 4.2);
+          soil = mix(soil * 0.90, soil * 1.10, rip * 0.48);
         }
 
         if (uIsArctic > 0.5) {
-          // Polygon-patterned thermal contraction troughs across Vastitas Borealis
+          // Polygon-patterned thermal contraction troughs across Vastitas Borealis (analytic cell hash)
           vec2 ap = (vTerrainWorldPos.xz - uAnchorXZ) * 0.68;
           vec2 cell = floor(ap);
           vec2 frac = fract(ap);
@@ -184,7 +235,7 @@ export function applyWorldTerrainShader(
           for (int jy = -1; jy <= 1; jy++) {
             for (int jx = -1; jx <= 1; jx++) {
               vec2 nb = vec2(float(jx), float(jy));
-              vec2 rnd = texture2D(uFbmNoise, (cell + nb) * 0.093).rg;
+              vec2 rnd = terrainHash2(cell + nb);
               vec2 diff = nb + (0.2 + 0.6 * rnd) - frac;
               minDist = min(minDist, dot(diff, diff));
             }
@@ -192,7 +243,6 @@ export function applyWorldTerrainShader(
           float edge = sqrt(minDist);
           float trough = smoothstep(0.56, 0.44, edge);
           soil = mix(soil, uBaseDark * 0.52, (1.0 - trough) * 0.55);
-          // Subtle frost rim highlights
           float frost = smoothstep(0.68, 0.88, grain) * 0.14;
           soil = mix(soil, vec3(0.76, 0.72, 0.70), frost);
         }
@@ -208,16 +258,16 @@ export function applyWorldTerrainShader(
       .replace(
         "#include <roughnessmap_fragment>",
         `#include <roughnessmap_fragment>
-        float rgGrain = texture2D(uFbmNoise, vTerrainWorldPos.xz * 0.65).r;
-        roughnessFactor = clamp(roughnessFactor * (0.9 + 0.14 * rgGrain), 0.78, 0.99);`,
+        roughnessFactor = clamp(roughnessFactor * (0.91 + 0.12 * grain), 0.80, 0.99);`,
       )
       .replace(
         "#include <normal_fragment_maps>",
         `#include <normal_fragment_maps>
-        float hC = texture2D(uFbmNoise, vTerrainWorldPos.xz * 0.75).b;
-        float hX = texture2D(uFbmNoise, vTerrainWorldPos.xz * 0.75 + vec2(0.015, 0.0)).b;
-        float hZ = texture2D(uFbmNoise, vTerrainWorldPos.xz * 0.75 + vec2(0.0, 0.015)).b;
-        normal = normalize(normal + vec3((hC - hX) * 0.35, 0.0, (hC - hZ) * 0.35));`,
+        // Transform analytic world XZ gradient cleanly into view space and fade at grazing distance
+        float bumpFade = 1.0 - smoothstep(4.5, 18.0, length(vTerrainWorldPos.xz - uAnchorXZ));
+        vec3 bumpWorld = vec3(-terrainGradXZ.x, 0.0, -terrainGradXZ.y) * 0.16 * bumpFade;
+        vec3 bumpView = (viewMatrix * vec4(bumpWorld, 0.0)).xyz;
+        normal = normalize(normal + bumpView);`,
       )
       .replace(
         "#include <tonemapping_fragment>",

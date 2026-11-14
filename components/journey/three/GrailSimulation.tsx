@@ -17,14 +17,39 @@ const GRAIL_BEAT = 12;
 const SIM_DURATION = 14.0;
 const GLOBE_LOCAL_POS: [number, number, number] = [0, 36, -34];
 const GLOBE_RADIUS = 5.2;
-const IMPACT_A_LOCAL: [number, number, number] = [-1.12, 0.24, 0.42];
-const IMPACT_B_LOCAL: [number, number, number] = [1.14, 0.44, -0.36];
 const SURFACE_Y = 0.22;
+
+function getPolarSlopeHeight(vx: number, vz: number): number {
+  const dist = Math.hypot(vx, vz);
+  const farScale = smoothstep(3.5, 26, dist);
+  const baseSlope = -vz * (0.16 - 0.03 * farScale);
+  const ridgeRise =
+    vz < -3.5
+      ? Math.pow(Math.max(0, -vz - 3.5) / 26, 1.28) *
+        8.2 *
+        (0.8 + 0.26 * Math.cos(vx * 0.1 + 0.65))
+      : 0;
+  const micro =
+    Math.sin(vx * 1.4 + vz * 1.1) * 0.04 +
+    Math.cos(vx * 2.7 - vz * 2.1) * 0.02;
+  return baseSlope + ridgeRise + micro;
+}
+
+const IMPACT_A_LOCAL: [number, number, number] = [
+  -0.18,
+  getPolarSlopeHeight(-0.18, 0.35),
+  0.35,
+];
+const IMPACT_B_LOCAL: [number, number, number] = [
+  1.85,
+  getPolarSlopeHeight(1.85, -0.85),
+  -0.85,
+];
 
 // World anchor of moon-grail from trajectory.ts: [0.5, 370.6, -188.0]
 const ANCHOR_WORLD = new THREE.Vector3(0.5, 370.6, -188.0);
-const REST_CAM_WORLD = new THREE.Vector3(2.9, 372.6, -182.0);
-const REST_LOOK_WORLD = new THREE.Vector3(-0.15, 371.22, -188.0);
+const REST_CAM_WORLD = new THREE.Vector3(2.85, 372.65, -180.8);
+const REST_LOOK_WORLD = new THREE.Vector3(0.85, 371.55, -188.2);
 
 let cachedFlashTex: THREE.CanvasTexture | null = null;
 function getSoftImpactFlashTexture(): THREE.CanvasTexture {
@@ -208,38 +233,29 @@ function createPolarLandscapeGeometry(): THREE.BufferGeometry {
     const vz = pos.getZ(i);
     const dist = Math.hypot(vx, vz);
 
-    // Gentle undulating southern slope rising toward the ~2.5 km Goldschmidt polar mountain crest behind (-Z)
+    // Prominent southern slope rising boldly into the ~2.5 km Goldschmidt polar mountain crest (-Z)
     const farScale = smoothstep(3.5, 26, dist);
-    const baseSlope = -vz * (0.14 - 0.04 * farScale);
-    const ridgeRise =
-      vz < -4
-        ? Math.pow(Math.max(0, -vz - 4) / 30, 1.35) * 4.8 * (0.78 + 0.28 * Math.cos(vx * 0.11 + 0.7))
-        : 0;
+    const baseSlope = getPolarSlopeHeight(vx, vz);
 
     // Distant flanking highland perimeter hills
     const outerMassif =
       farScale *
-      (Math.sin(vx * 0.16 + vz * 0.11) * 0.65 +
-        Math.cos(vx * 0.09 - vz * 0.14) * 0.55 +
-        Math.sin(vx * 0.37 + vz * 0.29) * 0.18);
-
-    // Fine foreground slope micro-relief
-    const micro =
-      Math.sin(vx * 1.4 + vz * 1.1) * 0.04 +
-      Math.cos(vx * 2.7 - vz * 2.1) * 0.02;
+      (Math.sin(vx * 0.14 + vz * 0.1) * 0.82 +
+        Math.cos(vx * 0.08 - vz * 0.13) * 0.68 +
+        Math.sin(vx * 0.35 + vz * 0.27) * 0.2);
 
     // Pre-existing polar craters across the highland terrain (outside Ebb/Flow sites)
     let craters =
-      craterBowl(vx - 5.2, vz + 2.8, 1.35, 0.28, 0.08) +
-      craterBowl(vx + 6.4, vz - 3.6, 1.7, 0.34, 0.1) +
-      craterBowl(vx - 8.5, vz - 7.5, 2.2, 0.42, 0.12) +
-      craterBowl(vx + 3.2, vz + 4.8, 0.9, 0.18, 0.05);
+      craterBowl(vx - 5.6, vz + 2.2, 1.45, 0.32, 0.1) +
+      craterBowl(vx + 6.4, vz - 3.6, 1.75, 0.36, 0.11) +
+      craterBowl(vx - 8.5, vz - 7.5, 2.2, 0.44, 0.12) +
+      craterBowl(vx + 3.8, vz + 4.4, 0.95, 0.2, 0.06);
 
     // Two crisp ~5 m fresh impact craters on the southern slope (Ebb at A, Flow at B)
-    craters += craterBowl(vx - IMPACT_A_LOCAL[0], vz - IMPACT_A_LOCAL[2], 0.88, 0.28, 0.09);
-    craters += craterBowl(vx - IMPACT_B_LOCAL[0], vz - IMPACT_B_LOCAL[2], 0.88, 0.28, 0.09);
+    craters += craterBowl(vx - IMPACT_A_LOCAL[0], vz - IMPACT_A_LOCAL[2], 1.22, 0.4, 0.13);
+    craters += craterBowl(vx - IMPACT_B_LOCAL[0], vz - IMPACT_B_LOCAL[2], 1.22, 0.4, 0.13);
 
-    pos.setY(i, baseSlope + ridgeRise + outerMassif + micro + craters);
+    pos.setY(i, baseSlope + outerMassif + craters);
   }
 
   geo.computeVertexNormals();
@@ -247,10 +263,7 @@ function createPolarLandscapeGeometry(): THREE.BufferGeometry {
 }
 
 function getPolarHeightApprox(vx: number, vz: number): number {
-  const dist = Math.hypot(vx, vz);
-  const farScale = smoothstep(3.5, 22, dist);
-  const baseSlope = -vz * (0.14 - 0.04 * farScale);
-  return baseSlope + Math.sin(vx * 1.4 + vz * 1.1) * 0.04 + Math.cos(vx * 2.7 - vz * 2.1) * 0.02;
+  return getPolarSlopeHeight(vx, vz);
 }
 
 /** Deterministic ballistic vacuum ejecta particle vectors for two hypervelocity impacts. */
@@ -405,7 +418,7 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
     }
 
     // Handle beat arrival settle & scroll-away interruption
-    if (distFromBeat >= 0.08) {
+    if (distFromBeat >= 0.12) {
       st.settleTimer = 0;
       st.hasAutoPlayedThisVisit = false;
       if (st.playing) {
@@ -418,9 +431,9 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
       return;
     }
 
-    if (distFromBeat < 0.05 && !st.playing && !st.hasAutoPlayedThisVisit) {
+    if (distFromBeat < 0.08 && !st.playing && !st.hasAutoPlayedThisVisit) {
       st.settleTimer += dt;
-      if (st.settleTimer >= 0.4) {
+      if (st.settleTimer >= 0.12) {
         st.playing = true;
         st.elapsed = 0;
         st.hasAutoPlayedThisVisit = true;
@@ -773,14 +786,14 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
       <mesh
         ref={craterARef}
         name="grail-ejecta-a"
-        position={[IMPACT_A_LOCAL[0], SURFACE_Y + IMPACT_A_LOCAL[1] - 0.04, IMPACT_A_LOCAL[2]]}
-        rotation={[-Math.PI / 2 + 0.14, 0, 0.25]}
+        position={[IMPACT_A_LOCAL[0], SURFACE_Y + IMPACT_A_LOCAL[1] - 0.02, IMPACT_A_LOCAL[2]]}
+        rotation={[-Math.PI / 2 + 0.16, 0, 0.25]}
       >
-        <planeGeometry args={[2.55, 2.55]} />
+        <planeGeometry args={[2.95, 2.95]} />
         <meshBasicMaterial
           map={ejectaTex}
           transparent
-          opacity={0.88}
+          opacity={0.9}
           depthWrite={false}
           polygonOffset
           polygonOffsetFactor={-1}
@@ -791,14 +804,14 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
       <mesh
         ref={craterBRef}
         name="grail-ejecta-b"
-        position={[IMPACT_B_LOCAL[0], SURFACE_Y + IMPACT_B_LOCAL[1] - 0.05, IMPACT_B_LOCAL[2]]}
-        rotation={[-Math.PI / 2 + 0.14, 0, -0.35]}
+        position={[IMPACT_B_LOCAL[0], SURFACE_Y + IMPACT_B_LOCAL[1] - 0.02, IMPACT_B_LOCAL[2]]}
+        rotation={[-Math.PI / 2 + 0.16, 0, -0.35]}
       >
-        <planeGeometry args={[2.55, 2.55]} />
+        <planeGeometry args={[2.95, 2.95]} />
         <meshBasicMaterial
           map={ejectaTex}
           transparent
-          opacity={0.88}
+          opacity={0.9}
           depthWrite={false}
           polygonOffset
           polygonOffsetFactor={-1}
@@ -852,16 +865,16 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
         />
       </points>
 
-      {/* Very subtle uprange approach wireframes (zero shadows, offset uprange from craters) */}
+      {/* Translucent "Artist's reconstruction" twin Ebb & Flow ghost wireframes above the two impact craters */}
       <group ref={restGhostsRef}>
         {[-1, 1].map((side) => {
           const base = side < 0 ? IMPACT_A_LOCAL : IMPACT_B_LOCAL;
           return (
             <group
               key={side}
-              position={[base[0] - 0.55, SURFACE_Y + base[1] + 1.05, base[2] - 0.9]}
+              position={[base[0] - 0.32, SURFACE_Y + base[1] + 1.25, base[2] - 0.65]}
               rotation={[0.32, 0.2, -0.08]}
-              scale={0.34}
+              scale={0.62}
             >
               <mesh name="grail-ghost-bus" castShadow={false} receiveShadow={false}>
                 <boxGeometry args={[0.95, 0.76, 1.09]} />
@@ -869,7 +882,7 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
                   color="#9DB8FF"
                   wireframe
                   transparent
-                  opacity={0.075}
+                  opacity={0.18}
                   depthWrite={false}
                 />
               </mesh>
@@ -879,7 +892,7 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
                   color="#9DB8FF"
                   wireframe
                   transparent
-                  opacity={0.065}
+                  opacity={0.15}
                   depthWrite={false}
                 />
               </mesh>
@@ -889,7 +902,7 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
                   color="#9DB8FF"
                   wireframe
                   transparent
-                  opacity={0.065}
+                  opacity={0.15}
                   depthWrite={false}
                 />
               </mesh>

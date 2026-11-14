@@ -337,12 +337,12 @@ export function HallTwoMarsDiorama({
         </group>
       )}
 
-      {/* ─── Beat 18: Phoenix · Dual Decagonal Wings + Arctic Polygon Plain + Exposed Water-Ice Trench ─── */}
+      {/* ─── Beat 18: Phoenix · Dual Decagonal Wings (5.52 m true span) + Arctic Polygon Plain + Water-Ice Trench ─── */}
       {slug === "mars-phoenix" && (
         <group>
-          <PhoenixLanderModel baseY={DIORAMA_SURFACE_Y} scale={0.92} />
+          <PhoenixLanderModel baseY={DIORAMA_SURFACE_Y} scale={1.06} />
           {/* Dug "Dodo–Goldilocks" subsurface white water-ice sample trench beside robotic arm */}
-          <group position={[1.05, DIORAMA_SURFACE_Y, 0.72]} rotation={[0, -0.45, 0]}>
+          <group position={[1.22, DIORAMA_SURFACE_Y, 0.85]} rotation={[0, -0.45, 0]}>
             <mesh position={[0, 0.008, 0]} rotation={[-Math.PI / 2, 0, 0]}>
               <planeGeometry args={[0.52, 0.28]} />
               <meshStandardMaterial color="#3A1D13" roughness={0.96} />
