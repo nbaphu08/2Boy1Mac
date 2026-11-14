@@ -1,14 +1,31 @@
 "use client";
 
-import { useLayoutEffect, useRef } from "react";
-import { beats } from "@/content/beats";
+import dynamic from "next/dynamic";
+import Link from "next/link";
+import { useEffect, useLayoutEffect, useRef } from "react";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import Lenis from "lenis";
+import { beats, beatIndexById } from "@/content/beats";
+import { site } from "@/content/site";
 import type { Beat } from "@/content/types";
+import {
+  registerScroller,
+  scrollState,
+  scrollToBeat,
+  smoothstep,
+} from "@/lib/scroll/progress";
 import { useMuseum } from "@/lib/store";
-import { goTo, mountStepEngine } from "@/lib/step";
-import { scenes } from "./acts";
 import { ExhibitPanel } from "@/components/museum/ExhibitPanel";
+import { BeatSection } from "./BeatOverlays";
 
-// Rail groups: consecutive beats that share the same `rail` label.
+gsap.registerPlugin(ScrollTrigger);
+
+const SpaceScene = dynamic(() => import("./three/SpaceScene"), {
+  ssr: false,
+  loading: () => <div aria-hidden className="fixed inset-0 z-0 bg-void" />,
+});
+
 const railGroups = beats.reduce<{ rail: Beat["rail"]; items: { beat: Beat; index: number }[] }[]>(
   (groups, beat, index) => {
     const lastGroup = groups[groups.length - 1];
@@ -19,48 +36,44 @@ const railGroups = beats.reduce<{ rail: Beat["rail"]; items: { beat: Beat; index
   [],
 );
 
-const PANEL_BG = ["bg-void", "bg-surface", "bg-raised"] as const;
-const accentOf = (b: Beat) =>
-  b.id === "ignition"
-    ? "var(--ignite)"
-    : b.rail === "MOON"
-      ? "var(--lunar)"
-      : b.rail === "MARS"
-        ? "var(--oxide)"
-        : "var(--starlight)";
-const pad = (n: number) => String(n).padStart(2, "0");
+function TopHudBar() {
+  const beatIndex = useMuseum((s) => s.beatIndex);
+  const visitedCount = useMuseum((s) => s.visited.length);
+  const beat = beats[beatIndex] ?? beats[0];
+  const pad = String(beatIndex).padStart(2, "0");
 
-/** Placeholder panel. Sonnet replaces the inside with the real beat scene (keep `data-beat` on the wrapper). */
-function DummyPanel({ beat, index }: { beat: Beat; index: number }) {
   return (
-    <section
-      data-beat={beat.id}
-      className={`absolute inset-0 flex items-center ${PANEL_BG[index % 3]}`}
-      style={{ visibility: index === 0 ? "visible" : "hidden", opacity: index === 0 ? 1 : 0 }}
-    >
-      <div
-        aria-hidden
-        className="absolute inset-0"
-        style={{ background: "radial-gradient(120% 90% at 50% 40%, transparent 40%, var(--void) 100%)" }}
-      />
-      <div data-beat-body className="relative w-full px-6 pr-16 sm:px-16 sm:pr-40">
-        <p className="font-hud text-xs text-mute">
-          <span style={{ color: accentOf(beat) }}>{pad(index)}</span> / {pad(beats.length - 1)} · {beat.id} · {beat.act} ·{" "}
-          {beat.duration}s
-        </p>
-        <div className="mt-4 h-px w-24" style={{ background: accentOf(beat) }} />
-        {beat.sub ? <p className="font-hud mt-6 text-sm text-platinum">{beat.sub}</p> : null}
-        {beat.title ? (
-          <h2
-            className="font-display mt-3 text-4xl leading-tight sm:text-6xl"
-            style={beat.id === "ignition" ? { color: "var(--ignite)" } : undefined}
-          >
-            {beat.title}
-          </h2>
-        ) : null}
-        {beat.caption ? <p className="mt-5 max-w-2xl text-lg text-text sm:text-xl">{beat.caption}</p> : null}
+    <header className="pointer-events-none fixed inset-x-0 top-0 z-30 flex items-center justify-between px-5 py-4 sm:px-10">
+      <div className="pointer-events-auto flex items-center gap-3 rounded-full border border-line/80 bg-surface/65 px-3.5 py-1.5 backdrop-blur-md">
+        <button
+          type="button"
+          onClick={() => scrollToBeat(0)}
+          className="font-display cursor-pointer text-xs tracking-widest text-text hover:text-starlight"
+        >
+          {site.wordmark}
+        </button>
+        <span aria-hidden className="text-line">|</span>
+        <span className="font-hud text-[10px] text-platinum">
+          {pad} / {String(beats.length - 1).padStart(2, "0")} · {beat.rail}
+        </span>
       </div>
-    </section>
+
+      <nav
+        aria-label="Museum navigation"
+        className="pointer-events-auto flex items-center gap-3 rounded-full border border-line/80 bg-surface/65 px-3.5 py-1.5 backdrop-blur-md"
+      >
+        <span className="font-hud hidden text-[10px] text-mute sm:inline">
+          {visitedCount}/12 STAMPS
+        </span>
+        <span aria-hidden className="hidden text-line sm:inline">|</span>
+        <Link href="/gallery" className="font-hud text-[10px] text-text transition-colors hover:text-starlight">
+          Gallery
+        </Link>
+        <Link href="/about" className="font-hud text-[10px] text-mute transition-colors hover:text-text">
+          About
+        </Link>
+      </nav>
+    </header>
   );
 }
 
@@ -68,9 +81,8 @@ function ProgressRail() {
   const beatIndex = useMuseum((s) => s.beatIndex);
   return (
     <nav
-      data-step-ignore
       aria-label="Mission progress"
-      className="absolute right-3 top-1/2 z-30 flex -translate-y-1/2 flex-col items-end gap-3 sm:right-6"
+      className="fixed right-3 top-1/2 z-30 flex -translate-y-1/2 flex-col items-end gap-3 sm:right-6"
     >
       {railGroups.map((group) => {
         const current = group.items.some((it) => it.index === beatIndex);
@@ -86,14 +98,19 @@ function ProgressRail() {
                   <li key={beat.id}>
                     <button
                       type="button"
-                      onClick={() => goTo(index)}
+                      onClick={() => scrollToBeat(index)}
+                      title={beat.title ?? beat.sub ?? beat.id}
                       aria-label={`Go to ${beat.title ?? beat.sub ?? beat.id}`}
                       aria-current={on ? "step" : undefined}
                       className="flex h-4 w-6 cursor-pointer items-center justify-center"
                     >
                       <span
                         className={`block rounded-full transition-all duration-300 ${
-                          on ? "h-2 w-2 bg-starlight" : index < beatIndex ? "h-1 w-1 bg-platinum" : "h-1 w-1 bg-mute"
+                          on
+                            ? "h-2 w-2 bg-starlight shadow-[0_0_8px_var(--starlight)]"
+                            : index < beatIndex
+                              ? "h-1 w-1 bg-platinum"
+                              : "h-1 w-1 bg-mute/70"
                         }`}
                       />
                     </button>
@@ -108,75 +125,305 @@ function ProgressRail() {
   );
 }
 
-/** Caption for screen readers + the "Scroll" hint that appears after 3 s at rest. */
-function RestHud() {
+function ScrollLiveCaption() {
   const beatIndex = useMuseum((s) => s.beatIndex);
-  const isTransitioning = useMuseum((s) => s.isTransitioning);
-  const beat = beats[beatIndex];
-  const isLast = beatIndex === beats.length - 1;
+  const beat = beats[beatIndex] ?? beats[0];
   return (
-    <>
-      <p aria-live="polite" className="sr-only">
-        {isTransitioning ? "" : [beat.title, beat.caption ?? beat.sub].filter(Boolean).join(". ")}
-      </p>
-      {!isTransitioning && !isLast && beatIndex !== 0 ? (
-        <p
-          key={beatIndex}
-          aria-hidden
-          className="step-hint font-hud pointer-events-none absolute bottom-6 left-1/2 z-30 -translate-x-1/2 text-xs text-mute"
-        >
-          Scroll ↓
-        </p>
-      ) : null}
-    </>
+    <p aria-live="polite" className="sr-only">
+      {[beat.title, beat.caption ?? beat.sub].filter(Boolean).join(". ")}
+    </p>
+  );
+}
+
+/**
+ * Landing Page VAB Sunrise Backdrop + Scroll-1 Dolly Walk-In Portal (`progress: 0.0 -> 1.0`).
+ * - At Beat 0 (`hero`): Displays the VAB sunrise photograph (`hero_vab_sunrise_alt`) full-screen.
+ * - On Scroll 1 (`hero` -> `enter`): Smoothly dollies into the VAB campus / High Bay doors and
+ *   dissolves through KSC dawn mist directly into the 3D scene where the SLS + Orion stands on Pad LC-39B.
+ */
+function VabEntrancePortal({ reducedMotion }: { reducedMotion: boolean }) {
+  const portalRef = useRef<HTMLDivElement>(null);
+  const exteriorRef = useRef<HTMLDivElement>(null);
+  const campusRef = useRef<HTMLDivElement>(null);
+  const mistVeilRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const portal = portalRef.current;
+    const exterior = exteriorRef.current;
+    const campus = campusRef.current;
+    const mist = mistVeilRef.current;
+    if (!portal || !exterior || !campus || !mist) return;
+
+    const updatePortal = () => {
+      const p = scrollState.current;
+      if (p >= 0.96) {
+        if (portal.style.visibility !== "hidden") {
+          portal.style.visibility = "hidden";
+          portal.style.opacity = "0";
+        }
+        return;
+      }
+
+      if (portal.style.visibility !== "visible") {
+        portal.style.visibility = "visible";
+        portal.style.opacity = "1";
+      }
+
+      // 1. VAB Sunrise Exterior: dollies into the VAB campus corridor & Transfer Aisle
+      const extZoom = reducedMotion ? 1 : 1 + smoothstep(0.0, 0.72, p) * 0.78;
+      const extOpacity = 1 - smoothstep(0.18, 0.64, p);
+      exterior.style.opacity = extOpacity.toFixed(3);
+      exterior.style.transform = `scale3d(${extZoom.toFixed(4)}, ${extZoom.toFixed(4)}, 1)`;
+
+      // 2. Inside VAB Campus / Open High Bay Doors: intermediate walk-in portal into the 3D launchpad
+      const campusIn = smoothstep(0.1, 0.36, p);
+      const campusOut = 1 - smoothstep(0.44, 0.88, p);
+      const campusOpacity = campusIn * campusOut;
+      const campusZoom = reducedMotion ? 1 : 1.02 + smoothstep(0.1, 0.9, p) * 0.56;
+      campus.style.opacity = campusOpacity.toFixed(3);
+      campus.style.transform = `scale3d(${campusZoom.toFixed(4)}, ${campusZoom.toFixed(4)}, 1)`;
+
+      // 3. KSC Morning Coastal Mist Veil: bridges the transition into the 3D SLS + Orion on Pad LC-39B
+      const mistBell = Math.sin(smoothstep(0.12, 0.92, p) * Math.PI);
+      mist.style.opacity = (mistBell * 0.38).toFixed(3);
+    };
+
+    updatePortal();
+    gsap.ticker.add(updatePortal);
+    return () => {
+      gsap.ticker.remove(updatePortal);
+    };
+  }, [reducedMotion]);
+
+  return (
+    <div
+      ref={portalRef}
+      aria-hidden
+      className="pointer-events-none fixed inset-0 z-[1] overflow-hidden will-change-[opacity]"
+    >
+      {/* Layer 2: Inside VAB Campus / Open High Bay Doors (intermediate dolly layer) */}
+      <div
+        ref={campusRef}
+        className="absolute inset-0 origin-[50%_56%] opacity-0 will-change-[transform,opacity]"
+      >
+        <picture>
+          <source
+            type="image/avif"
+            srcSet="/media/images/enter_vab_doors_open-1280.avif 1280w, /media/images/enter_vab_doors_open-2560.avif 2560w"
+            sizes="100vw"
+          />
+          <source
+            type="image/jpeg"
+            srcSet="/media/images/enter_vab_doors_open-1280.jpg 1280w, /media/images/enter_vab_doors_open-2560.jpg 2560w"
+            sizes="100vw"
+          />
+          <img
+            src="/media/images/enter_vab_doors_open-2560.jpg"
+            alt=""
+            decoding="async"
+            className="h-full w-full object-cover object-center brightness-[0.88] contrast-[1.06]"
+          />
+        </picture>
+      </div>
+
+      {/* Layer 1: VAB Sunrise Hero Theme Image (First image of the landing page) */}
+      <div
+        ref={exteriorRef}
+        className="absolute inset-0 origin-[54%_60%] will-change-[transform,opacity]"
+      >
+        <picture>
+          <source
+            type="image/avif"
+            srcSet="/media/images/hero_vab_sunrise_alt-1280.avif 1280w, /media/images/hero_vab_sunrise_alt-2560.avif 2560w"
+            sizes="100vw"
+          />
+          <source
+            type="image/jpeg"
+            srcSet="/media/images/hero_vab_sunrise_alt-1280.jpg 1280w, /media/images/hero_vab_sunrise_alt-2560.jpg 2560w"
+            sizes="100vw"
+          />
+          <img
+            src="/media/images/hero_vab_sunrise_alt-2560.jpg"
+            alt=""
+            fetchPriority="high"
+            decoding="async"
+            className="h-full w-full object-cover object-center brightness-[0.94] contrast-[1.04]"
+          />
+        </picture>
+
+        {/* Subtle drifting KSC dawn mist */}
+        <div className="fog fog-a" />
+        <div className="fog fog-b" />
+      </div>
+
+      {/* Layer 3: Atmospheric dawn mist bloom when entering the 3D Launchpad */}
+      <div
+        ref={mistVeilRef}
+        className="absolute inset-0 opacity-0"
+        style={{
+          background:
+            "radial-gradient(circle at 52% 54%, rgba(168, 198, 255, 0.35) 0%, rgba(16, 26, 48, 0.65) 58%, rgba(5, 6, 10, 0.85) 100%)",
+        }}
+      />
+    </div>
   );
 }
 
 export default function Stage() {
-  const stageRef = useRef<HTMLDivElement>(null);
-  const veilRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const reducedMotion = useMuseum((s) => s.reducedMotion);
 
-  useLayoutEffect(() => {
-    const stage = stageRef.current;
-    const veil = veilRef.current;
-    if (!stage || !veil) return;
-    const panels = Array.from(stage.querySelectorAll<HTMLElement>("[data-beat]"));
-    const root = document.documentElement;
-    const prevOverscroll = root.style.overscrollBehavior;
-    root.style.overscrollBehavior = "none";
-    const unmount = mountStepEngine({ stage, veil, panels });
-    return () => {
-      unmount();
-      root.style.overscrollBehavior = prevOverscroll;
-    };
+  // Hydrate visited passport stamps + reduced-motion media query once on mount
+  useEffect(() => {
+    useMuseum.getState().hydrateVisited();
+    const mql = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const syncMql = () => useMuseum.getState().setReducedMotion(mql.matches);
+    syncMql();
+    mql.addEventListener("change", syncMql);
+    return () => mql.removeEventListener("change", syncMql);
   }, []);
 
+  // Master Lenis + GSAP ScrollTrigger integration
+  useLayoutEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+
+    const maxIdx = beats.length - 1;
+    let hashTimer = 0;
+
+    const lenis = reducedMotion
+      ? null
+      : new Lenis({
+          lerp: 0.085,
+          smoothWheel: true,
+          syncTouch: true,
+        });
+
+    const onLenisScroll = () => ScrollTrigger.update();
+    lenis?.on("scroll", onLenisScroll);
+
+    const tickerRaf = (time: number) => {
+      lenis?.raf(time * 1000);
+    };
+    gsap.ticker.add(tickerRaf);
+    gsap.ticker.lagSmoothing(0);
+
+    const applyProgress = (clamped: number, snapCurrent = false) => {
+      scrollState.target = clamped;
+      if (snapCurrent) scrollState.current = clamped;
+
+      const nearest = Math.round(clamped);
+      const store = useMuseum.getState();
+      if (store.beatIndex !== nearest) {
+        store.setBeat(nearest, beats[nearest].id);
+        window.clearTimeout(hashTimer);
+        hashTimer = window.setTimeout(() => {
+          const hash = `#${beats[nearest].id}`;
+          if (window.location.hash !== hash && !(nearest === 0 && !window.location.hash)) {
+            window.history.replaceState(window.history.state, "", hash);
+          }
+        }, 140);
+      }
+    };
+
+    const masterTrigger = ScrollTrigger.create({
+      trigger: track,
+      start: "top top",
+      end: "bottom bottom",
+      scrub: true,
+      onUpdate: (self) => {
+        applyProgress(self.progress * maxIdx, false);
+      },
+    });
+
+    const scrollTo = (index: number, instant = false) => {
+      const top = index * Math.max(window.innerHeight, 1);
+      if (lenis) {
+        lenis.scrollTo(top, {
+          immediate: instant || useMuseum.getState().reducedMotion,
+          duration: 1.35,
+        });
+      } else {
+        window.scrollTo({
+          top,
+          behavior: instant || useMuseum.getState().reducedMotion ? "auto" : "smooth",
+        });
+      }
+    };
+
+    registerScroller(scrollTo);
+
+    // Jump immediately to initial URL hash if present (e.g. /#ignition or /#moon-apollo-11)
+    const readHash = () => {
+      try {
+        return beatIndexById(decodeURIComponent(window.location.hash.slice(1)));
+      } catch {
+        return -1;
+      }
+    };
+    const initialIdx = readHash();
+    if (initialIdx >= 0) {
+      const top = initialIdx * Math.max(window.innerHeight, 1);
+      if (lenis) lenis.scrollTo(top, { immediate: true });
+      else window.scrollTo({ top, behavior: "auto" });
+      applyProgress(initialIdx, true);
+    } else {
+      const raw = (window.scrollY / Math.max(window.innerHeight, 1));
+      applyProgress(Math.max(0, Math.min(maxIdx, raw)), true);
+    }
+
+    const onHashChange = () => {
+      const i = readHash();
+      if (i >= 0) scrollTo(i);
+    };
+    window.addEventListener("hashchange", onHashChange);
+
+    // Pause Lenis while ExhibitPanel modal is open
+    const unsubStore = useMuseum.subscribe((s, p) => {
+      if ((s.activeExhibit !== null) !== (p.activeExhibit !== null)) {
+        if (s.activeExhibit !== null) lenis?.stop();
+        else lenis?.start();
+      }
+    });
+
+    ScrollTrigger.refresh();
+
+    return () => {
+      window.clearTimeout(hashTimer);
+      registerScroller(null);
+      unsubStore();
+      window.removeEventListener("hashchange", onHashChange);
+      masterTrigger.kill();
+      gsap.ticker.remove(tickerRaf);
+      lenis?.off("scroll", onLenisScroll);
+      lenis?.destroy();
+    };
+  }, [reducedMotion]);
+
   return (
-    <div
-      ref={stageRef}
-      data-stage
-      className="fixed inset-0 z-10 h-dvh w-full overflow-hidden overscroll-none bg-void select-none"
-      style={{ touchAction: "none" }}
-    >
-      <style>{`
-        .step-hint { opacity: 0; animation: step-hint 2.4s ease-in-out 3s infinite; }
-        @keyframes step-hint { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
-        @keyframes step-hint-in { to { opacity: 1; } }
-        @media (prefers-reduced-motion: reduce) { .step-hint { animation: step-hint-in 0.4s linear 3s 1 forwards; } }
-      `}</style>
-      {beats.map((beat, index) => {
-        const Scene = scenes[beat.id];
-        return Scene ? <Scene key={beat.id} beat={beat} index={index} /> : <DummyPanel key={beat.id} beat={beat} index={index} />;
-      })}
-      {/* warp veil: above the beats, below the rail */}
-      <div
-        ref={veilRef}
-        aria-hidden
-        className="pointer-events-none absolute inset-0 z-20 bg-black"
-        style={{ visibility: "hidden", opacity: 0 }}
-      />
+    <div className="relative min-h-screen w-full bg-void">
+      {/* Persistent 60fps 3D Rocket + Spaceflight Background */}
+      <SpaceScene />
+
+      {/* VAB Sunrise Landing Page Backdrop + Scroll-1 Dolly Portal into 3D Launchpad */}
+      <VabEntrancePortal reducedMotion={reducedMotion} />
+
+      {/* Subtle museum film grain & edge vignette layered softly over 3D & VAB Portal */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 z-[2] overflow-hidden">
+        <div className="vignette" />
+        <div className="grain" />
+      </div>
+
+      {/* Lenis + GSAP ScrollTrigger story track (24 sections = 2400dvh) */}
+      <div ref={trackRef} className="pointer-events-none relative z-10 flex flex-col">
+        {beats.map((beat) => (
+          <BeatSection key={beat.id} beat={beat} />
+        ))}
+      </div>
+
+      <TopHudBar />
       <ProgressRail />
-      <RestHud />
+      <ScrollLiveCaption />
       <ExhibitPanel />
     </div>
   );

@@ -16,6 +16,9 @@ out/
 
 # Claude local
 .claude/settings.local.json
+
+# Graphify (knowledge graph cache, regeneratable)
+graphify-out/
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 # dependencies
 /node_modules

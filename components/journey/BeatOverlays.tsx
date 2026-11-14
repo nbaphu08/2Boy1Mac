@@ -1,0 +1,471 @@
+"use client";
+
+import Link from "next/link";
+import { useLayoutEffect, useRef } from "react";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { beats } from "@/content/beats";
+import { exhibitBySlug } from "@/content/exhibits";
+import { silence } from "@/content/silence";
+import { site } from "@/content/site";
+import { teaser, teaserItems } from "@/content/teaser";
+import type { Beat } from "@/content/types";
+import { scrollToBeat } from "@/lib/scroll/progress";
+import { useMuseum } from "@/lib/store";
+
+gsap.registerPlugin(ScrollTrigger);
+
+const ASCENT_HUD: Record<
+  string,
+  { event: string; met: string; sys: string; thrust: string }
+> = {
+  "ascent-1": {
+    event: "CLEAR THE TOWER",
+    met: "T+00:00:12",
+    sys: "4× RS-25 + 2× RSRMV ACTIVE",
+    thrust: "39.1 MN · PITCH & ROLL PROGRAM",
+  },
+  "ascent-2": {
+    event: "MAX-Q · SUPERSONIC",
+    met: "T+00:01:30",
+    sys: "PEAK AERODYNAMIC STRESS",
+    thrust: "CORE THROTTLE BUCKET · MACH 1.8+",
+  },
+  "ascent-3": {
+    event: "BOOSTER SEPARATION",
+    met: "T+00:02:06",
+    sys: "8× BSM PYROTECHNIC SEPARATION",
+    thrust: "SRB JETTISON · CORE STAGE CONTINUES",
+  },
+  "ascent-4": {
+    event: "EDGE OF SPACE",
+    met: "ABOVE 100 KM",
+    sys: "ESM FAIRING & LAS JETTISON",
+    thrust: "ORION MPCV EXPOSED TO VACUUM",
+  },
+};
+
+function HeroOverlay({ beat }: { beat: Beat }) {
+  return (
+    <div className="relative flex h-full w-full flex-col justify-between px-6 pb-8 pt-20 pr-12 sm:px-12 sm:pb-10 sm:pt-20 sm:pr-20 lg:pr-24">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-void/90 via-void/15 to-void/45"
+      />
+      {/* Directional dark-charcoal sky scrim on the right side to separate white typography from bright dawn clouds */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse 56% 48% at 74% 34%, rgba(6, 9, 16, 0.62) 0%, rgba(6, 9, 16, 0.34) 54%, transparent 84%)",
+        }}
+      />
+
+      <div
+        data-hud-card
+        className="font-hud text-shadow-copy relative z-10 flex flex-wrap items-center justify-end gap-3 text-right text-[11px] text-platinum"
+      >
+        <span>{beat.sub}</span>
+        <span className="text-line">·</span>
+        <span className="text-starlight">VEHICLE ASSEMBLY BUILDING · HIGH BAY 3</span>
+      </div>
+
+      <div
+        data-hud-card
+        className="relative z-10 mt-[10dvh] mb-auto ml-auto flex w-fit flex-col items-end text-right sm:mt-[12dvh] sm:mr-6 lg:mr-10"
+      >
+        {/* Soft feathered charcoal halo directly behind heading & subtitle */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -inset-x-10 -inset-y-7 -z-10 rounded-3xl bg-void/45 blur-2xl"
+        />
+        <h1 className="font-display text-shadow-display mr-[-0.06em] text-[clamp(2.1rem,5.2vw,4.85rem)] leading-none text-white">
+          {beat.title}
+        </h1>
+        <p className="text-shadow-copy mt-3.5 text-right text-base font-medium text-white/95 sm:whitespace-nowrap sm:text-xl">
+          {beat.caption}
+        </p>
+      </div>
+
+      <div
+        data-hud-card
+        className="text-shadow-copy relative z-10 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"
+      >
+        <div className="pointer-events-auto flex max-w-xl flex-col gap-2.5">
+          <p className="font-hud text-[11px] text-platinum">ADMISSION FREE · EST. VISIT 10 MIN</p>
+          <button
+            type="button"
+            onClick={() => scrollToBeat("deep-space")}
+            className="font-hud w-fit cursor-pointer border-b border-platinum/40 pb-0.5 text-xs text-text transition-colors hover:border-starlight hover:text-starlight"
+          >
+            {site.skip}
+          </button>
+          <p className="font-hud text-[9px] leading-relaxed text-platinum/85 normal-case tracking-normal">
+            {site.disclaimer}
+          </p>
+        </div>
+
+        <p className="font-hud text-xs text-starlight">Scroll to enter VAB &amp; launchpad ↓</p>
+      </div>
+    </div>
+  );
+}
+
+function EnterOverlay({ beat }: { beat: Beat }) {
+  return (
+    <div className="relative flex h-full w-full items-end px-6 pb-14 pr-14 sm:px-12 sm:pb-16 sm:pr-36">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-void/90 to-transparent"
+      />
+      <div data-hud-card className="relative z-10 max-w-2xl">
+        <div className="font-hud text-shadow-copy mb-3 flex flex-wrap items-center gap-2.5 text-[11px] text-platinum">
+          <span>{beat.sub}</span>
+          <span className="text-line">·</span>
+          <span className="text-starlight">PAD LC-39B · SLS BLOCK 1 ON MOBILE LAUNCHER</span>
+        </div>
+        <p className="font-display text-shadow-display text-[clamp(1.5rem,4.2vw,3rem)] leading-tight text-white">
+          {beat.caption}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/** Ignition overlay — no countdown clutter in center; highlights ROFI sparks, RS-25 + SRB thrust & liftoff. */
+function IgnitionOverlay({ beat }: { beat: Beat }) {
+  return (
+    <div className="relative flex h-full w-full flex-col justify-end px-6 pb-14 pr-14 sm:px-12 sm:pb-16 sm:pr-36">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-void/90 to-transparent"
+      />
+
+      <div
+        data-hud-card
+        className="relative z-10 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"
+      >
+        <div className="max-w-2xl">
+          <div className="font-hud text-shadow-copy mb-2.5 flex flex-wrap items-center gap-2.5 text-[11px] text-platinum">
+            <span className="inline-block h-2 w-2 rounded-full bg-ignite" />
+            <span>MAIN ENGINE START · ROFI SPARK IGNITION</span>
+            <span className="text-line">·</span>
+            <span>T+00:00:00</span>
+          </div>
+          <h2
+            className="font-display text-shadow-display text-[clamp(2.5rem,8.5vw,6.2rem)] leading-none"
+            style={{ color: "var(--ignite)" }}
+          >
+            {beat.title}
+          </h2>
+          <p className="font-hud text-shadow-copy mt-3 text-xs text-text">{beat.sub}</p>
+        </div>
+
+        <div className="font-hud rounded border border-line/80 bg-surface/75 px-4 py-3 text-[10px] leading-relaxed text-platinum backdrop-blur-md">
+          <div className="text-text">PROPULSION TELEMETRY</div>
+          <div className="mt-1 text-mute">CORE: 4× RS-25 LH2/LOX · 109% RATED</div>
+          <div className="text-mute">BOOSTERS: 2× 5-SEG RSRMV SOLID</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AscentOverlay({ beat }: { beat: Beat }) {
+  const hud = ASCENT_HUD[beat.id];
+  return (
+    <div className="relative flex h-full w-full items-end justify-between px-6 pb-14 pr-14 sm:px-12 sm:pb-16 sm:pr-36">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-void/90 to-transparent"
+      />
+      <div
+        data-hud-card
+        className="relative z-10 flex w-full flex-col gap-6 sm:flex-row sm:items-end sm:justify-between"
+      >
+        <div className="font-hud flex flex-col gap-1 rounded border border-line/80 bg-surface/75 px-4 py-3 text-[11px] text-platinum backdrop-blur-md">
+          <span className="text-starlight">{hud?.event}</span>
+          <span className="text-text">{hud?.met}</span>
+          <span className="mt-1 text-[10px] text-mute">{hud?.sys}</span>
+          <span className="text-[10px] text-mute">{hud?.thrust}</span>
+        </div>
+        <div className="max-w-lg">
+          {beat.title ? (
+            <h2 className="font-display text-shadow-display mb-3 text-[clamp(1.75rem,4.5vw,3.25rem)] leading-tight text-white">
+              {beat.title}
+            </h2>
+          ) : null}
+          <p className="text-shadow-copy text-base font-medium text-white/95 sm:text-lg">{beat.caption}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HallTitleOverlay({ beat }: { beat: Beat }) {
+  const isMars = beat.rail === "MARS";
+  return (
+    <div className="relative flex h-full w-full items-end px-6 pb-16 pr-14 sm:px-12 sm:pb-20 sm:pr-36">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-void/90 to-transparent"
+      />
+      <div data-hud-card className="relative z-10 max-w-2xl">
+        <div
+          className="font-hud text-shadow-copy mb-3 flex flex-wrap items-center gap-2.5 text-xs"
+          style={{ color: isMars ? "var(--oxide)" : "var(--starlight)" }}
+        >
+          <span>{beat.sub}</span>
+          <span className="text-line">·</span>
+          <span>
+            {isMars
+              ? "INTERPLANETARY CRUISE · HOHMANN TRANSFER"
+              : "TRANS-LUNAR INJECTION · ORION SOLAR ARRAYS DEPLOYED"}
+          </span>
+        </div>
+        <h2 className="font-display text-shadow-display text-[clamp(2rem,6vw,4.5rem)] leading-none text-white">
+          {beat.title}
+        </h2>
+        <p className="text-shadow-copy mt-4 text-base font-medium text-white/95 sm:text-xl">{beat.caption}</p>
+      </div>
+    </div>
+  );
+}
+
+function ExhibitBeatOverlay({ beat }: { beat: Beat }) {
+  const ex = beat.exhibitSlug ? exhibitBySlug(beat.exhibitSlug) : undefined;
+  const openExhibit = useMuseum((s) => s.openExhibit);
+  const visited = useMuseum((s) => s.visited);
+  if (!ex) return null;
+
+  const isMoon = ex.hall === "moon";
+  const hasStamp = visited.includes(ex.slug);
+  const coords =
+    ex.location.lat !== undefined && ex.location.lon !== undefined
+      ? ` · ${Math.abs(ex.location.lat).toFixed(2)}°${ex.location.lat >= 0 ? "N" : "S"} ${Math.abs(
+          ex.location.lon,
+        ).toFixed(2)}°${ex.location.lon >= 0 ? "E" : "W"}`
+      : "";
+
+  return (
+    <div className="relative flex h-full w-full items-end px-6 pb-12 pr-14 sm:px-12 sm:pb-14 sm:pr-36">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-void/90 via-void/35 to-transparent"
+      />
+      <div
+        data-hud-card
+        className="pointer-events-auto relative z-10 max-w-lg rounded-lg border border-line bg-surface/75 p-5 backdrop-blur-md sm:p-6"
+      >
+        <div className="font-hud flex flex-wrap items-center gap-2 text-[11px] text-mute">
+          <span style={{ color: isMoon ? "var(--lunar)" : "var(--oxide)" }}>{ex.catalogNo}</span>
+          <span>·</span>
+          <span>{isMoon ? "HALL I · THE MOON" : "HALL II · MARS"}</span>
+          <span>·</span>
+          <span className={ex.status === "still-active" ? "text-starlight" : "text-ignite"}>
+            {ex.statusLabel ?? (ex.status === "still-active" ? "STILL ACTIVE" : "SILENT")}
+          </span>
+        </div>
+
+        <h2 className="font-display mt-2 text-2xl leading-tight text-text sm:text-3xl">{ex.name}</h2>
+        <p className="font-hud mt-1 text-[10px] text-platinum">
+          {ex.location.site}
+          {coords}
+        </p>
+        <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-text/90">{ex.plaque}</p>
+
+        <div className="mt-4 flex flex-wrap items-center gap-4">
+          <button
+            type="button"
+            onClick={() => openExhibit(ex.slug)}
+            className="font-hud cursor-pointer rounded border border-starlight/60 bg-raised/90 px-4 py-2 text-xs text-starlight transition-colors hover:border-starlight hover:bg-starlight hover:text-void"
+          >
+            {site.explore} →
+          </button>
+          {hasStamp ? <span className="font-hud text-[10px] text-platinum">◉ Stamp collected</span> : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SilenceOverlay() {
+  return (
+    <div className="relative flex h-full w-full items-center px-6 py-12 pr-14 sm:px-12 sm:pr-32">
+      <div
+        data-hud-card
+        className="pointer-events-auto max-h-[82dvh] w-full max-w-4xl overflow-y-auto rounded-lg border border-line bg-surface/80 p-6 backdrop-blur-lg sm:p-8"
+      >
+        <p className="font-hud text-[11px] text-mute">EPILOGUE</p>
+        <h2 className="font-display mt-2 text-2xl text-text sm:text-4xl">{silence.title}</h2>
+        <p className="mt-2 max-w-2xl text-sm text-mute sm:text-base">{silence.intro}</p>
+
+        <ul className="mt-5 grid gap-x-8 gap-y-2 border-y border-line py-4 text-sm sm:grid-cols-2">
+          {silence.wall.map((row) => (
+            <li
+              key={row.name}
+              className="flex items-baseline justify-between gap-3 border-b border-line/40 pb-1.5 last:border-b-0"
+            >
+              <span className="font-medium text-text">{row.name}</span>
+              <span className={`font-hud text-[10px] ${row.active ? "text-starlight" : "text-mute"}`}>
+                {row.last}
+                {row.note ? ` · ${row.note}` : ""}
+              </span>
+            </li>
+          ))}
+        </ul>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {silence.numbers.map((n, idx) => (
+            <p
+              key={idx}
+              className="rounded border border-line bg-raised/50 p-3 text-xs leading-relaxed text-text/90"
+            >
+              {n.text}
+            </p>
+          ))}
+        </div>
+        <p className="mt-4 text-xs leading-relaxed text-mute">{silence.heritage.text}</p>
+      </div>
+    </div>
+  );
+}
+
+function BeyondOverlay() {
+  return (
+    <div className="relative flex h-full w-full items-end px-6 pb-12 pr-14 sm:px-12 sm:pb-14 sm:pr-32">
+      <div
+        data-hud-card
+        className="pointer-events-auto w-full max-w-5xl rounded-lg border border-platinum/25 bg-surface/65 p-5 backdrop-blur-md sm:p-7"
+      >
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <div>
+            <p className="font-hud text-[11px] text-starlight">{teaser.title}</p>
+            <p className="mt-1.5 text-sm text-text/90 sm:text-base">{teaser.line}</p>
+          </div>
+          <span className="font-hud rounded border border-platinum/30 px-2.5 py-1 text-[10px] text-platinum">
+            TEASER · 3D SILHOUETTES
+          </span>
+        </div>
+
+        <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {teaserItems.map((item) => (
+            <li
+              key={item.catalogNo}
+              className="rounded border border-line bg-raised/65 p-3.5 transition-colors hover:border-starlight/50"
+            >
+              <p className="font-hud text-[10px] text-mute">
+                {item.catalogNo} · {item.year}
+              </p>
+              <h3 className="font-display mt-1 text-base text-text">{item.name}</h3>
+              <p className="font-hud mt-0.5 text-[10px] text-platinum">{item.target}</p>
+              <p
+                className={`mt-2 text-xs ${
+                  item.status === "still-travelling" ? "font-hud text-starlight" : "text-mute"
+                }`}
+              >
+                {item.line}
+              </p>
+            </li>
+          ))}
+        </ul>
+
+        <p className="font-hud mt-4 text-[10px] text-starlight">{teaser.voyagerNote}</p>
+      </div>
+    </div>
+  );
+}
+
+function FinaleOverlay({ beat }: { beat: Beat }) {
+  return (
+    <div className="relative flex h-full w-full items-end px-6 pb-14 pr-14 sm:px-12 sm:pb-20 sm:pr-32">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-void/90 to-transparent"
+      />
+      <div data-hud-card className="pointer-events-auto relative z-10 max-w-2xl">
+        <p className="font-hud mb-3 text-[11px] text-platinum">ARTEMIS ERA EARTHRISE · 6 APR 2026</p>
+        <p className="text-lg leading-relaxed text-text sm:text-2xl">{beat.caption}</p>
+        <div className="mt-6 flex flex-wrap items-center gap-4">
+          <Link
+            href="/gallery"
+            className="font-hud rounded border border-starlight/60 bg-raised/85 px-4 py-2 text-xs text-starlight transition-colors hover:bg-starlight hover:text-void"
+          >
+            Revisit the galleries →
+          </Link>
+          <Link
+            href="/about"
+            className="font-hud rounded border border-line bg-surface/80 px-4 py-2 text-xs text-text transition-colors hover:border-platinum"
+          >
+            Sources &amp; Credits
+          </Link>
+          <button
+            type="button"
+            onClick={() => scrollToBeat(0)}
+            className="font-hud cursor-pointer px-2 py-2 text-xs text-mute transition-colors hover:text-text"
+          >
+            Back to launchpad ↑
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function BeatSection({ beat }: { beat: Beat }) {
+  const sectionRef = useRef<HTMLElement>(null);
+
+  useLayoutEffect(() => {
+    const el = sectionRef.current;
+    if (!el) return;
+    const cards = el.querySelectorAll<HTMLElement>("[data-hud-card]");
+    if (!cards.length) return;
+
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        cards,
+        { autoAlpha: 0, y: 24 },
+        {
+          autoAlpha: 1,
+          y: 0,
+          duration: 0.75,
+          stagger: 0.08,
+          ease: "expo.out",
+          scrollTrigger: {
+            trigger: el,
+            start: "top 78%",
+            end: "bottom 22%",
+            toggleActions: "play reverse play reverse",
+          },
+        },
+      );
+    }, el);
+
+    return () => ctx.revert();
+  }, []);
+
+  let content: React.ReactNode = null;
+  if (beat.id === "hero") content = <HeroOverlay beat={beat} />;
+  else if (beat.id === "enter") content = <EnterOverlay beat={beat} />;
+  else if (beat.id === "ignition") content = <IgnitionOverlay beat={beat} />;
+  else if (beat.act === "ascent") content = <AscentOverlay beat={beat} />;
+  else if (beat.id === "deep-space" || beat.id === "transit") content = <HallTitleOverlay beat={beat} />;
+  else if (beat.exhibitSlug) content = <ExhibitBeatOverlay beat={beat} />;
+  else if (beat.id === "silence") content = <SilenceOverlay />;
+  else if (beat.id === "beyond") content = <BeyondOverlay />;
+  else if (beat.id === "finale") content = <FinaleOverlay beat={beat} />;
+
+  return (
+    <section
+      ref={sectionRef}
+      id={beat.id}
+      data-beat={beat.id}
+      className="pointer-events-none relative h-dvh w-full shrink-0"
+    >
+      {content}
+    </section>
+  );
+}
+
+export { beats };
