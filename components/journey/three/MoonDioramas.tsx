@@ -1,586 +1,350 @@
 "use client";
 
-import { useMemo, useRef } from "react";
-import { useFrame } from "@react-three/fiber";
+import { type ReactNode, useMemo } from "react";
 import * as THREE from "three";
 import { usePerfBudget } from "./perfTier";
 import {
   Apollo11SiteProps,
   ClippedLmTopCap,
   DistantApolloLmSilhouette,
-  LunarRovingVehicleModel,
-  Surveyor3Model,
   getBootprintTrailTexture,
   getRoverTrackTexture,
+  LunarRovingVehicleModel,
+  Surveyor3Model,
 } from "./MoonModels";
-import { GrailSimulation } from "./GrailSimulation";
+import { applyWorldTerrainShader, InstancedLandscapeRocks } from "./landscapeMaterials";
 
 export const DIORAMA_SURFACE_Y = 0.22;
 
-let cachedRegolithColor: THREE.CanvasTexture | null = null;
-let cachedRegolithBump: THREE.CanvasTexture | null = null;
-let cachedContactShadow: THREE.CanvasTexture | null = null;
+const MOON_ANCHOR_XZ: Record<string, [number, number]> = {
+  "moon-apollo-11": [5.5, -172.0],
+  "moon-surveyor-3": [-9.5, -176.0],
+  "moon-apollo-15-lrv": [4.5, -180.0],
+  "moon-apollo-17": [16.5, -184.0],
+};
 
-/** Procedural medium-dark grey lunar regolith with subtle warm brown-taupe tint & micro-craters. */
-export function getLunarRegolithTextures(): {
-  map: THREE.CanvasTexture;
-  bumpMap: THREE.CanvasTexture;
-} {
-  if (cachedRegolithColor && cachedRegolithBump) {
-    return { map: cachedRegolithColor, bumpMap: cachedRegolithBump };
+function craterBowl(x: number, z: number, cx: number, cz: number, radius: number, depth: number): number {
+  const r = Math.hypot(x - cx, z - cz);
+  if (r > radius * 1.48) return 0;
+  const u = r / radius;
+  const rim = depth * 0.28;
+  if (u < 1.0) {
+    return -depth * (1 - u * u) + rim * Math.exp(-Math.pow((u - 0.94) / 0.16, 2));
   }
-
-  const size = 512;
-  const colorCanvas = document.createElement("canvas");
-  colorCanvas.width = size;
-  colorCanvas.height = size;
-  const cCtx = colorCanvas.getContext("2d")!;
-
-  const bumpCanvas = document.createElement("canvas");
-  bumpCanvas.width = size;
-  bumpCanvas.height = size;
-  const bCtx = bumpCanvas.getContext("2d")!;
-
-  // Base regolith tone: medium-dark grey with subtle brown-taupe tint (REF_MOON §Global look)
-  cCtx.fillStyle = "#68635C";
-  cCtx.fillRect(0, 0, size, size);
-  bCtx.fillStyle = "#808080";
-  bCtx.fillRect(0, 0, size, size);
-
-  // Fine granular regolith noise
-  for (let i = 0; i < 9500; i++) {
-    const x = (i * 173) % size;
-    const y = (i * 311) % size;
-    const r = 1 + (i % 3);
-    const bright = i % 2 === 0;
-    cCtx.fillStyle = bright ? "rgba(138, 132, 124, 0.22)" : "rgba(42, 39, 36, 0.25)";
-    cCtx.fillRect(x, y, r, r);
-
-    bCtx.fillStyle = bright ? "rgba(210, 210, 210, 0.28)" : "rgba(50, 50, 50, 0.28)";
-    bCtx.fillRect(x, y, r, r);
-  }
-
-  // Small pockmark micro-craters with raised rims
-  for (let c = 0; c < 65; c++) {
-    const cx = 24 + ((c * 197) % (size - 48));
-    const cy = 24 + ((c * 263) % (size - 48));
-    const rad = 4 + (c % 14);
-
-    const cGrad = cCtx.createRadialGradient(cx - rad * 0.2, cy - rad * 0.2, rad * 0.1, cx, cy, rad);
-    cGrad.addColorStop(0, "rgba(36, 34, 31, 0.65)");
-    cGrad.addColorStop(0.68, "rgba(58, 54, 49, 0.4)");
-    cGrad.addColorStop(0.86, "rgba(145, 138, 130, 0.45)");
-    cGrad.addColorStop(1, "rgba(104, 99, 92, 0)");
-    cCtx.fillStyle = cGrad;
-    cCtx.beginPath();
-    cCtx.arc(cx, cy, rad, 0, Math.PI * 2);
-    cCtx.fill();
-
-    const bGrad = bCtx.createRadialGradient(cx, cy, rad * 0.15, cx, cy, rad);
-    bGrad.addColorStop(0, "rgba(28, 28, 28, 0.85)");
-    bGrad.addColorStop(0.76, "rgba(225, 225, 225, 0.7)");
-    bGrad.addColorStop(1, "rgba(128, 128, 128, 0)");
-    bCtx.fillStyle = bGrad;
-    bCtx.beginPath();
-    bCtx.arc(cx, cy, rad, 0, Math.PI * 2);
-    bCtx.fill();
-  }
-
-  const map = new THREE.CanvasTexture(colorCanvas);
-  map.wrapS = THREE.RepeatWrapping;
-  map.wrapT = THREE.RepeatWrapping;
-  map.repeat.set(2, 2);
-  map.colorSpace = THREE.SRGBColorSpace;
-
-  const bumpMap = new THREE.CanvasTexture(bumpCanvas);
-  bumpMap.wrapS = THREE.RepeatWrapping;
-  bumpMap.wrapT = THREE.RepeatWrapping;
-  bumpMap.repeat.set(2, 2);
-
-  cachedRegolithColor = map;
-  cachedRegolithBump = bumpMap;
-  return { map, bumpMap };
+  return rim * Math.exp(-Math.pow((u - 0.94) / 0.2, 2));
 }
 
-/** Soft radial contact shadow decal texture placed under landers and rovers (AG-1b #3). */
-export function getSoftContactShadowTexture(): THREE.CanvasTexture {
-  if (cachedContactShadow) return cachedContactShadow;
-  const canvas = document.createElement("canvas");
-  canvas.width = 128;
-  canvas.height = 128;
-  const ctx = canvas.getContext("2d")!;
-
-  const grad = ctx.createRadialGradient(64, 64, 4, 64, 64, 58);
-  grad.addColorStop(0, "rgba(8, 9, 12, 0.46)");
-  grad.addColorStop(0.45, "rgba(8, 9, 12, 0.22)");
-  grad.addColorStop(0.8, "rgba(8, 9, 12, 0.06)");
-  grad.addColorStop(1, "rgba(8, 9, 12, 0)");
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, 128, 128);
-
-  const tex = new THREE.CanvasTexture(canvas);
-  cachedContactShadow = tex;
-  return tex;
+function ridgeHill(x: number, z: number, cx: number, cz: number, rx: number, rz: number, h: number): number {
+  const dx = (x - cx) / rx;
+  const dz = (z - cz) / rz;
+  const d2 = dx * dx + dz * dz;
+  if (d2 > 4.5) return 0;
+  const base = Math.exp(-d2 * 0.9);
+  const strata = 0.88 + 0.12 * Math.sin(x * 0.35 + z * 0.28);
+  return h * Math.pow(base, 0.85) * strata;
 }
 
-/**
- * Sculpted, multi-octave displaced 3D lunar massif / ridge silhouette (AG-1b #7).
- * Replaces flat low-poly cones with smooth, weathered lunar highland relief.
- */
-function SculptedLunarMassif({
-  position,
-  rotation = [0, 0, 0],
-  width = 3.2,
-  depth = 1.6,
-  height = 1.25,
-  seed = 1,
-  color = "#54504A",
-}: {
-  position: [number, number, number];
-  rotation?: [number, number, number];
-  width?: number;
-  depth?: number;
-  height?: number;
-  seed?: number;
-  color?: string;
-}) {
-  const geo = useMemo(() => {
-    const g = new THREE.PlaneGeometry(width, depth, 36, 18);
-    g.rotateX(-Math.PI / 2);
-    const pos = g.attributes.position;
-    for (let i = 0; i < pos.count; i++) {
-      const vx = pos.getX(i);
-      const vz = pos.getZ(i);
-      const nx = vx / (width * 0.5);
-      const nz = vz / (depth * 0.5);
-      // Smooth bell-shaped massif envelope tapering to 0 at all edges
-      const envX = Math.max(0, 1 - nx * nx);
-      const envZ = Math.max(0, 1 - Math.pow(nz, 2));
-      const envelope = Math.pow(envX, 1.35) * Math.pow(envZ, 1.25);
+export function getMoonTerrainHeight(slug: string, x: number, z: number): number {
+  const dist = Math.hypot(x, z);
+  const farBlend = Math.min(1, Math.max(0, (dist - 3.2) / 9.0));
 
-      // Multi-peak rounded lunar highland ridgeline + subtle gullies
-      const ridge =
-        0.68 +
-        0.22 * Math.cos(nx * 2.6 + seed * 1.1) +
-        0.12 * Math.sin(nx * 5.4 - nz * 2.2 + seed * 2.3) +
-        0.06 * Math.cos(nx * 9.2 + nz * 4.5);
-
-      const y = Math.max(0, envelope * ridge * height);
-      pos.setY(i, y);
-    }
-    g.computeVertexNormals();
-    return g;
-  }, [width, depth, height, seed]);
-
-  return (
-    <mesh position={position} rotation={rotation} geometry={geo}>
-      <meshStandardMaterial color={color} roughness={0.95} metalness={0.03} />
-    </mesh>
-  );
-}
-
-/** Helper to sculpt a bowl crater into a vertex heightfield. */
-function craterBowl(dx: number, dz: number, radius: number, depth: number, rimHeight: number): number {
-  const r = Math.hypot(dx, dz) / radius;
-  if (r >= 1.35) return 0;
-  if (r < 0.82) {
-    const t = r / 0.82;
-    return -depth * (1 - t * t);
+  if (slug === "moon-surveyor-3") {
+    // Broad Surveyor Crater bowl (~14 m diameter): Surveyor rests on inner slope; far rim holds Apollo 12 LM
+    const innerSlope = Math.max(-0.42, Math.min(0.65, x * 0.085 - z * 0.095));
+    const bowlDist = Math.hypot(x + 0.8, z + 3.8);
+    const bowlShape = bowlDist * bowlDist * 0.011 - 0.32 * Math.exp(-bowlDist * 0.14);
+    const bowl = farBlend * bowlShape + (1 - farBlend) * innerSlope;
+    const farCrater =
+      craterBowl(x, z, -12, -19, 4.5, 0.55) + craterBowl(x, z, 11, -24, 5.2, 0.65);
+    const horizonRim =
+      z < -11 ? Math.pow(Math.min(1, (-z - 11) / 34), 1.3) * (2.6 + 0.8 * Math.sin(x * 0.12)) : 0;
+    return innerSlope * 0.65 + bowl * 0.55 + farCrater + horizonRim;
   }
-  const rimT = (r - 0.82) / 0.53;
-  return rimHeight * Math.sin(rimT * Math.PI);
+
+  if (slug === "moon-apollo-15-lrv") {
+    // Hadley–Apennine plain + sinuous Hadley Rille gorge mid-ground + soaring Mount Hadley massif
+    const rilleCenter = -9.5 + Math.sin(x * 0.18) * 2.8;
+    const dRille = Math.abs(z - rilleCenter);
+    const rilleTrench = dRille < 5.5 ? -1.85 * Math.exp(-Math.pow(dRille / 2.2, 2)) : 0;
+    const mountHadley = ridgeHill(x, z, 11.5, -34.0, 18.0, 11.5, 11.8);
+    const deltaMassif = ridgeHill(x, z, -18.0, -32.0, 14.0, 10.0, 6.8);
+    const craters =
+      craterBowl(x, z, -6.5, -2.5, 1.8, 0.28) +
+      craterBowl(x, z, 6.2, -5.0, 1.4, 0.22) +
+      craterBowl(x, z, -12.0, 4.0, 2.5, 0.35);
+    return (
+      farBlend * (Math.sin(x * 0.16 + z * 0.14) * 0.16 + craters) +
+      rilleTrench +
+      mountHadley +
+      deltaMassif
+    );
+  }
+
+  if (slug === "moon-apollo-17") {
+    // Taurus–Littrow flat bright regolith valley framed by steep North & South Massifs
+    const valleySlope = farBlend * Math.sin(x * 0.14 - z * 0.11) * 0.18;
+    const southMassif = ridgeHill(x, z, -24.0, -30.0, 15.0, 12.0, 10.4);
+    const northMassif = ridgeHill(x, z, 22.0, -33.0, 16.0, 12.0, 11.2);
+    const familyMt = ridgeHill(x, z, 1.5, -42.0, 12.0, 8.5, 6.2);
+    const craters =
+      craterBowl(x, z, -5.2, -3.5, 1.5, 0.24) + craterBowl(x, z, 5.8, -5.5, 2.0, 0.32);
+    return valleySlope + craters + southMassif + northMassif + familyMt;
+  }
+
+  // Beat 8: moon-apollo-11 — Tranquility flat basaltic mare with Double Crater & distant crater rims
+  const undulation =
+    farBlend *
+    (Math.sin(x * 0.22 + z * 0.18) * 0.14 + Math.cos(x * 0.11 - z * 0.15) * 0.12);
+  const craters =
+    craterBowl(x, z, -5.5, -4.8, 2.1, 0.32) +
+    craterBowl(x, z, 6.8, -8.5, 2.8, 0.42) +
+    craterBowl(x, z, -11.5, -15.5, 4.2, 0.58) +
+    craterBowl(x, z, 14.5, -22.0, 5.0, 0.65);
+  const farRims =
+    dist > 26
+      ? Math.min(1, (dist - 26) / 22) * (1.2 + 0.65 * Math.cos(x * 0.09 + 0.5) + 0.45 * Math.sin(z * 0.1))
+      : 0;
+  return undulation + craters + farRims;
 }
 
-/**
- * Generates a displaced circular lunar regolith terrain mesh customized per Hall I site.
- * Radius = 3.25 units, 52 radial × 28 ring subdivisions.
- */
-function createLunarTerrainGeometry(slug: string): THREE.BufferGeometry {
-  const radius = 3.25;
-  const geo = new THREE.CircleGeometry(radius, 56);
-  // CircleGeometry only has outer ring + center; use PlaneGeometry warped to a disc for rich interior vertex displacement!
-  geo.dispose();
+function createMoonHorizonTerrainGeometry(slug: string): THREE.BufferGeometry {
+  const size = 124;
+  const segs = 132;
+  const geo = new THREE.PlaneGeometry(size, size, segs, segs);
+  geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position as THREE.BufferAttribute;
 
-  const segs = 48;
-  const plane = new THREE.PlaneGeometry(radius * 2, radius * 2, segs, segs);
-  plane.rotateX(-Math.PI / 2);
-
-  const pos = plane.attributes.position;
   for (let i = 0; i < pos.count; i++) {
     const vx = pos.getX(i);
     const vz = pos.getZ(i);
-    // Elliptical mapping from square [-R, R]^2 to circular disc of radius R
-    const nx = vx / radius;
-    const nz = vz / radius;
-    const cx = nx * Math.sqrt(Math.max(0, 1 - (nz * nz) / 2)) * radius;
-    const cz = nz * Math.sqrt(Math.max(0, 1 - (nx * nx) / 2)) * radius;
-    const rNorm = Math.min(1, Math.hypot(cx, cz) / radius);
-    const edgeTaper = 1 - Math.pow(rNorm, 3.5);
-
-    // Base micro-undulation
-    let h =
-      (Math.sin(cx * 1.9 + cz * 1.3) * 0.035 +
-        Math.cos(cx * 3.4 - cz * 2.7) * 0.02) *
-      edgeTaper;
-
-    if (slug === "moon-apollo-11") {
-      // Sea of Tranquility: flat mare plain with small secondary craters away from the LM pad
-      h += craterBowl(cx - 1.55, cz + 0.9, 0.52, 0.09, 0.035);
-      h += craterBowl(cx + 1.45, cz - 1.15, 0.65, 0.11, 0.04);
-      h += craterBowl(cx - 1.65, cz - 1.05, 0.42, 0.07, 0.025);
-    } else if (slug === "moon-surveyor-3") {
-      // Surveyor Crater: concave crater inner slope dipping in front/center, rising to a northern crater rim in back
-      const rimArc = Math.exp(-Math.pow((cz + 1.85) / 0.85, 2)) * 0.42;
-      const bowlDip = -Math.exp(-((cx * cx + (cz - 0.35) * (cz - 0.35)) / 3.2)) * 0.22;
-      h += (rimArc + bowlDip) * (1 - Math.pow(rNorm, 6));
-      h += craterBowl(cx - 1.2, cz + 0.6, 0.38, 0.06, 0.02);
-    } else if (slug === "moon-apollo-15-lrv") {
-      // Hadley–Apennine: mare plain + Hadley Rille channel on the left + Mount Hadley massif rising in the back
-      const rilleChannel =
-        cx < -1.15 ? -Math.exp(-Math.pow((cx + 1.95 - Math.sin(cz) * 0.25) / 0.55, 2)) * 0.28 : 0;
-      const mtHadleyFoot = cz < -1.1 ? Math.pow(Math.max(0, (-cz - 1.1) / 2.1), 1.6) * 0.65 : 0;
-      h += (rilleChannel + mtHadleyFoot) * (1 - Math.pow(rNorm, 8));
-    } else if (slug === "moon-apollo-17") {
-      // Taurus–Littrow: flat valley floor flanked by North Massif & South Massif slopes on left/back and right/back
-      const massifLeft =
-        cx < -1.2 && cz < 0.5
-          ? Math.pow(Math.max(0, (-cx - 1.2) / 2.0), 1.5) * 0.55
-          : 0;
-      const massifRight =
-        cx > 1.2 && cz < 0.5
-          ? Math.pow(Math.max(0, (cx - 1.2) / 2.0), 1.5) * 0.48
-          : 0;
-      h += (massifLeft + massifRight) * (1 - Math.pow(rNorm, 8));
-      h += craterBowl(cx + 0.15, cz + 1.65, 0.48, 0.08, 0.03);
-    } else if (slug === "moon-grail") {
-      // Sally K. Ride Impact Site: southern slope of ~2.5 km mountain + two ~5 m impact craters with raised rims
-      const mountainSlope = ((-cz + 1.2) * 0.18 + Math.cos(cx * 0.8) * 0.08) * (1 - Math.pow(rNorm, 5));
-      const craterEbb = craterBowl(cx + 0.95, cz - 0.35, 0.56, 0.16, 0.055);
-      const craterFlow = craterBowl(cx - 1.05, cz + 0.32, 0.56, 0.16, 0.055);
-      h += mountainSlope + craterEbb + craterFlow;
-    }
-
-    pos.setXYZ(i, cx, h, cz);
+    pos.setY(i, getMoonTerrainHeight(slug, vx, vz));
   }
 
-  plane.computeVertexNormals();
-  return plane;
-}
-
-/** Sparse, slow-drifting lunar dust motes suspended in the cold #DCE6FF spotlight beam (no haze). */
-export function LunarDustMotes({ reducedMotion }: { reducedMotion: boolean }) {
-  const pointsRef = useRef<THREE.Points>(null);
-  const elapsedRef = useRef(0);
-  const budget = usePerfBudget();
-  const count = Math.max(10, Math.round(budget.dioramaDustCount * 0.56));
-
-  const basePositions = useMemo(() => {
-    const arr = new Float32Array(count * 3);
-    for (let i = 0; i < count; i++) {
-      const a = (i * 2.39996) % (Math.PI * 2);
-      const r = 0.25 + ((i * 37) % 100) * 0.024;
-      arr[i * 3 + 0] = Math.cos(a) * r;
-      arr[i * 3 + 1] = DIORAMA_SURFACE_Y + 0.25 + ((i * 53) % 100) * 0.028;
-      arr[i * 3 + 2] = Math.sin(a) * r;
-    }
-    return arr;
-  }, [count]);
-
-  useFrame((_, delta) => {
-    if (!pointsRef.current || reducedMotion) return;
-    elapsedRef.current += Math.min(delta, 0.05);
-    const t = elapsedRef.current;
-    const pos = pointsRef.current.geometry.attributes.position as THREE.BufferAttribute;
-    for (let i = 0; i < count; i++) {
-      const bx = basePositions[i * 3 + 0];
-      const by = basePositions[i * 3 + 1];
-      const bz = basePositions[i * 3 + 2];
-      pos.setXYZ(
-        i,
-        bx + Math.sin(t * 0.28 + i) * 0.06,
-        by + Math.cos(t * 0.22 + i * 1.7) * 0.05,
-        bz + Math.cos(t * 0.25 + i * 0.9) * 0.06,
-      );
-    }
-    pos.needsUpdate = true;
-  });
-
-  return (
-    <points ref={pointsRef}>
-      <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[basePositions.slice(), 3]} />
-      </bufferGeometry>
-      <pointsMaterial
-        color="#DCE6FF"
-        size={0.032}
-        transparent
-        opacity={0.45}
-        depthWrite={false}
-        blending={THREE.AdditiveBlending}
-      />
-    </points>
-  );
-}
-
-/** Scattered angular lunar basalt rocks/clasts around each diorama patch. */
-function ScatteredLunarRocks({ seed }: { seed: number }) {
-  const rocks = useMemo(() => {
-    const items: { pos: [number, number, number]; scale: [number, number, number]; rot: [number, number, number] }[] = [];
-    for (let i = 0; i < 14; i++) {
-      const k = seed * 31 + i * 17;
-      const angle = ((k * 73) % 360) * (Math.PI / 180);
-      const rad = 1.35 + ((k * 41) % 155) * 0.011;
-      const rx = Math.cos(angle) * rad;
-      const rz = Math.sin(angle) * rad;
-      const s = 0.038 + (i % 4) * 0.022;
-      items.push({
-        pos: [rx, DIORAMA_SURFACE_Y + s * 0.35, rz],
-        scale: [s * 1.25, s * 0.72, s],
-        rot: [(k % 7) * 0.4, (k % 11) * 0.5, (k % 5) * 0.3],
-      });
-    }
-    return items;
-  }, [seed]);
-
-  return (
-    <group>
-      {rocks.map((r, idx) => (
-        <mesh key={idx} position={r.pos} scale={r.scale} rotation={r.rot}>
-          <dodecahedronGeometry args={[1, 0]} />
-          <meshStandardMaterial color="#58544E" roughness={0.92} metalness={0.05} />
-        </mesh>
-      ))}
-    </group>
-  );
+  geo.computeVertexNormals();
+  return geo;
 }
 
 /**
- * Renders the complete Hall I lunar regolith diorama terrain, craters, massifs, tracks,
- * footprints, and site-specific hardware/silhouettes for SM-L-001 .. SM-L-005.
+ * Hall I · Moon Exhibition Continuous Horizon Landscapes (Beats 8..11).
+ * - Zero cylindrical pedestals, zero spotlight cones, zero dot-grid textures.
+ * - Continuous 124 m procedural FBM regolith fading cleanly into black lunar sky.
  */
 export function HallOneLunarDiorama({
   slug,
-  reducedMotion,
+  reducedMotion: _reducedMotion,
   children,
 }: {
   slug: string;
   reducedMotion: boolean;
-  children?: React.ReactNode;
+  children?: ReactNode;
 }) {
-  const { map: regolithMap, bumpMap: regolithBump } = useMemo(() => getLunarRegolithTextures(), []);
-  const bootprintTex = useMemo(() => getBootprintTrailTexture(), []);
-  const roverTrackTex = useMemo(() => getRoverTrackTexture(), []);
-  const terrainGeo = useMemo(() => createLunarTerrainGeometry(slug), [slug]);
+  void _reducedMotion;
+  const budget = usePerfBudget();
+  const terrainGeo = useMemo(() => createMoonHorizonTerrainGeometry(slug), [slug]);
+  const anchorXZ = useMemo<[number, number]>(
+    () => MOON_ANCHOR_XZ[slug] ?? [0, -172.0],
+    [slug],
+  );
 
-  // AG-10 / AG-9b pilot: moon-grail renders its own continuous horizon polar mountain slope + 14 s simulation (no plinth)
-  if (slug === "moon-grail") {
-    return <GrailSimulation reducedMotion={reducedMotion} />;
-  }
+  const bootTex = useMemo(() => getBootprintTrailTexture(), []);
+  const trackTex = useMemo(() => getRoverTrackTexture(), []);
+
+  const terrainMat = useMemo(() => {
+    const isTaurus = slug === "moon-apollo-17";
+    const mat = new THREE.MeshStandardMaterial({
+      color: "#8E8980",
+      roughness: 0.96,
+      metalness: 0.02,
+    });
+    applyWorldTerrainShader(mat, {
+      planet: "moon",
+      anchorXZ,
+      baseTint: isTaurus ? "#544F48" : "#45413C",
+      brightTint: isTaurus ? "#999389" : "#7D776E",
+      fadeStart: 38,
+      fadeEnd: 60,
+    });
+    return mat;
+  }, [slug, anchorXZ]);
+
+  const rockCount =
+    slug === "moon-apollo-17"
+      ? budget.tier === "high"
+        ? 210
+        : 95
+      : slug === "moon-surveyor-3"
+        ? budget.tier === "high"
+          ? 145
+          : 70
+        : budget.tier === "high"
+          ? 110
+          : 55;
+
+  const rockSeed =
+    slug === "moon-apollo-11"
+      ? 101
+      : slug === "moon-surveyor-3"
+        ? 202
+        : slug === "moon-apollo-15-lrv"
+          ? 303
+          : 404;
+
+  // Surface heights for distant Apollo 12 & Apollo 15 LM silhouettes on crater rim / rille shoulder
+  const apollo12LmY = useMemo(
+    () =>
+      slug === "moon-surveyor-3"
+        ? DIORAMA_SURFACE_Y + getMoonTerrainHeight("moon-surveyor-3", 4.6, -15.5)
+        : 0,
+    [slug],
+  );
+  const apollo15LmY = useMemo(
+    () =>
+      slug === "moon-apollo-15-lrv"
+        ? DIORAMA_SURFACE_Y + getMoonTerrainHeight("moon-apollo-15-lrv", -5.2, -16.8)
+        : 0,
+    [slug],
+  );
 
   return (
     <group>
-      {/* Sleek dark-basalt museum diorama base: recessed floor (-0.22 m below terrain) + open outer skirt wall so craters NEVER intersect the base top (AG-1b #3) */}
-      <mesh position={[0, -0.22, 0]}>
-        <cylinderGeometry args={[3.32, 3.48, 0.36, 48]} />
-        <meshStandardMaterial color="#181C26" roughness={0.82} metalness={0.22} />
-      </mesh>
-      <mesh position={[0, 0.08, 0]}>
-        <cylinderGeometry args={[3.26, 3.32, 0.28, 48, 1, true]} />
-        <meshStandardMaterial color="#181C26" roughness={0.82} metalness={0.22} side={THREE.DoubleSide} />
-      </mesh>
-      <mesh position={[0, DIORAMA_SURFACE_Y - 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[3.2, 3.29, 48]} />
-        <meshBasicMaterial color="#B9BEC8" transparent opacity={0.42} />
-      </mesh>
-
-      {/* Displaced Lunar Regolith Terrain Patch */}
+      {/* Continuous Moon regolith terrain stretching to black horizon */}
       <mesh
         name="diorama-terrain"
         geometry={terrainGeo}
+        material={terrainMat}
         position={[0, DIORAMA_SURFACE_Y, 0]}
         receiveShadow
-      >
-        <meshStandardMaterial
-          map={regolithMap}
-          bumpMap={regolithBump}
-          bumpScale={0.065}
-          roughness={0.94}
-          metalness={0.04}
-        />
-      </mesh>
+      />
 
-      {/* Sparse slow lunar dust motes in the cold spotlight beam */}
-      <LunarDustMotes reducedMotion={reducedMotion} />
+      {/* Instanced fractured lunar basalt & highland breccia boulders */}
+      <InstancedLandscapeRocks
+        planet="moon"
+        anchorXZ={anchorXZ}
+        count={rockCount}
+        seed={rockSeed}
+        maxRadius={36}
+        clearRadius={slug === "moon-apollo-15-lrv" ? 2.4 : 2.1}
+        scaleRange={slug === "moon-apollo-17" ? [0.07, 0.42] : [0.05, 0.28]}
+        surfaceY={DIORAMA_SURFACE_Y}
+        heightFn={(vx, vz) => getMoonTerrainHeight(slug, vx, vz)}
+      />
 
-      {/* Scattered lunar basalt rocks */}
-      <ScatteredLunarRocks seed={slug.charCodeAt(slug.length - 1)} />
+      {/* GLB Exhibit Model (Apollo 11 & 17 clipped LM descent stage) passed from ExhibitStage3D */}
+      {children}
 
-      {/* ─── SITE 1: SM-L-001 · APOLLO 11 (Sea of Tranquility) ─── */}
-      {slug === "moon-apollo-11" ? (
+      {/* ─── Beat 8: Apollo 11 · Sea of Tranquility (Eagle + Top Cap + EASEP + LRRR + Bootprints) ─── */}
+      {slug === "moon-apollo-11" && (
         <group>
-          {/* Astronaut bootprint paths connecting LM ladder -> EASEP -> LRRR */}
-          <mesh
-            position={[-0.42, DIORAMA_SURFACE_Y + 0.036, 1.36]}
-            rotation={[-Math.PI / 2, 0, -0.68]}
-          >
-            <planeGeometry args={[1.65, 0.36]} />
-            <meshBasicMaterial map={bootprintTex} transparent opacity={0.85} depthWrite={false} />
-          </mesh>
-          <mesh
-            position={[-0.98, DIORAMA_SURFACE_Y + 0.036, 1.42]}
-            rotation={[-Math.PI / 2, 0, 0.78]}
-          >
-            <planeGeometry args={[1.15, 0.32]} />
-            <meshBasicMaterial map={bootprintTex} transparent opacity={0.8} depthWrite={false} />
-          </mesh>
-
-          {/* Clipped LM Eagle Descent Stage (passed as children) + Ladder/Plaque + EASEP + LRRR */}
-          {children}
+          <ClippedLmTopCap baseY={DIORAMA_SURFACE_Y} />
           <Apollo11SiteProps baseY={DIORAMA_SURFACE_Y} />
-        </group>
-      ) : null}
-
-      {/* ─── SITE 2: SM-L-002 · SURVEYOR 3 (Ocean of Storms crater + Apollo 12 LM on rim) ─── */}
-      {slug === "moon-surveyor-3" ? (
-        <group>
-          {/* Bootprint trail from Conrad & Bean walking down the crater slope to Surveyor 3 */}
           <mesh
-            position={[0.62, DIORAMA_SURFACE_Y + 0.02, -0.58]}
-            rotation={[-Math.PI / 2 + 0.14, 0, -1.12]}
+            position={[0.35, DIORAMA_SURFACE_Y + 0.012, 1.1]}
+            rotation={[-Math.PI / 2, 0, -0.35]}
           >
-            <planeGeometry args={[2.1, 0.38]} />
-            <meshBasicMaterial map={bootprintTex} transparent opacity={0.82} depthWrite={false} />
+            <planeGeometry args={[2.8, 0.9]} />
+            <meshBasicMaterial
+              map={bootTex}
+              transparent
+              opacity={0.78}
+              depthWrite={false}
+              polygonOffset
+              polygonOffsetFactor={-1}
+            />
           </mesh>
+        </group>
+      )}
 
-          {/* Surveyor 3 3D lander tilted on the inner slope of its crater */}
-          <group
-            position={[0.08, DIORAMA_SURFACE_Y - 0.15, 0.22]}
-            rotation={[0.14, -0.35, -0.09]}
-          >
-            <Surveyor3Model scale={0.76} />
+      {/* ─── Beat 9: Surveyor 3 · Ocean of Storms Inner Crater Slope + Distant Apollo 12 LM on Rim ─── */}
+      {slug === "moon-surveyor-3" && (
+        <group>
+          <group position={[0, DIORAMA_SURFACE_Y, 0]} rotation={[0.1, 0.28, -0.08]}>
+            <Surveyor3Model scale={0.62} />
           </group>
-
-          {/* Distant Apollo 12 LM (Intrepid) silhouette on the northern crater rim (155 m away) */}
           <DistantApolloLmSilhouette
-            position={[1.18, DIORAMA_SURFACE_Y + 0.38, -2.05]}
-            scale={0.21}
-            includeAscentStage
+            position={[4.6, apollo12LmY + 0.05, -15.5]}
+            scale={0.34}
           />
+          <mesh
+            position={[-0.65, DIORAMA_SURFACE_Y + 0.025, 0.95]}
+            rotation={[-Math.PI / 2 + 0.09, 0, 0.42]}
+          >
+            <planeGeometry args={[2.4, 0.85]} />
+            <meshBasicMaterial
+              map={bootTex}
+              transparent
+              opacity={0.72}
+              depthWrite={false}
+              polygonOffset
+              polygonOffsetFactor={-1}
+            />
+          </mesh>
         </group>
-      ) : null}
+      )}
 
-      {/* ─── SITE 3: SM-L-003 · APOLLO 15 LRV (Hadley–Apennine, Mount Hadley, distant LM) ─── */}
-      {slug === "moon-apollo-15-lrv" ? (
+      {/* ─── Beat 10: Apollo 15 · Hadley–Apennine Plain + Parked LRV + Falcon LM Silhouette ─── */}
+      {slug === "moon-apollo-15-lrv" && (
         <group>
-          {/* Sculpted Mount Hadley & Apennine Front backdrop massifs along the northern horizon (AG-1b #7) */}
-          <SculptedLunarMassif
-            position={[0.65, DIORAMA_SURFACE_Y + 0.04, -2.1]}
-            rotation={[0, -0.15, 0]}
-            width={3.6}
-            depth={1.65}
-            height={1.45}
-            seed={15}
-            color="#58544E"
-          />
-          <SculptedLunarMassif
-            position={[-1.35, DIORAMA_SURFACE_Y + 0.02, -1.95]}
-            rotation={[0, 0.35, 0]}
-            width={2.6}
-            depth={1.4}
-            height={0.98}
-            seed={29}
-            color="#4E4A45"
-          />
-
-          {/* Rover wheel tracks trailing behind the parked LRV */}
-          <mesh
-            position={[0.92, DIORAMA_SURFACE_Y + 0.036, 1.15]}
-            rotation={[-Math.PI / 2, 0, -0.52]}
-          >
-            <planeGeometry args={[2.2, 1.15]} />
-            <meshBasicMaterial map={roverTrackTex} transparent opacity={0.82} depthWrite={false} />
-          </mesh>
-          {/* Dave Scott's bootprints walking away from the parked rover */}
-          <mesh
-            position={[-0.55, DIORAMA_SURFACE_Y + 0.036, 0.15]}
-            rotation={[-Math.PI / 2, 0, 0.85]}
-          >
-            <planeGeometry args={[1.85, 0.34]} />
-            <meshBasicMaterial map={bootprintTex} transparent opacity={0.8} depthWrite={false} />
-          </mesh>
-
-          {/* Parked Apollo 15 LRV aimed toward the distant LM Falcon to televise liftoff */}
-          <group position={[0.15, DIORAMA_SURFACE_Y, 0.35]} rotation={[0, -0.52, 0]}>
-            <LunarRovingVehicleModel scale={0.76} />
+          <group position={[0.1, DIORAMA_SURFACE_Y, 0]} rotation={[0, -0.25, 0]}>
+            <LunarRovingVehicleModel scale={0.72} />
           </group>
-
-          {/* Distant Apollo 15 LM (Falcon) ~150 m away in the direction the rover's TV camera points */}
           <DistantApolloLmSilhouette
-            position={[-1.35, DIORAMA_SURFACE_Y + 0.14, -1.55]}
-            scale={0.19}
-            includeAscentStage={false}
+            position={[-5.2, apollo15LmY + 0.05, -16.8]}
+            scale={0.38}
           />
+          <mesh
+            position={[-0.45, DIORAMA_SURFACE_Y + 0.014, 1.3]}
+            rotation={[-Math.PI / 2, 0, 0.22]}
+          >
+            <planeGeometry args={[4.4, 1.15]} />
+            <meshBasicMaterial
+              map={trackTex}
+              transparent
+              opacity={0.78}
+              depthWrite={false}
+              polygonOffset
+              polygonOffsetFactor={-1}
+            />
+          </mesh>
         </group>
-      ) : null}
+      )}
 
-      {/* ─── SITE 4: SM-L-004 · APOLLO 17 (Taurus–Littrow valley massifs, LM, LRV, tracks & footprints) ─── */}
-      {slug === "moon-apollo-17" ? (
+      {/* ─── Beat 11: Apollo 17 · Taurus–Littrow Valley Floor + Challenger Top Cap + Parked LRV + Tracks ─── */}
+      {slug === "moon-apollo-17" && (
         <group>
-          {/* Sculpted Taurus–Littrow North Massif & South Massif framing both sides of the valley (AG-1b #7) */}
-          <SculptedLunarMassif
-            position={[-1.85, DIORAMA_SURFACE_Y + 0.02, -1.55]}
-            rotation={[0, 0.42, 0]}
-            width={3.1}
-            depth={1.55}
-            height={1.38}
-            seed={17}
-            color="#56524C"
-          />
-          <SculptedLunarMassif
-            position={[1.95, DIORAMA_SURFACE_Y + 0.02, -1.45]}
-            rotation={[0, -0.38, 0]}
-            width={2.9}
-            depth={1.5}
-            height={1.26}
-            seed={41}
-            color="#504C46"
-          />
-
-          {/* Prominent dual parallel LRV tracks & astronaut bootprints across the valley floor */}
-          <mesh
-            position={[0.35, DIORAMA_SURFACE_Y + 0.034, 0.68]}
-            rotation={[-Math.PI / 2, 0, -0.32]}
-          >
-            <planeGeometry args={[3.4, 1.18]} />
-            <meshBasicMaterial map={roverTrackTex} transparent opacity={0.9} depthWrite={false} />
-          </mesh>
-          <mesh
-            position={[-0.25, DIORAMA_SURFACE_Y + 0.036, -0.65]}
-            rotation={[-Math.PI / 2, 0, 0.42]}
-          >
-            <planeGeometry args={[2.8, 1.05]} />
-            <meshBasicMaterial map={roverTrackTex} transparent opacity={0.82} depthWrite={false} />
-          </mesh>
-          <mesh
-            position={[0.15, DIORAMA_SURFACE_Y + 0.038, 1.25]}
-            rotation={[-Math.PI / 2, 0, -0.18]}
-          >
-            <planeGeometry args={[2.45, 0.38]} />
-            <meshBasicMaterial map={bootprintTex} transparent opacity={0.88} depthWrite={false} />
-          </mesh>
-
-          {/* Clipped LM Challenger Descent Stage + clean octagonal top cap */}
-          <group position={[-0.58, 0, -0.18]} scale={0.88}>
-            {children}
-            <ClippedLmTopCap baseY={DIORAMA_SURFACE_Y} />
+          <ClippedLmTopCap baseY={DIORAMA_SURFACE_Y} />
+          <group position={[1.75, DIORAMA_SURFACE_Y, -0.82]} rotation={[0, 0.65, 0]}>
+            <LunarRovingVehicleModel scale={0.44} />
           </group>
-
-          {/* Apollo 17 LRV parked a short distance away */}
-          <group position={[1.28, DIORAMA_SURFACE_Y, 0.82]} rotation={[0, -0.78, 0]}>
-            <LunarRovingVehicleModel scale={0.56} />
-          </group>
+          <mesh
+            position={[0.75, DIORAMA_SURFACE_Y + 0.012, 1.05]}
+            rotation={[-Math.PI / 2, 0, -0.42]}
+          >
+            <planeGeometry args={[3.6, 1.0]} />
+            <meshBasicMaterial
+              map={trackTex}
+              transparent
+              opacity={0.74}
+              depthWrite={false}
+              polygonOffset
+              polygonOffsetFactor={-1}
+            />
+          </mesh>
+          <mesh
+            position={[-0.75, DIORAMA_SURFACE_Y + 0.014, 0.85]}
+            rotation={[-Math.PI / 2, 0, 0.28]}
+          >
+            <planeGeometry args={[2.2, 0.8]} />
+            <meshBasicMaterial
+              map={bootTex}
+              transparent
+              opacity={0.7}
+              depthWrite={false}
+              polygonOffset
+              polygonOffsetFactor={-1}
+            />
+          </mesh>
         </group>
-      ) : null}
+      )}
     </group>
   );
 }

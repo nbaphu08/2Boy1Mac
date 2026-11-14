@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { usePerfBudget } from "./perfTier";
 import { getKaptonBumpMap } from "./rocketTextures";
 import { getMarsRoverTrackTexture } from "./MarsModels";
+import { createFracturedBasaltGeometry } from "./landscapeMaterials";
 
 const SURFACE_Y = 0.22;
 
@@ -256,37 +257,6 @@ function createDeflatedClothGeometry(seed: number, length: number, width: number
   return geo;
 }
 
-/** Faceted angular flood-carved rock geometry (clean sharp planes, proper normals for top dust). */
-function createAngularRockGeometry(variant: number): THREE.BufferGeometry {
-  const geo = new THREE.IcosahedronGeometry(0.42, 1);
-  const pos = geo.attributes.position as THREE.BufferAttribute;
-  const normals: THREE.Vector3[] = [
-    new THREE.Vector3(0.8, 0.45, 0.2).normalize(),
-    new THREE.Vector3(-0.75, 0.5, 0.35).normalize(),
-    new THREE.Vector3(0.15, 0.65, -0.7).normalize(),
-    new THREE.Vector3(-0.3, 0.85, 0.35).normalize(),
-    new THREE.Vector3(0.4, -0.2, 0.85).normalize(),
-    new THREE.Vector3(-0.6, -0.15, -0.75).normalize(),
-  ];
-  const v = new THREE.Vector3();
-  for (let i = 0; i < pos.count; i++) {
-    v.set(pos.getX(i), pos.getY(i), pos.getZ(i));
-    for (let k = 0; k < normals.length; k++) {
-      const n = normals[k];
-      const clip = 0.26 + ((variant * 13 + k * 7) % 11) * 0.014;
-      const d = v.dot(n);
-      if (d > clip) {
-        v.addScaledVector(n, clip - d);
-      }
-    }
-    // Flatten underside slightly to sit naturally in soil
-    if (v.y < -0.12) v.y = -0.12 + (v.y + 0.12) * 0.25;
-    pos.setXYZ(i, v.x * 1.15, v.y * 0.82, v.z * 0.96);
-  }
-  geo.computeVertexNormals();
-  return geo;
-}
-
 /** Continuous Ares Vallis flood plain + distant Twin Peaks hills on the -Z horizon (PIA00632). */
 function createAresVallisLandscapeGeometry(): THREE.BufferGeometry {
   const size = 148;
@@ -354,8 +324,8 @@ export function PathfinderLandscape({ reducedMotion: _reducedMotion }: { reduced
   const trackTex = useMemo(() => getMarsRoverTrackTexture(), []);
 
   const terrainGeo = useMemo(() => createAresVallisLandscapeGeometry(), []);
-  const rockGeoA = useMemo(() => createAngularRockGeometry(1), []);
-  const rockGeoB = useMemo(() => createAngularRockGeometry(2), []);
+  const rockGeoA = useMemo(() => createFracturedBasaltGeometry(1), []);
+  const rockGeoB = useMemo(() => createFracturedBasaltGeometry(2), []);
 
   // Open triangular petal geometry (1.02 m long × 1.18 m wide base -> ~2.75 m total opened span)
   const petalGeo = useMemo(() => {
@@ -387,7 +357,7 @@ export function PathfinderLandscape({ reducedMotion: _reducedMotion }: { reduced
 
   // Faceted "Yogi" flood boulder (matching Sonnet AG-2c placement/scale at [1.78, SURFACE_Y, 1.2])
   const yogiRockGeo = useMemo(() => {
-    const g = createAngularRockGeometry(4);
+    const g = createFracturedBasaltGeometry(4);
     g.scale(1.65, 1.38, 1.45);
     return g;
   }, []);
@@ -440,7 +410,7 @@ export function PathfinderLandscape({ reducedMotion: _reducedMotion }: { reduced
     populate(rockInstancesRefB.current, rockCountB, 2);
   }, [rockCountA, rockCountB]);
 
-  // Custom soil material fading horizon smoothly into Martian butterscotch dust (#BA7347)
+  // Custom soil material fading horizon smoothly into Martian butterscotch sky (#C98659 in Linear prior to ACES)
   const applyHorizonFade = (shader: THREE.WebGLProgramParametersWithUniforms) => {
     shader.vertexShader = shader.vertexShader
       .replace(
@@ -457,12 +427,12 @@ export function PathfinderLandscape({ reducedMotion: _reducedMotion }: { reduced
         "#include <common>\nvarying vec3 vWorldPos;",
       )
       .replace(
-        "#include <dithering_fragment>",
+        "#include <tonemapping_fragment>",
         `
         float horizonDist = length(vWorldPos.xz - vec2(-8.35, -371.0));
         float haze = smoothstep(24.0, 68.0, horizonDist);
-        gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.56, 0.28, 0.14), haze * 0.88);
-        #include <dithering_fragment>
+        gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.584, 0.238, 0.0998), haze * 0.98);
+        #include <tonemapping_fragment>
         `,
       );
   };
@@ -496,11 +466,11 @@ export function PathfinderLandscape({ reducedMotion: _reducedMotion }: { reduced
         diffuseColor.rgb = mix(vec3(0.18, 0.11, 0.08), vec3(0.52, 0.25, 0.13), topDust);`,
       )
       .replace(
-        "#include <dithering_fragment>",
+        "#include <tonemapping_fragment>",
         `float rockDist = length(vRockWorldPos.xz - vec2(-8.35, -371.0));
         float rockHaze = smoothstep(22.0, 58.0, rockDist);
-        gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.56, 0.28, 0.14), rockHaze * 0.88);
-        #include <dithering_fragment>`,
+        gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.584, 0.238, 0.0998), rockHaze * 0.96);
+        #include <tonemapping_fragment>`,
       );
   };
 
@@ -520,7 +490,7 @@ export function PathfinderLandscape({ reducedMotion: _reducedMotion }: { reduced
           roughness={0.95}
           metalness={0.03}
           onBeforeCompile={applyHorizonFade}
-          customProgramCacheKey={() => "ares-vallis-terrain-v1"}
+          customProgramCacheKey={() => "ares-vallis-terrain-v2"}
         />
       </mesh>
 
@@ -530,7 +500,7 @@ export function PathfinderLandscape({ reducedMotion: _reducedMotion }: { reduced
           roughness={0.93}
           metalness={0.04}
           onBeforeCompile={applyRockDustShader}
-          customProgramCacheKey={() => "ares-rock-dust-v1"}
+          customProgramCacheKey={() => "ares-rock-dust-v2"}
         />
       </instancedMesh>
       <instancedMesh ref={rockInstancesRefB} args={[rockGeoB, undefined, rockCountB]} castShadow receiveShadow>
@@ -538,7 +508,7 @@ export function PathfinderLandscape({ reducedMotion: _reducedMotion }: { reduced
           roughness={0.94}
           metalness={0.04}
           onBeforeCompile={applyRockDustShader}
-          customProgramCacheKey={() => "ares-rock-dust-v1"}
+          customProgramCacheKey={() => "ares-rock-dust-v2"}
         />
       </instancedMesh>
 

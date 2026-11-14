@@ -252,3 +252,67 @@ Merged into `main`; 0 console errors. Grid: `docs/antigravity/shots/review-AG10-
   3. Impact flash is a big opaque cream ball — make it a brief additive flash (fast fade, no solid sphere) + the ballistic ejecta.
   4. Rest frame: the two ~5 m craters with dark ejecta are not visible — make them the clear focus (closer camera or stronger dark ejecta rays); the translucent holograms must **not cast shadows** (dark blobs under them now).
   5. Remove the **bootprint/track dot rows** from the GRAIL ground — no one ever walked there.
+
+## AG-9b — Cinematic Landscapes (12 Exhibits) + AG-10 GRAIL Fixes — branch `ag/9b-landscapes`
+**Done:**
+1. **AG-10 GRAIL 5 Fixes (`GrailSimulation.tsx`, `ExhibitStage3D.tsx`)**:
+   - **Progressive swath + visible twins + saturated SVS 4014 colors**: Fixed GLSL `smoothstep(0.025, 0.0, ...)` inverted edge (`1.0 - smoothstep(0.0, 0.03, delta - progress)`) so the swath paints progressively from 0%→100% over 0–5.4 s; added polar orbital track torus ring; scaled orbital PIA13965 twins up to `0.62` with closer orbit camera framing; and applied `pow(gravRaw, 1.55)` with controlled NdotL modulation so SVS 4014 reds/blues stay vivid instead of pastel under ACES.
+   - **Ranging link**: Removed `pulseBeadRef` bright center sphere; kept only the thin pulsing `#9DB8FF` Ka-band beam.
+   - **Impact flashes**: Replaced opaque `sphereGeometry` flash balls with brief soft exponential-decay radial additive `<sprite>` flashes (`0.26 s` burst).
+   - **Rest frame focus & zero ghost shadows**: Enlarged displaced craters (`r = 0.88, depth = 0.28`) with sharp asymmetrical dark basaltic starburst ejecta rays visible cleanly from `BEAT_POSES[12]`, named ghost meshes `grail-ghost-*` with `castShadow={false}` (skipped in `ShadowEnabler`), and shifted subtle ghost wireframes uprange so zero dark blobs appear under them.
+   - **Zero ground dot rows**: Replaced tiled `moon-regolith` textures on GRAIL with world-space FBM regolith shader (`applyWorldTerrainShader`) and `InstancedLandscapeRocks`.
+2. **All Plinths & Spotlight Cones Removed (`ExhibitStage3D.tsx`, `MoonDioramas.tsx`, `MarsDioramas.tsx`, `MarsModels.tsx`)**:
+   - Removed all volumetric spotlight cones (`coneRef`), `spinRef` plinth rotation, and distance terrain scaling across all 12 exhibits (`SingleExhibitPlinth` renders cleanly within `dist < 0.5`).
+   - Removed Perseverance backshell mini-plinth disc/ring in `IngenuityAndBackshellProps` (`MarsModels.tsx`), resting backshell & parachute directly on the dune slope.
+3. **World-Space Continuous Horizon Terrain & Pathfinder Polish (`landscapeMaterials.tsx`, `PathfinderLandscape.tsx`)**:
+   - Built shared `applyWorldTerrainShader` (4-octave world-space FBM albedo, micro-grain normal relief, roughness variation, arctic Voronoi thermal contraction cracks, Troy bright patch, Valinor sand ripples, linear-space sky/black horizon blend prior to `<tonemapping_fragment>`) + `<InstancedLandscapeRocks />` (`detail=2` fractured basalt geometry, dusty top normals on Mars).
+   - Updated `PathfinderLandscape.tsx` rocks to fractured basalt `detail=2` (`createFracturedBasaltGeometry`) and matched its horizon fade to linear `#C98659` prior to ACES tonemapping to eliminate the sky-horizon seam.
+4. **Hall I Moon Landscapes (`MoonDioramas.tsx`, `CelestialWorlds.tsx`)**:
+   - 124 m continuous terrains for Apollo 11 (`Sea of Tranquility`), Surveyor 3 (`14 m Surveyor Crater bowl` + distant `Apollo 12` LM on rim), Apollo 15 (`Hadley Rille` gorge + soaring `Mount Hadley` massif behind `LRV` + distant `Falcon`), and Apollo 17 (`Taurus–Littrow` flanking massifs + `Challenger` + parked `LRV` + tracks/boots), all with one hard low white lunar sun casting long sharp shadows and Earth moved to upper-right sky (`camLook.x + 8.6`) away from upper-left narration.
+5. **Hall II Mars Landscapes (`MarsDioramas.tsx`, `MarsModels.tsx`)**:
+   - 148 m continuous terrains for Viking 1 (`Chryse` rock plain & outlier mesas), Spirit (sunk into bright Troy ferric-sulfate trap beside `Home Plate` plateau), Opportunity (`Perseverance Valley` slope + `Endeavour` rim in storm lighting), Phoenix (flat arctic `polygon-patterned` plains + white water-ice sample trench + dual decagonal wings), InSight (`Elysium` smooth rockless plain + `SEIS`/`HP3`), and Ingenuity (`Valinor Hills` rippled sand + `Jezero` delta scarps + snapped rotor blade).
+6. **Shadow Frustum & Seamless Transitions (`SpaceScene.tsx`)**:
+   - Left `BEAT_POSES` in `trajectory.ts` unchanged (per handoff priority), unified exhibit shadow frustum (`±9.5`, low Mars/Moon sun angles), and added lightweight mid-beat transition veil in `SpaceScene.tsx` at fractional midpoints (`|frac - 0.5| < 0.14`) so neighboring 124–148 m horizons swap smoothly without pop or overlap.
+7. **Guards & verification**: Zero edits to `public/media/three/posters/`. `npx tsc --noEmit`, `npx eslint components/journey/three` (0 errors, 0 warnings), and `npx next build --webpack` pass. **WebGL screenshot capture did not run in headless sandbox — ready for Opus verification across all 12 exhibit beats & poster re-capture.**
+
+**Files changed:**
+- `components/journey/three/landscapeMaterials.tsx` (new)
+- `components/journey/three/GrailSimulation.tsx`, `PathfinderLandscape.tsx`, `MoonDioramas.tsx`, `MarsDioramas.tsx`, `MarsModels.tsx`, `ExhibitStage3D.tsx`, `CelestialWorlds.tsx`, `SpaceScene.tsx`
+- `docs/HANDOFF_ANTIGRAVITY.md`
+
+## AG-11 — "The Expedition" (Orbital Target Pins + Descent/Touchdown + Low Tracking + Scale Silhouettes) — branch `ag/11-expedition`
+**Done (branched from `origin/main` `3ec2203` with AG-9b landscapes merged):**
+1. **Orbital Coordinate Pins & Orbit Rings (`CelestialWorlds.tsx`)**:
+   - **Moon (`beat 7`, `deep-space`)**: Mounted 5 glowing `#9DB8FF` HDR surface pins at documented lunar lat/lon (`content/exhibits.ts` `location.lat/lon` for Apollo 11, Surveyor 3, Apollo 15, Apollo 17 + GRAIL polar Goldschmidt) + faint lunar orbital ring (`Zero text/numbers in 3D`).
+   - **Mars (`beat 13`, `transit`)**: Mounted 7 glowing `#FF8E5C` HDR surface pins at documented Martian lat/lon (InSight from `exhibits.ts` + Viking 1, Pathfinder, Spirit, Opportunity, Phoenix, Ingenuity) + faint Mars orbital ring.
+   - Adjusted `MarsDaytimeSkyDome` and `SpaceBackdrop` transition window earlier (`13.15 -> 13.48`) so atmospheric entry plasma streaks occur inside the butterscotch Martian sky.
+2. **Expedition Camera Trajectory (`expeditionCamera.ts`, `SpaceScene.tsx`)**:
+   - Kept the 24-beat array and IDs in `content/beats.ts` & `trajectory.ts` unchanged; overrode intermediate segments (`p ∈ [7, 20.5]`) inside `applyExpeditionCamera(p, reducedMotion, traj)`:
+     - **`7 → 8` (Moon Descent & Touchdown)**: Drops from lunar orbit onto Sea of Tranquility flat approach, performs brief low touchdown flare (`7.50..7.72`), then skims low toward `Apollo 11 Eagle` appearing on the horizon (`7.72..8.00`).
+     - **`8 → 9 → 10 → 11 → 12` (Moon Tracking)**: Low fast surface flights (`~8 m` altitude) streaming over terrain with a crisp transition dip behind `veilRef` (`0.41 < frac < 0.59`) onto the approaching machine's horizon.
+     - **`12 → 13 → 14` (Mars Entry & Touchdown)**: Polar liftoff → Mars orbital transit → butterscotch atmospheric entry dive (`13.12..13.52`) → Chryse Planitia touchdown (`13.52..13.72`) → low tracking across boulders to `Viking 1` (`13.72..14.00`).
+     - **`14 → 15..20` (Mars Tracking) & `20 → 21` (Mars Liftoff)**: Low fast flights between Mars sites, then liftoff into `Hall of Silence`.
+   - **Jump-Cut & Perf Guards (`SpaceScene.tsx`, `ExhibitStage3D.tsx`)**: Snap `scrollState.current = scrollState.target` if `|target - prev| > 1.5` in one frame; `reducedMotion` skips dust/streaks and cuts cleanly between rest shots; proactive `gl.compile(scene, camera)` triggered on entering Moon (`p >= 6.4`) and Mars (`p >= 12.4`) orbits; `Apollo 11` (`8`) and `Viking 1` (`14`) mount earlier (`7.34+` / `13.34+`) so landing sites are ready during touchdown.
+3. **Touchdown Dust & Mars Entry Plasma (`ExpeditionEffects.tsx`)**:
+   - **Moon (`7.48..7.82`)**: Radial ballistic vacuum grain ejecta (`MoonPoints`) falling parabolically to ground.
+   - **Mars Entry (`13.12..13.52`)**: View-locked HDR additive ionization plasma streaks rushing past the windshield (`Linear`, `toneMapped={false}`).
+   - **Mars Touchdown (`13.48..13.88`)**: Radial Martian surface dust wave across Chryse Planitia.
+4. **Minimalist 1.8 m Scale Silhouette (`ScaleSilhouette.tsx`, `ExhibitStage3D.tsx`)**:
+   - Built one reusable extruded `1.80 m` neutral human silhouette mesh (zero spacesuit/backpack/flags/text) placed flush on local terrain right beside all 12 exhibits at calibrated mission-proportional scales (`castShadow` & `receiveShadow` enabled).
+5. **Read-Only Proximity Telemetry API for Sonnet (`components/journey/three/expeditionState.ts`)**:
+   - Exported `expeditionState`:
+     ```ts
+     export type ExpeditionPhase = "space" | "orbit" | "descent" | "touchdown" | "tracking" | "arrived";
+     export const expeditionState: {
+       phase: ExpeditionPhase;
+       targetSlug: string | null;
+       proximity: number; // [0, 1] (0 = far / departing, 1 = arrived at beat)
+     };
+     ```
+   - Updated every frame from `scrollState.current` via `updateExpeditionState(p)` (zero allocations, no invented distances/numbers).
+6. **Guards & verification**: Only `components/journey/three/**` and `docs/HANDOFF_ANTIGRAVITY.md` modified; zero 3D text/numbers; zero edits to `public/media/three/posters/`. `npx tsc --noEmit`, `npx eslint components/journey/three`, and `npx next build --webpack` pass. **WebGL screenshot capture & live FPS profiling did not run in sandbox.**
+
+**Files changed:**
+- `components/journey/three/expeditionState.ts`, `expeditionCamera.ts`, `ScaleSilhouette.tsx`, `ExpeditionEffects.tsx` (new)
+- `components/journey/three/CelestialWorlds.tsx`, `ExhibitStage3D.tsx`, `SpaceScene.tsx`
+- `docs/HANDOFF_ANTIGRAVITY.md`
