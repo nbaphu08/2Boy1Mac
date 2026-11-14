@@ -73,3 +73,41 @@ export const journey = {
     goTo: (name: string) => `Go to ${name}`,
   },
 } as const;
+
+// O-2 narration layer (Opus). One "audio-guide" line per beat, shown when the camera settles.
+// Every factual claim is sourced in docs/STORY.md (S# → docs/COPY.md Sources).
+export const narration: Record<string, string> = {
+  hero: "Every machine in this museum began as a promise made on this coast.",
+  enter: "Inside, a rocket taller than most buildings waits for the people it will carry.",
+  ignition: "1 April 2026, 6:35 p.m. Four astronauts are about to fly farther than anyone before them.",
+  "ascent-1": "8.8 million pounds of thrust lift the rocket off Launch Complex 39B.",
+  "ascent-2": "About ninety seconds in, the air pushes back harder than at any other moment.",
+  "ascent-3": "About two minutes up, the twin boosters fall away. Their work is done.",
+  "ascent-4": "Above 100 kilometers, the sky is black. Behind us, the whole blue planet.",
+  "deep-space": "The Moon averages 384,400 kilometers away. People last walked there in 1972.",
+  "moon-apollo-11": "July 1969. Two people walked here. One instrument they left behind still answers our lasers.",
+  "moon-surveyor-3": "A robot landed here in 1967. Two and a half years later, astronauts came to visit it.",
+  "moon-apollo-15-lrv": "The first car on another world, parked so Earth could watch its crew leave.",
+  "moon-apollo-17": "December 1972. The last footprints on the Moon — still visible from orbit.",
+  "moon-grail": "Twin spacecraft mapped the Moon's gravity, then flew into this mountain on purpose.",
+  transit: "Where we could not yet go ourselves, we sent machines. Mars is seven to ten months away.",
+  "mars-viking-1": "July 1976. The first American spacecraft on Mars photographed its own foot.",
+  "mars-pathfinder": "It bounced in on airbags. Its little rover was planned to work for a week; it lasted 83 days.",
+  "mars-spirit": "Stuck in soft sand at a place called Troy, Spirit kept doing science where it stood.",
+  "mars-opportunity": "Built for 90 days. It drove 45.16 kilometers over more than 14 years.",
+  "mars-phoenix": "It touched water ice and watched snow fall — then the polar winter came.",
+  "mars-insight": "It never moved. It listened, and felt 1,319 marsquakes.",
+  "mars-ingenuity": "Built to try five flights. It flew seventy-two.",
+  silence: "Every machine here once talked to Earth. These are the last times we heard them.",
+  beyond: "Some kept going. Voyager 1 is still talking to us from interstellar space.",
+  finale: "In April 2026, four astronauts flew around the Moon. The next crews will walk past what we left.",
+};
+
+export const transitTimeline = [
+  { year: 1976, name: "Viking 1" },
+  { year: 1997, name: "Pathfinder" },
+  { year: 2004, name: "Spirit & Opportunity" },
+  { year: 2008, name: "Phoenix" },
+  { year: 2018, name: "InSight" },
+  { year: 2021, name: "Ingenuity" },
+];
