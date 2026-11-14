@@ -101,5 +101,59 @@ See `GEMINI.md` §1–2 (architecture). Merged to `main` in commit a5633df.
 **Requests for Sonnet:**
 - None required — `openExhibit(slug)` click behavior preserved across all 7 Mars dioramas.
 
+## AG-2b — Mars Fixes + Remaining Moon Ascent Stage Fix — 14/11 — branch `ag/2b-fixes`
+**Done (all 4 items from `docs/antigravity/AG-2b.md`):**
+1. **Apollo 11 & 17 Ascent Stage 100% hidden (`ExhibitStage3D.tsx`)**: Multi-primitive meshes (`polySurfac.002`, `pCube2`, `group32 gr`, `group31 17/18`) in `SM-L-001_apollo_lunar_module.web.glb` had `mesh.position.y === 0` because `GLTFLoader` places their `translation` on the parent `THREE.Group`. `GlbExhibitMesh` now runs `copy.updateMatrixWorld(true)` and computes `new THREE.Box3().setFromObject(child)` in root space, hiding every mesh with `meshCenter.y > cutY` or `meshBox.max.y > cutY + 0.14` while keeping `<ClippedLmTopCap />` at `y = 0.765`.
+2. **Martian daytime butterscotch sky (`CelestialWorlds.tsx`, `ExhibitStage3D.tsx`)**: Added `<MarsDaytimeSkyDome />` (full-screen butterscotch/tan gradient `#C98659 -> #4A2618` on beats 14–20, darkening to `#7E361E -> #281009` on Opportunity's beat 17 dust storm), masked out background stars during `13.35 <= p <= 20.65`, and lowered the Mars spotlight cone opacity to `0.028` so it reads as museum light in Martian daylight.
+3. **Mars exhibit framing & InSight vs SEIS scale (`ExhibitStage3D.tsx`, `MarsModels.tsx`, `trajectory.ts`)**: Scaled InSight up to `targetSize = 3.85` and scaled `InSightSurfaceInstruments`'s SEIS dome down to `radius = 0.13..0.17 m` (`height = 0.13 m`) and HP³ mole to `height = 0.24 m` so the 6 m lander clearly dominates. Increased `mars-viking-1` (`3.3`), `mars-spirit`/`mars-opportunity` (`2.65`), `mars-ingenuity` (`2.45`), `PhoenixLanderModel` (`0.92`), and `PathfinderAndSojournerModel` (`1.18`), and moved `BEAT_POSES[14..20].camPos` ~30% closer so each Mars machine fills ~38–45% of the viewport height.
+4. **Craggy "Yogi" boulder (`MarsModels.tsx`)**: Replaced the smooth sphere on `SM-M-002` with a displaced `IcosahedronGeometry(0.56, 2)` (`flatShading`, ~1 m tall, two-tone wind-streak cap) next to Sojourner.
+
+**Files changed:**
+- `components/journey/three/ExhibitStage3D.tsx`, `CelestialWorlds.tsx`, `MarsModels.tsx`, `trajectory.ts`
+
+## AG-4 — Hall of Silence (21), Hall III "Beyond" (22), Finale (23) — 14/11 — branch `ag/4-endings`
+**Done:**
+1. **Beat 21 (`silence`) — `HallOfSilence3D` (`ExhibitStage3D.tsx`)**: Added a quiet memorial field of 12 luminous beacon points (one per Moon/Mars exhibit along a low platinum horizon arc at `[0, 533.8, -486]`). As the visitor scrolls across Beat 21 (`20.48 -> 21.18`), the 11 silent spacecraft points dim sequentially to faint embers while the **Apollo 11 reflector point (`moon-apollo-11`, `still-active`) stays brightly lit** (`#9DB8FF`) with a gentle upward laser return filament.
+2. **Beat 22 (`beyond`) — `BeyondSilhouettes3D` (`ExhibitStage3D.tsx`)**: Added a tall frosted-glass museum doorway (`meshPhysicalMaterial` translucent pane + brushed `#C7CDD8` platinum frame and 3 vertical mullion dividers) at `[0, 540.1, -522]`. Positioned the 4 spacecraft silhouettes (`SM-B-001`..`SM-B-004` in `#04060B` dark silhouette material + `#9DB8FF`/`#DCE6FF` cold rim lighting) evenly left→right (`x = [-5.25, -1.75, 1.75, 5.25]`) directly above the 4 DOM tiles near the bottom of the viewport. Added a blinking `#9DB8FF` "still talking" beacon on **Voyager 1 (`SM-B-004`, rightmost)**.
+3. **Beat 23 (`finale`) — Artemis Era Earthrise (`CelestialWorlds.tsx`)**: Enhanced `finaleRef` with grazing solar key lighting across a high-relief cratered lunar limb (`bumpScale = 0.62`) in the lower foreground while the luminous blue Earth (`emissiveMap` + `#7EB6FF` `AtmosphereRim`) smoothly rises above the lunar horizon (`22.2 -> 23.0`).
+
+**Files changed:**
+- `components/journey/three/ExhibitStage3D.tsx`, `CelestialWorlds.tsx`
+
+## AG-5 — Transitions (beats 6→7, 12→13→14, 22→23) — 14/11 — branch `ag/5-transitions`
+**Done:**
+1. **Beat `6→7` (`ascent-4` → `deep-space` → `moon-apollo-11`, `CelestialWorlds.tsx`)**: Replaced the hard visibility toggle on `earthRef` with continuous Trans-Lunar Injection recession (`tliRecede = smoothstep(5.85, 7.65, p)`), smoothly shrinking and receding Earth behind Orion while the TLI trajectory arc and 3D Moon fade in seamlessly.
+2. **Beat `12→13→14` (`moon-grail` → `transit` → `mars-viking-1`, `CelestialWorlds.tsx`)**: Added 7 orbital waypoint tick markers (`ringGeometry` + starlight core nodes) along `transitCurve` corresponding to the 7 Hall II Mars landings (`1976…2021`) plus a live traveling cruise pulse (`transitCruiseDotRef`) that glides along the transfer arc from the receding Moon into Mars approach.
+3. **Beat `22→23` (`beyond` → `finale`, `ExhibitStage3D.tsx`, `CelestialWorlds.tsx`)**: Smoothly dollies the camera forward through the frosted-glass Beyond doorway (`exitProgress = smoothstep(22.15, 22.82, p)`) as the Artemis Era Earthrise rises into view.
+4. **Shader & Material Pre-Warm (`MaterialPrewarmer` in `SpaceScene.tsx`)**: Calls `gl.compile(scene, camera)` on mount (`350 ms`) and after lazy GLB preload (`1800 ms`) to eliminate shader-compile stutter during fast scrolling.
+
+**Files changed:**
+- `components/journey/three/CelestialWorlds.tsx`, `ExhibitStage3D.tsx`, `SpaceScene.tsx`
+
+## AG-6 — Performance Tiers & S-6 Baseline Fixes — 14/11 — branch `ag/6-perf-tiers`
+**Done:**
+1. **Auto-detected 3 Performance Tiers (`perfTier.ts`)**: Auto-selects `high`, `medium`, or `low` from WebGL `UNMASKED_RENDERER_WEBGL`, `navigator.hardwareConcurrency`, viewport width, and a live 2-second FPS monitor (`updatePerfFpsMonitor`). Dynamically scales DPR cap (`[1, 2]` / `[1, 1.5]` / `[1, 1.25]`), star count (`1100` / `640` / `320`), pad deluge steam (`140` / `88` / `48`), ROFI sparks (`260` / `160` / `84`), pyro sparks (`120` / `76` / `42`), diorama dust motes (`46` / `28` / `14`), and lazy exhibit GLB mount window (`±3.2` / `±2.4` / `±1.8` beats).
+2. **S-6 Fix #1 — Removed all `THREE.Clock` usages**: Replaced every `state.clock.elapsedTime` / `clock.elapsedTime` across `SpaceScene.tsx`, `LaunchComplex.tsx`, `SLSRocket.tsx`, `ExhibitStage3D.tsx`, `CelestialWorlds.tsx`, `MoonDioramas.tsx`, `MarsDioramas.tsx`, and `MoonModels.tsx` with delta-accumulated `elapsedRef` timers.
+3. **S-6 Fix #2 — Eliminated incomplete-framebuffer / `readPixels` readback**: Deferred `configureAerospaceEnvironment` (`PMREMGenerator.fromScene`) until `gl.getContext().drawingBufferWidth > 0 && drawingBufferHeight > 0` via `requestAnimationFrame` and replaced `transmission` on the Beyond frosted doorway with standard transparent material so zero transmission framebuffer readbacks occur.
+4. **S-6 Fix #3 — Background tab pause (`0%` CPU)**: Added a `visibilitychange` listener in `SpaceScene.tsx` setting `<Canvas frameloop={isPageHidden ? "never" : "always"}>`.
+5. **S-6 Fix #4 — `reducedMotion` strict compliance**: Snaps `scrollState.current = scrollState.target; scrollState.velocity = 0;` immediately with zero camera micro-orbit, zero breathing/shake, and frozen particle drift.
+
+**Files changed:**
+- `components/journey/three/perfTier.ts` (new), `SpaceScene.tsx`, `SLSRocket.tsx`, `LaunchComplex.tsx`, `ExhibitStage3D.tsx`, `CelestialWorlds.tsx`, `MoonDioramas.tsx`, `MarsDioramas.tsx`, `MoonModels.tsx`
+
+## AG-7 — Poster Renders — 14/11 — branch `ag/7-posters`
+**Done:**
+1. **144 Still Poster Renders (`public/media/three/posters/<beatId|slug|catalogNo>-<w>x<h>.{avif,jpg}`)**: Generated clean still posters (no DOM UI) at **`1920×1080`** and **`1080×1350`** in both **`.avif`** and **`.jpg`** for all 24 beats (`hero`..`finale`, including the 12 exhibit `slug`s) plus all 12 `SM-*` catalogue IDs (`SM-L-001`..`SM-M-007`).
+2. **Deterministic `?poster=<beatId|slug>` Capture Mode (`SpaceScene.tsx`)**: Added query-param support (`?poster=<beatId|slug>`) that locks `scrollState.target` and `scrollState.current` to the requested beat, enables `preserveDrawingBuffer`, and elevates the `<Canvas>` above DOM overlays (`z-50`) so headless WebGL capture scripts can re-shoot any beat deterministically.
+
+**Files changed:**
+- `components/journey/three/SpaceScene.tsx`
+- `public/media/three/posters/*.{avif,jpg}` (144 poster files)
+
+
+
+
+
+
 
 

@@ -1,72 +1,92 @@
 "use client";
 
-import { Suspense, useMemo, useRef } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
+import { beats } from "@/content/beats";
 import { useMuseum } from "@/lib/store";
 import { scrollState, smoothstep } from "@/lib/scroll/progress";
 import { CelestialWorlds } from "./CelestialWorlds";
 import { ExhibitStage3D } from "./ExhibitStage3D";
 import { LaunchComplex } from "./LaunchComplex";
 import { SLSRocket } from "./SLSRocket";
+import { detectInitialPerfTier, updatePerfFpsMonitor, usePerfBudget } from "./perfTier";
 import { sampleTrajectory, type SampledTrajectory } from "./trajectory";
 
-/** Build a true HDR studio + orbital sky environment map for realistic metallic & Kapton reflections. */
+/**
+ * Build a true HDR studio + orbital sky environment map for realistic metallic & Kapton reflections.
+ * Deferred until the WebGL drawingBuffer has non-zero dimensions so no incomplete-framebuffer or
+ * glReadPixels GPU readback error ever fires during initial canvas layout (AG-6 S-6 #2).
+ */
 function configureAerospaceEnvironment(gl: THREE.WebGLRenderer, scene: THREE.Scene) {
   gl.localClippingEnabled = true;
 
-  const pmrem = new THREE.PMREMGenerator(gl);
-  pmrem.compileEquirectangularShader();
+  const applyEnv = () => {
+    const ctx = gl.getContext();
+    if (ctx.drawingBufferWidth <= 0 || ctx.drawingBufferHeight <= 0) {
+      window.requestAnimationFrame(applyEnv);
+      return;
+    }
 
-  const envScene = new THREE.Scene();
-  envScene.background = new THREE.Color("#060A14");
+    const pmrem = new THREE.PMREMGenerator(gl);
+    pmrem.compileEquirectangularShader();
 
-  // Upper orbital sky hemisphere
-  const skyDome = new THREE.Mesh(
-    new THREE.SphereGeometry(50, 24, 16),
-    new THREE.MeshBasicMaterial({ color: "#112042", side: THREE.BackSide }),
-  );
-  envScene.add(skyDome);
+    const envScene = new THREE.Scene();
+    envScene.background = new THREE.Color("#060A14");
 
-  // HDR Solar Key Reflector (float RGB > 1 for crisp metallic specular glints)
-  const sunCard = new THREE.Mesh(
-    new THREE.PlaneGeometry(26, 26),
-    new THREE.MeshBasicMaterial({ color: new THREE.Color(5.2, 5.5, 6.2), side: THREE.DoubleSide }),
-  );
-  sunCard.position.set(24, 28, 26);
-  sunCard.lookAt(0, 0, 0);
-  envScene.add(sunCard);
+    // Upper orbital sky hemisphere
+    const skyGeo = new THREE.SphereGeometry(50, 24, 16);
+    const skyMat = new THREE.MeshBasicMaterial({ color: "#112042", side: THREE.BackSide });
+    envScene.add(new THREE.Mesh(skyGeo, skyMat));
 
-  // Cool Earthshine / Starlight Rim Reflector
-  const rimCard = new THREE.Mesh(
-    new THREE.PlaneGeometry(36, 22),
-    new THREE.MeshBasicMaterial({ color: new THREE.Color(1.4, 2.1, 3.8), side: THREE.DoubleSide }),
-  );
-  rimCard.position.set(-28, 10, -20);
-  rimCard.lookAt(0, 0, 0);
-  envScene.add(rimCard);
+    // HDR Solar Key Reflector (float RGB > 1 for crisp metallic specular glints)
+    const sunGeo = new THREE.PlaneGeometry(26, 26);
+    const sunMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(5.2, 5.5, 6.2), side: THREE.DoubleSide });
+    const sunCard = new THREE.Mesh(sunGeo, sunMat);
+    sunCard.position.set(24, 28, 26);
+    sunCard.lookAt(0, 0, 0);
+    envScene.add(sunCard);
 
-  // Secondary Zenith Specular Strip
-  const topStrip = new THREE.Mesh(
-    new THREE.PlaneGeometry(40, 8),
-    new THREE.MeshBasicMaterial({ color: new THREE.Color(2.6, 3.0, 4.0), side: THREE.DoubleSide }),
-  );
-  topStrip.position.set(0, 38, 0);
-  topStrip.lookAt(0, 0, 0);
-  envScene.add(topStrip);
+    // Cool Earthshine / Starlight Rim Reflector
+    const rimGeo = new THREE.PlaneGeometry(36, 22);
+    const rimMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.4, 2.1, 3.8), side: THREE.DoubleSide });
+    const rimCard = new THREE.Mesh(rimGeo, rimMat);
+    rimCard.position.set(-28, 10, -20);
+    rimCard.lookAt(0, 0, 0);
+    envScene.add(rimCard);
 
-  // Warm Ignition / Pad Horizon Bounce
-  const padBounce = new THREE.Mesh(
-    new THREE.PlaneGeometry(32, 32),
-    new THREE.MeshBasicMaterial({ color: new THREE.Color(1.8, 0.95, 0.5), side: THREE.DoubleSide }),
-  );
-  padBounce.position.set(0, -32, 10);
-  padBounce.lookAt(0, 0, 0);
-  envScene.add(padBounce);
+    // Secondary Zenith Specular Strip
+    const topGeo = new THREE.PlaneGeometry(40, 8);
+    const topMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.6, 3.0, 4.0), side: THREE.DoubleSide });
+    const topStrip = new THREE.Mesh(topGeo, topMat);
+    topStrip.position.set(0, 38, 0);
+    topStrip.lookAt(0, 0, 0);
+    envScene.add(topStrip);
 
-  const envTarget = pmrem.fromScene(envScene, 0.035);
-  scene.environment = envTarget.texture;
-  pmrem.dispose();
+    // Warm Ignition / Pad Horizon Bounce
+    const padGeo = new THREE.PlaneGeometry(32, 32);
+    const padMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.8, 0.95, 0.5), side: THREE.DoubleSide });
+    const padBounce = new THREE.Mesh(padGeo, padMat);
+    padBounce.position.set(0, -32, 10);
+    padBounce.lookAt(0, 0, 0);
+    envScene.add(padBounce);
+
+    const envTarget = pmrem.fromScene(envScene, 0.035);
+    scene.environment = envTarget.texture;
+    pmrem.dispose();
+    skyGeo.dispose();
+    skyMat.dispose();
+    sunGeo.dispose();
+    sunMat.dispose();
+    rimGeo.dispose();
+    rimMat.dispose();
+    topGeo.dispose();
+    topMat.dispose();
+    padGeo.dispose();
+    padMat.dispose();
+  };
+
+  applyEnv();
 }
 
 function SceneChoreographer({
@@ -82,6 +102,7 @@ function SceneChoreographer({
   const rimRef = useRef<THREE.DirectionalLight>(null);
   const ambRef = useRef<THREE.AmbientLight>(null);
   const hemiRef = useRef<THREE.HemisphereLight>(null);
+  const elapsedRef = useRef(0);
 
   const traj = useMemo<SampledTrajectory>(
     () => ({
@@ -94,11 +115,15 @@ function SceneChoreographer({
     [],
   );
 
-  useFrame((state, delta) => {
+  useFrame((_, delta) => {
     const dt = Math.min(delta, 0.05);
+    updatePerfFpsMonitor(dt);
+
     if (reducedMotion) {
       scrollState.current = scrollState.target;
+      scrollState.velocity = 0;
     } else {
+      elapsedRef.current += dt;
       const prev = scrollState.current;
       scrollState.current = THREE.MathUtils.damp(prev, scrollState.target, 8.5, dt);
       scrollState.velocity = (scrollState.current - prev) / Math.max(dt, 0.001);
@@ -107,7 +132,7 @@ function SceneChoreographer({
     const p = scrollState.current;
     sampleTrajectory(p, traj);
 
-    const t = state.clock.elapsedTime;
+    const t = elapsedRef.current;
     // Living breathing drift + subtle acoustic rumble at liftoff (beat 2)
     const breathX = reducedMotion ? 0 : Math.sin(t * 0.42) * 0.12;
     const breathY = reducedMotion ? 0 : Math.cos(t * 0.31) * 0.09;
@@ -171,20 +196,78 @@ function SceneChoreographer({
   );
 }
 
+/**
+ * AG-5: Pre-compiles and warms up all scene materials & shaders once mounted and after
+ * lazy GLB preload so fast scrolling across transitions (6->7, 12->13->14, 22->23) has zero stutter.
+ */
+function MaterialPrewarmer() {
+  const gl = useThree((s) => s.gl);
+  const scene = useThree((s) => s.scene);
+  const camera = useThree((s) => s.camera);
+
+  useEffect(() => {
+    const t1 = window.setTimeout(() => {
+      gl.compile(scene, camera);
+    }, 350);
+    const t2 = window.setTimeout(() => {
+      gl.compile(scene, camera);
+    }, 1800);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
+  }, [gl, scene, camera]);
+
+  return null;
+}
+
 export default function SpaceScene() {
   const reducedMotion = useMuseum((s) => s.reducedMotion);
+  const budget = usePerfBudget();
   const rocketRef = useRef<THREE.Group | null>(null);
+  const [isPageHidden, setIsPageHidden] = useState(false);
+
+  // AG-6 S-6 #3: Pause the R3F render loop when document.hidden (0% CPU in background tab)
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      setIsPageHidden(document.hidden);
+    };
+    onVisibilityChange();
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, []);
+
+  // AG-7: Support ?poster=<beatId|slug> for clean still poster capture (locks beat & hides DOM UI)
+  const [posterBeat] = useState<number | null>(() => {
+    if (typeof window === "undefined") return null;
+    const params = new URLSearchParams(window.location.search);
+    const posterId = params.get("poster");
+    if (!posterId) return null;
+    const idx = beats.findIndex((b) => b.id === posterId || b.exhibitSlug === posterId);
+    return idx >= 0 ? idx : null;
+  });
+
+  useEffect(() => {
+    if (posterBeat !== null) {
+      scrollState.target = posterBeat;
+      scrollState.current = posterBeat;
+      scrollState.velocity = 0;
+    }
+  }, [posterBeat]);
 
   return (
-    <div aria-hidden className="fixed inset-0 z-0 bg-void">
+    <div aria-hidden className={`fixed inset-0 bg-void ${posterBeat !== null ? "z-50" : "z-0"}`}>
       <Canvas
-        dpr={reducedMotion ? 1 : [1, 1.85]}
+        frameloop={isPageHidden ? "never" : "always"}
+        dpr={reducedMotion ? 1 : budget.dpr}
         camera={{ fov: 44, near: 0.25, far: 2600, position: [14, 5.2, 23] }}
         onCreated={({ gl, scene }) => {
+          detectInitialPerfTier(gl);
           configureAerospaceEnvironment(gl, scene);
         }}
         gl={{
           antialias: true,
+          preserveDrawingBuffer: posterBeat !== null,
           powerPreference: "high-performance",
           toneMapping: THREE.ACESFilmicToneMapping,
           toneMappingExposure: 1.08,
@@ -197,6 +280,7 @@ export default function SpaceScene() {
           <LaunchComplex />
           <SLSRocket rocketRef={rocketRef} reducedMotion={reducedMotion} />
           <ExhibitStage3D reducedMotion={reducedMotion} />
+          <MaterialPrewarmer />
         </Suspense>
       </Canvas>
     </div>

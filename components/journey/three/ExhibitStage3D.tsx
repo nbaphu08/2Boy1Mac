@@ -13,6 +13,7 @@ import { scrollState, smoothstep } from "@/lib/scroll/progress";
 import { EXHIBIT_PLINTH_ANCHORS } from "./trajectory";
 import { HallOneLunarDiorama } from "./MoonDioramas";
 import { HallTwoMarsDiorama } from "./MarsDioramas";
+import { usePerfBudget } from "./perfTier";
 
 const PLINTH_SURFACE_Y = 0.22;
 
@@ -35,16 +36,39 @@ function GlbExhibitMesh({
     box.getSize(size);
     box.getCenter(center);
     const maxDim = Math.max(size.x, size.y, size.z, 0.001);
-    const targetSize = isApolloLm ? 2.8 : slug === "mars-ingenuity" ? 1.85 : 2.35;
+    const targetSize = isApolloLm
+      ? 2.8
+      : slug === "mars-insight"
+        ? 3.85
+        : slug === "mars-viking-1"
+          ? 3.3
+          : slug === "mars-spirit" || slug === "mars-opportunity"
+            ? 2.65
+            : slug === "mars-ingenuity"
+              ? 2.45
+              : 2.4;
     const s = targetSize / maxDim;
 
     if (isApolloLm) {
-      // In SM-L-001_apollo_lunar_module.web.glb, all Descent Stage meshes sit at y <= 1.85
-      // and all Ascent Stage meshes sit at y >= 2.14. Hide the Ascent Stage meshes cleanly
-      // at the node level so no jagged cross-section triangles remain (AG-1b #4).
+      // Check bounding box in root space after updateMatrixWorld so multi-primitive Ascent Stage
+      // groups (where GLTFLoader puts translation on the parent Group and mesh.position.y === 0)
+      // are 100% hidden, leaving only the gold octagonal Descent Stage (AG-2b #1).
+      copy.updateMatrixWorld(true);
+      const meshBox = new THREE.Box3();
+      const meshCenter = new THREE.Vector3();
+      const cutY = box.min.y + (box.max.y - box.min.y) * 0.37;
       copy.traverse((child) => {
-        if ((child as THREE.Mesh).isMesh && child.position.y > 1.85) {
-          child.visible = false;
+        if ((child as THREE.Mesh).isMesh) {
+          meshBox.setFromObject(child);
+          meshBox.getCenter(meshCenter);
+          if (
+            meshCenter.y > cutY ||
+            meshBox.max.y > cutY + 0.14 ||
+            child.position.y > 1.85 ||
+            (child.parent && child.parent.position.y > 1.85)
+          ) {
+            child.visible = false;
+          }
         }
       });
     }
@@ -144,11 +168,15 @@ function SingleExhibitPlinth({
   const anchor = EXHIBIT_PLINTH_ANCHORS[exhibit.slug];
   const openExhibit = useMuseum((s) => s.openExhibit);
   const activeExhibit = useMuseum((s) => s.activeExhibit);
+  const budget = usePerfBudget();
   const spinRef = useRef<THREE.Group>(null);
   const spotRef = useRef<THREE.SpotLight>(null);
   const coneRef = useRef<THREE.Mesh>(null);
   const rootRef = useRef<THREE.Group>(null);
+  const elapsedRef = useRef(0);
   const [hovered, setHovered] = useState(false);
+  // AG-6: Lazy-load / mount heavy exhibit GLBs only when within ±budget.glbMountWindow beats
+  const [inGlbRange, setInGlbRange] = useState(false);
 
   const isApolloLm = exhibit.catalogNo === "SM-L-001" || exhibit.catalogNo === "SM-L-004";
 
@@ -161,9 +189,16 @@ function SingleExhibitPlinth({
 
   const isMoon = anchor?.planet === "moon";
 
-  useFrame((state) => {
+  useFrame((_, delta) => {
     const p = scrollState.current;
     const dist = Math.abs(p - beatIndex);
+    const shouldMountGlb = dist <= budget.glbMountWindow;
+    if (shouldMountGlb && !inGlbRange) {
+      setInGlbRange(true);
+    } else if (!shouldMountGlb && inGlbRange && budget.tier === "low" && dist > budget.glbMountWindow + 0.8) {
+      setInGlbRange(false);
+    }
+
     const vis = 1 - smoothstep(0.42, 0.78, dist);
     if (!rootRef.current) return;
     rootRef.current.visible = vis > 0.01;
@@ -172,8 +207,9 @@ function SingleExhibitPlinth({
     rootRef.current.scale.setScalar(0.76 + 0.24 * vis);
 
     if (spinRef.current && !reducedMotion) {
+      elapsedRef.current += Math.min(delta, 0.05);
       // Subtle diorama presentation sway so mountain/plateau backdrops remain oriented toward camera
-      spinRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.28 + beatIndex) * 0.08;
+      spinRef.current.rotation.y = Math.sin(elapsedRef.current * 0.28 + beatIndex) * 0.08;
     }
 
     const boost = activeExhibit === exhibit.slug ? 1.45 : hovered ? 1.22 : 1.0;
@@ -182,7 +218,7 @@ function SingleExhibitPlinth({
     }
     if (coneRef.current) {
       const mat = coneRef.current.material as THREE.MeshBasicMaterial;
-      mat.opacity = (isMoon ? 0.065 : 0.06) * vis * boost;
+      mat.opacity = (isMoon ? 0.065 : 0.028) * vis * boost;
     }
   });
 
@@ -234,7 +270,7 @@ function SingleExhibitPlinth({
       <group ref={spinRef}>
         {isMoon ? (
           <HallOneLunarDiorama slug={exhibit.slug} reducedMotion={reducedMotion}>
-            {exhibit.media.model ? (
+            {exhibit.media.model && inGlbRange ? (
               <Suspense fallback={<PlinthFallback />}>
                 <GlbExhibitMesh url={exhibit.media.model} slug={exhibit.slug} isApolloLm={isApolloLm} />
               </Suspense>
@@ -242,7 +278,7 @@ function SingleExhibitPlinth({
           </HallOneLunarDiorama>
         ) : (
           <HallTwoMarsDiorama slug={exhibit.slug} reducedMotion={reducedMotion}>
-            {exhibit.media.model ? (
+            {exhibit.media.model && inGlbRange ? (
               <Suspense fallback={<PlinthFallback />}>
                 <GlbExhibitMesh url={exhibit.media.model} slug={exhibit.slug} isApolloLm={false} />
               </Suspense>
@@ -254,18 +290,213 @@ function SingleExhibitPlinth({
   );
 }
 
-function SilhouetteModel({ url, x, reducedMotion }: { url: string; x: number; reducedMotion: boolean }) {
+/**
+ * AG-4 · Beat 21 (`silence`) — The Hall of Silence 3D Memorial Field.
+ * Camera pulls back from Mars into tranquil dark space; a low horizontal memorial arc of 12 light points
+ * (one per Moon/Mars exhibit) dims one by one as the user scrolls, except the Apollo 11 reflector point
+ * (`moon-apollo-11`, `still-active`), which stays brightly lit (`#9DB8FF` + laser pulse).
+ */
+function HallOfSilence3D({
+  exhibitBeats,
+  reducedMotion,
+}: {
+  exhibitBeats: { exhibit: Exhibit; index: number }[];
+  reducedMotion: boolean;
+}) {
+  const groupRef = useRef<THREE.Group>(null);
+  const coreRefs = useRef<(THREE.Mesh | null)[]>([]);
+  const haloRefs = useRef<(THREE.Mesh | null)[]>([]);
+  const stemRefs = useRef<(THREE.Mesh | null)[]>([]);
+  const activeBeamRef = useRef<THREE.Mesh>(null);
+  const elapsedRef = useRef(0);
+
+  const activeColor = useMemo(() => new THREE.Color("#9DB8FF"), []);
+  const warmAmber = useMemo(() => new THREE.Color("#DCE6FF"), []);
+  const dimmedEmber = useMemo(() => new THREE.Color("#283248"), []);
+
+  // Arrange 12 memorial beacons along a gentle horizontal arc in the upper half of the frame
+  // so they glow serenely above/behind the Hall of Silence wall overlay.
+  const beacons = useMemo(() => {
+    const count = exhibitBeats.length;
+    return exhibitBeats.map(({ exhibit }, i) => {
+      const u = count > 1 ? i / (count - 1) - 0.5 : 0; // [-0.5, 0.5]
+      const x = u * 26.5;
+      const z = -Math.cos(u * Math.PI * 0.85) * 4.8;
+      const y = Math.cos(u * Math.PI) * 0.85 + (exhibit.status === "still-active" ? 0.45 : 0);
+      return {
+        slug: exhibit.slug,
+        stillActive: exhibit.status === "still-active",
+        order: i,
+        pos: [x, y, z] as [number, number, number],
+      };
+    });
+  }, [exhibitBeats]);
+
+  useFrame((_, delta) => {
+    if (!groupRef.current) return;
+    const p = scrollState.current;
+    const vis = smoothstep(20.15, 20.6, p) * (1 - smoothstep(21.45, 21.88, p));
+    groupRef.current.visible = vis > 0.01;
+    if (!groupRef.current.visible) return;
+
+    if (!reducedMotion) {
+      elapsedRef.current += delta;
+      groupRef.current.position.y = 533.8 + Math.sin(elapsedRef.current * 0.35) * 0.18;
+    } else {
+      groupRef.current.position.y = 533.8;
+    }
+
+    // Dimming progress across Beat 21: silent machines dim one by one as p moves from 20.48 -> 21.18
+    const dimProgress = reducedMotion ? 1 : smoothstep(20.48, 21.18, p);
+    const total = beacons.length;
+
+    for (let i = 0; i < total; i++) {
+      const b = beacons[i];
+      const core = coreRefs.current[i];
+      const halo = haloRefs.current[i];
+      const stem = stemRefs.current[i];
+      if (!core || !halo || !stem) continue;
+
+      const coreMat = core.material as THREE.MeshBasicMaterial;
+      const haloMat = halo.material as THREE.MeshBasicMaterial;
+      const stemMat = stem.material as THREE.MeshBasicMaterial;
+
+      if (b.stillActive) {
+        // Apollo 11 LRRR stays brightly lit (#9DB8FF) and pulses gently
+        const pulse = reducedMotion ? 1 : 0.88 + 0.12 * Math.sin(elapsedRef.current * 2.6);
+        coreMat.color.copy(activeColor);
+        coreMat.opacity = vis;
+        haloMat.color.copy(activeColor);
+        haloMat.opacity = vis * 0.52 * pulse;
+        stemMat.color.copy(activeColor);
+        stemMat.opacity = vis * 0.42;
+        core.scale.setScalar(1.35 * pulse);
+        halo.scale.setScalar(1.55 * pulse);
+      } else {
+        // Each silent machine dims sequentially
+        const itemStart = (i / total) * 0.72;
+        const itemDim = smoothstep(itemStart, itemStart + 0.26, dimProgress);
+        const stayLit = 1 - itemDim;
+        coreMat.color.copy(warmAmber).lerp(dimmedEmber, itemDim);
+        coreMat.opacity = vis * (0.16 + 0.78 * stayLit);
+        haloMat.color.copy(warmAmber).lerp(dimmedEmber, itemDim);
+        haloMat.opacity = vis * (0.04 + 0.28 * stayLit);
+        stemMat.opacity = vis * (0.05 + 0.18 * stayLit);
+        const sc = 0.65 + 0.35 * stayLit;
+        core.scale.setScalar(sc);
+        halo.scale.setScalar(sc);
+      }
+    }
+
+    if (activeBeamRef.current) {
+      const mat = activeBeamRef.current.material as THREE.MeshBasicMaterial;
+      const pulse = reducedMotion ? 0.38 : 0.32 + 0.12 * Math.sin(elapsedRef.current * 2.6);
+      mat.opacity = vis * pulse;
+    }
+  });
+
+  return (
+    <group ref={groupRef} position={[0, 533.8, -486]} visible={false}>
+      {/* Subtle platinum horizon memorial baseline */}
+      <mesh position={[0, -1.65, -2.2]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.012, 0.012, 30, 8]} />
+        <meshBasicMaterial color="#C7CDD8" transparent opacity={0.18} />
+      </mesh>
+
+      {beacons.map((b, i) => (
+        <group key={b.slug} position={b.pos}>
+          {/* Vertical memorial light stem down to horizon bar */}
+          <mesh
+            ref={(el) => {
+              stemRefs.current[i] = el;
+            }}
+            position={[0, -0.82, 0]}
+          >
+            <cylinderGeometry args={[0.014, 0.004, 1.64, 8]} />
+            <meshBasicMaterial
+              color={b.stillActive ? "#9DB8FF" : "#DCE6FF"}
+              transparent
+              opacity={0.25}
+              depthWrite={false}
+            />
+          </mesh>
+
+          {/* Beacon core sphere */}
+          <mesh
+            ref={(el) => {
+              coreRefs.current[i] = el;
+            }}
+          >
+            <sphereGeometry args={[b.stillActive ? 0.16 : 0.11, 16, 12]} />
+            <meshBasicMaterial
+              color={b.stillActive ? "#9DB8FF" : "#DCE6FF"}
+              transparent
+              opacity={0.95}
+              toneMapped={false}
+            />
+          </mesh>
+
+          {/* Soft outer starlight halo */}
+          <mesh
+            ref={(el) => {
+              haloRefs.current[i] = el;
+            }}
+          >
+            <sphereGeometry args={[b.stillActive ? 0.48 : 0.3, 16, 12]} />
+            <meshBasicMaterial
+              color={b.stillActive ? "#9DB8FF" : "#DCE6FF"}
+              transparent
+              opacity={0.35}
+              depthWrite={false}
+              blending={THREE.AdditiveBlending}
+            />
+          </mesh>
+
+          {/* Apollo 11 Reflector ("still answering") upward starlight/laser return filament */}
+          {b.stillActive ? (
+            <mesh ref={activeBeamRef} position={[0, 2.6, 0]}>
+              <cylinderGeometry args={[0.01, 0.045, 5.2, 10, 1, true]} />
+              <meshBasicMaterial
+                color="#9DB8FF"
+                transparent
+                opacity={0.38}
+                depthWrite={false}
+                blending={THREE.AdditiveBlending}
+              />
+            </mesh>
+          ) : null}
+        </group>
+      ))}
+    </group>
+  );
+}
+
+function SilhouetteModel({
+  url,
+  x,
+  isVoyager,
+  reducedMotion,
+}: {
+  url: string;
+  x: number;
+  isVoyager: boolean;
+  reducedMotion: boolean;
+}) {
   const { scene } = useGLTF(url, false, true);
   const spinRef = useRef<THREE.Group>(null);
+  const beaconCoreRef = useRef<THREE.Mesh>(null);
+  const beaconHaloRef = useRef<THREE.Mesh>(null);
+  const elapsedRef = useRef(0);
 
   const { cloned, scale, offset } = useMemo(() => {
     const copy = scene.clone(true);
+    // Deep unlit/dark silhouette material with cold rim specular response (AG-4 #22)
     const darkMat = new THREE.MeshStandardMaterial({
-      color: "#090D16",
-      emissive: "#162442",
-      emissiveIntensity: 0.35,
-      roughness: 0.4,
-      metalness: 0.75,
+      color: "#04060B",
+      emissive: "#0D172B",
+      emissiveIntensity: 0.28,
+      roughness: 0.26,
+      metalness: 0.88,
     });
     copy.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
@@ -278,7 +509,7 @@ function SilhouetteModel({ url, x, reducedMotion }: { url: string; x: number; re
     box.getSize(size);
     box.getCenter(center);
     const maxDim = Math.max(size.x, size.y, size.z, 0.001);
-    const s = 2.6 / maxDim;
+    const s = 2.45 / maxDim;
     return {
       cloned: copy,
       scale: s,
@@ -287,35 +518,155 @@ function SilhouetteModel({ url, x, reducedMotion }: { url: string; x: number; re
   }, [scene]);
 
   useFrame((_, delta) => {
-    if (spinRef.current && !reducedMotion) {
-      spinRef.current.rotation.y += delta * 0.16;
+    if (!reducedMotion) {
+      elapsedRef.current += delta;
+      if (spinRef.current) {
+        spinRef.current.rotation.y += delta * 0.14;
+      }
+    }
+    // Voyager 1 (rightmost, SM-B-004) blinking "still talking" deep-space telemetry light
+    if (isVoyager && beaconCoreRef.current && beaconHaloRef.current) {
+      const blink = reducedMotion
+        ? 0.9
+        : Math.pow(0.5 + 0.5 * Math.sin(elapsedRef.current * 3.4), 3.0);
+      (beaconCoreRef.current.material as THREE.MeshBasicMaterial).opacity = 0.25 + 0.75 * blink;
+      (beaconHaloRef.current.material as THREE.MeshBasicMaterial).opacity = 0.08 + 0.48 * blink;
+      const sc = 0.85 + 0.45 * blink;
+      beaconHaloRef.current.scale.setScalar(sc);
     }
   });
 
   return (
-    <group ref={spinRef} position={[x, 0, 0]}>
-      <primitive object={cloned} scale={scale} position={offset} />
+    <group position={[x, 0, 0]}>
+      <group ref={spinRef}>
+        <primitive object={cloned} scale={scale} position={offset} />
+      </group>
+
+      {/* Thin cold rim-light ring halo behind each silhouette so its dark profile pops crisply */}
+      <mesh position={[0, 0, -0.55]}>
+        <ringGeometry args={[1.08, 1.13, 36]} />
+        <meshBasicMaterial color="#9DB8FF" transparent opacity={0.22} side={THREE.DoubleSide} />
+      </mesh>
+
+      {/* Voyager 1 (SM-B-004, rightmost) faint blinking "still talking" light */}
+      {isVoyager ? (
+        <group position={[0.18, 0.42, 0.55]}>
+          <mesh ref={beaconCoreRef}>
+            <sphereGeometry args={[0.065, 14, 12]} />
+            <meshBasicMaterial color="#9DB8FF" transparent opacity={0.95} toneMapped={false} />
+          </mesh>
+          <mesh ref={beaconHaloRef}>
+            <sphereGeometry args={[0.24, 14, 12]} />
+            <meshBasicMaterial
+              color="#9DB8FF"
+              transparent
+              opacity={0.4}
+              depthWrite={false}
+              blending={THREE.AdditiveBlending}
+            />
+          </mesh>
+        </group>
+      ) : null}
     </group>
   );
 }
 
+/**
+ * AG-4 · Beat 22 (`beyond`) — Hall III "Beyond" Frosted-Glass Doorway & 4 Silhouettes.
+ * - Tall architectural frosted-glass doorway framed in brushed platinum (`#C7CDD8`)
+ * - 4 spacecraft silhouettes (`SM-B-001`..`SM-B-004`) lined up horizontally in catalogue order
+ *   directly above the 4 DOM tiles near the bottom of the viewport
+ * - Voyager 1 (rightmost) features a blinking "still talking" light
+ */
 function BeyondSilhouettes3D({ reducedMotion }: { reducedMotion: boolean }) {
   const groupRef = useRef<THREE.Group>(null);
 
   useFrame(() => {
     if (!groupRef.current) return;
     const p = scrollState.current;
-    groupRef.current.visible = p > 21.1 && p < 22.9;
+    // AG-5 (22->23): Smoothly reveal from Hall of Silence and glide/part into Finale Earthrise
+    const enterVis = smoothstep(21.15, 21.65, p);
+    const exitProgress = smoothstep(22.15, 22.82, p);
+    const vis = enterVis * (1 - exitProgress);
+    groupRef.current.visible = vis > 0.01;
+    if (groupRef.current.visible) {
+      groupRef.current.position.set(0, 540.1 - exitProgress * 2.8, -522 + exitProgress * 14);
+      groupRef.current.scale.setScalar(0.92 + 0.08 * enterVis + exitProgress * 0.28);
+    }
   });
 
-  const offsets = [-6.3, -2.1, 2.1, 6.3];
+  // Evenly spaced left->right in catalogue order SM-B-001..SM-B-004 directly above the 4 DOM tiles
+  const offsets = [-5.25, -1.75, 1.75, 5.25];
 
   return (
-    <group ref={groupRef} position={[0, 538.2, -522]} visible={false}>
-      <spotLight position={[0, 6, -4]} angle={0.9} penumbra={0.9} intensity={160} distance={28} color="#9DB8FF" />
+    <group ref={groupRef} position={[0, 540.1, -522]} visible={false}>
+      {/* Cold back-rim and key spotlights to carve thin #9DB8FF / #DCE6FF edges around the black silhouettes */}
+      <spotLight position={[0, 6.5, -5.5]} angle={1.05} penumbra={0.85} intensity={240} distance={32} color="#9DB8FF" />
+      <directionalLight position={[-6, 4, -6]} intensity={2.4} color="#DCE6FF" />
+      <directionalLight position={[6, 4, -6]} intensity={2.4} color="#9DB8FF" />
+
+      {/* ─── TALL FROSTED-GLASS MUSEUM DOORWAY (Platinum Frame #C7CDD8) ─── */}
+      <group position={[0, -0.35, -1.35]}>
+        {/* Frosted translucent glass portal pane (uses standard transparent material so zero transmission framebuffer readbacks occur) */}
+        <mesh position={[0, 0, -0.08]}>
+          <planeGeometry args={[15.2, 6.4]} />
+          <meshStandardMaterial
+            color="#0D1526"
+            emissive="#162440"
+            emissiveIntensity={0.32}
+            roughness={0.55}
+            metalness={0.22}
+            transparent
+            opacity={0.56}
+          />
+        </mesh>
+
+        {/* Outer Brushed Platinum Doorway Frame (#C7CDD8) — Left, Right, Top Lintel, Bottom Threshold */}
+        <mesh position={[-7.68, 0, 0]}>
+          <boxGeometry args={[0.18, 6.58, 0.22]} />
+          <meshStandardMaterial color="#C7CDD8" roughness={0.32} metalness={0.82} />
+        </mesh>
+        <mesh position={[7.68, 0, 0]}>
+          <boxGeometry args={[0.18, 6.58, 0.22]} />
+          <meshStandardMaterial color="#C7CDD8" roughness={0.32} metalness={0.82} />
+        </mesh>
+        <mesh position={[0, 3.22, 0]}>
+          <boxGeometry args={[15.54, 0.18, 0.24]} />
+          <meshStandardMaterial color="#C7CDD8" roughness={0.32} metalness={0.82} />
+        </mesh>
+        <mesh position={[0, -3.22, 0]}>
+          <boxGeometry args={[15.54, 0.14, 0.28]} />
+          <meshStandardMaterial color="#C7CDD8" roughness={0.35} metalness={0.78} />
+        </mesh>
+
+        {/* 3 Vertical Platinum Mullion Dividers separating the 4 silhouette bays */}
+        {[-3.5, 0, 3.5].map((mx) => (
+          <mesh key={mx} position={[mx, 0, -0.04]}>
+            <boxGeometry args={[0.045, 6.32, 0.08]} />
+            <meshStandardMaterial color="#C7CDD8" roughness={0.38} metalness={0.75} transparent opacity={0.55} />
+          </mesh>
+        ))}
+
+        {/* Inner Starlight Edge Glow Strip around the doorway perimeter */}
+        <mesh position={[0, 3.11, 0.06]}>
+          <boxGeometry args={[15.16, 0.025, 0.02]} />
+          <meshBasicMaterial color="#9DB8FF" transparent opacity={0.65} />
+        </mesh>
+        <mesh position={[0, -3.13, 0.06]}>
+          <boxGeometry args={[15.16, 0.025, 0.02]} />
+          <meshBasicMaterial color="#9DB8FF" transparent opacity={0.45} />
+        </mesh>
+      </group>
+
+      {/* ─── 4 SPACECRAFT SILHOUETTES (SM-B-001..SM-B-004) ─── */}
       {teaserItems.map((item, idx) => (
         <Suspense key={item.catalogNo} fallback={null}>
-          <SilhouetteModel url={item.model} x={offsets[idx]} reducedMotion={reducedMotion} />
+          <SilhouetteModel
+            url={item.model}
+            x={offsets[idx]}
+            isVoyager={item.catalogNo === "SM-B-004"}
+            reducedMotion={reducedMotion}
+          />
         </Suspense>
       ))}
     </group>
@@ -323,7 +674,7 @@ function BeyondSilhouettes3D({ reducedMotion }: { reducedMotion: boolean }) {
 }
 
 /**
- * Mounts all 12 Moon + Mars exhibit plinths + Hall III silhouettes.
+ * Mounts all 12 Moon + Mars exhibit plinths + Hall of Silence + Hall III silhouettes.
  * Individual plinths cull themselves smoothly when out of range, and preloading starts once in space.
  */
 export function ExhibitStage3D({ reducedMotion }: { reducedMotion: boolean }) {
@@ -358,6 +709,7 @@ export function ExhibitStage3D({ reducedMotion }: { reducedMotion: boolean }) {
           reducedMotion={reducedMotion}
         />
       ))}
+      <HallOfSilence3D exhibitBeats={exhibitBeats} reducedMotion={reducedMotion} />
       <BeyondSilhouettes3D reducedMotion={reducedMotion} />
     </>
   );

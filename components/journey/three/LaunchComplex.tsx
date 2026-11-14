@@ -27,6 +27,7 @@ export function LaunchComplex() {
   const icpsArmRef = useRef<THREE.Group>(null);
   const intertankArmRef = useRef<THREE.Group>(null);
   const beaconRefs = useRef<(THREE.Mesh | null)[]>([]);
+  const elapsedRef = useRef(0);
 
   // Procedural steel deck plate bump texture
   const deckBump = useMemo(() => {
@@ -56,12 +57,13 @@ export function LaunchComplex() {
     return tex;
   }, []);
 
-  useFrame(({ clock }) => {
+  useFrame((_, delta) => {
     const p = scrollState.current;
     if (groupRef.current) {
       groupRef.current.visible = p < 4.4;
     }
     if (p >= 4.4) return;
+    elapsedRef.current += Math.min(delta, 0.05);
 
     // Swing arms retract smoothly before T-0 (progress 1.4 -> 1.92)
     const retract = smoothstep(1.4, 1.92, p);
@@ -71,7 +73,7 @@ export function LaunchComplex() {
     if (intertankArmRef.current) intertankArmRef.current.rotation.y = retract * 0.88;
 
     // Subtle aviation beacon pulse on lightning towers
-    const pulse = 0.55 + 0.45 * Math.sin(clock.elapsedTime * 3.2);
+    const pulse = 0.55 + 0.45 * Math.sin(elapsedRef.current * 3.2);
     beaconRefs.current.forEach((b) => {
       if (b) {
         const mat = b.material as THREE.MeshBasicMaterial;

@@ -162,6 +162,32 @@ export function PathfinderAndSojournerModel({ baseY }: { baseY: number }) {
     return extrude;
   }, []);
 
+  // Craggy displaced "Yogi" boulder geometry (Ares Vallis flood boulder ~1 m tall, AG-2b #4)
+  const yogiRockGeo = useMemo(() => {
+    const geo = new THREE.IcosahedronGeometry(0.56, 2);
+    const pos = geo.attributes.position as THREE.BufferAttribute;
+    for (let i = 0; i < pos.count; i++) {
+      let x = pos.getX(i);
+      let y = pos.getY(i);
+      let z = pos.getZ(i);
+      // Flatten base slightly and create craggy angular flood-boulder facets + overhanging nose
+      const n1 = Math.sin(x * 5.2 + z * 3.8) * 0.12 + Math.cos(y * 6.4 - x * 4.1) * 0.09;
+      const n2 = Math.sin(z * 7.5 - y * 4.7) * 0.07;
+      const radial = 1 + n1 + n2;
+      x *= radial * 1.18;
+      z *= radial * 0.96;
+      y = y < 0 ? y * 0.45 : y * radial * 0.95;
+      // Slight overhang toward Sojourner (-x/-z side)
+      if (y > 0.12) {
+        x -= 0.08 * y;
+        z -= 0.05 * y;
+      }
+      pos.setXYZ(i, x, y, z);
+    }
+    geo.computeVertexNormals();
+    return geo;
+  }, []);
+
   // Deflated airbag lobe clusters around the 3 petal edges
   const airbagLobes = useMemo(() => {
     const lobes: { pos: [number, number, number]; scale: [number, number, number]; rot: [number, number, number] }[] = [];
@@ -180,7 +206,7 @@ export function PathfinderAndSojournerModel({ baseY }: { baseY: number }) {
   }, []);
 
   return (
-    <group position={[0, baseY, 0]}>
+    <group position={[0, baseY, 0]} scale={1.18}>
       {/* ─── MARS PATHFINDER TETRAHEDRAL LANDER (shifted slightly back-left to frame Sojourner + Yogi in foreground) ─── */}
       <group position={[-0.45, 0.04, -0.22]} rotation={[0, 0.25, 0]}>
         {/* Deflated Vectran airbag lobes bunched around the opened petals (PIA00614) */}
@@ -292,16 +318,19 @@ export function PathfinderAndSojournerModel({ baseY }: { baseY: number }) {
         <meshBasicMaterial map={trackTex} transparent opacity={0.85} depthWrite={false} />
       </mesh>
 
-      {/* ─── "YOGI" BOULDER (Large dark reddish-grey Ares Vallis flood boulder inspected by Sojourner in PIA00632) ─── */}
-      <group position={[1.38, 0.26, 1.05]} rotation={[0.18, 0.65, -0.12]}>
-        <mesh scale={[0.58, 0.42, 0.48]}>
-          <dodecahedronGeometry args={[1, 1]} />
-          <meshStandardMaterial color="#5E3A2C" roughness={0.94} metalness={0.05} />
+      {/* ─── "YOGI" BOULDER (Craggy ~1 m tall dark reddish-grey Ares Vallis flood boulder inspected by Sojourner in PIA00632, AG-2b #4) ─── */}
+      <group position={[1.36, 0.22, 1.02]} rotation={[0.06, 0.55, -0.05]}>
+        <mesh geometry={yogiRockGeo} scale={[1.05, 0.96, 0.94]}>
+          <meshStandardMaterial color="#5E3A2C" roughness={0.95} metalness={0.04} flatShading />
+        </mesh>
+        {/* Dusty lighter ochre wind-streak cap on upper Windward face of Yogi */}
+        <mesh geometry={yogiRockGeo} position={[0.02, 0.03, -0.01]} scale={[0.98, 0.92, 0.89]}>
+          <meshStandardMaterial color="#8A5238" roughness={0.96} metalness={0.02} flatShading />
         </mesh>
       </group>
 
       {/* ─── SOJOURNER MICROROVER (65 × 48 × 30 cm real proportions, 6-wheel rocker-bogie, flat solar top, whip antenna) ─── */}
-      <group position={[0.92, 0.02, 0.92]} rotation={[0, 0.88, 0]}>
+      <group position={[0.88, 0.02, 0.90]} rotation={[0, 0.88, 0]} scale={1.14}>
         {/* Gold Kapton Warm Electronics Box (WEB) body */}
         <mesh position={[0, 0.18, 0]}>
           <boxGeometry args={[0.36, 0.12, 0.52]} />
@@ -357,7 +386,7 @@ export function PathfinderAndSojournerModel({ baseY }: { baseY: number }) {
  * - 2.35 m articulated Robotic Arm (RA) with scoop resting over an excavated water-ice trench
  * - Surface Stereo Imager (SSI) mast camera + Meteorology (MET) mast
  */
-export function PhoenixLanderModel({ baseY, scale = 0.72 }: { baseY: number; scale?: number }) {
+export function PhoenixLanderModel({ baseY, scale = 0.92 }: { baseY: number; scale?: number }) {
   const decagonalTex = useMemo(() => getPhoenixDecagonalSolarTexture(), []);
 
   return (
@@ -521,48 +550,48 @@ export function Viking1SiteProps({ baseY }: { baseY: number }) {
 export function InSightSurfaceInstruments({ baseY }: { baseY: number }) {
   return (
     <group position={[0, baseY, 0]}>
-      {/* 1. SEIS Wind and Thermal Shield (WTS) dome in front-left foreground */}
-      <group position={[-0.48, 0, 1.38]}>
+      {/* 1. SEIS Wind and Thermal Shield (WTS) dome in front-left foreground (properly scaled smaller than the 6 m InSight lander, AG-2b #3) */}
+      <group position={[-0.42, 0, 1.18]}>
         {/* Hexagonal-skirted white/dusty thermal shield dome */}
-        <mesh position={[0, 0.14, 0]}>
-          <cylinderGeometry args={[0.28, 0.36, 0.24, 12]} />
+        <mesh position={[0, 0.075, 0]}>
+          <cylinderGeometry args={[0.13, 0.17, 0.13, 12]} />
           <meshStandardMaterial color="#D4B89E" roughness={0.58} metalness={0.28} />
         </mesh>
         {/* Gold Kapton chainmail thermal apron around base */}
-        <mesh position={[0, 0.025, 0]}>
-          <cylinderGeometry args={[0.36, 0.39, 0.05, 12]} />
+        <mesh position={[0, 0.015, 0]}>
+          <cylinderGeometry args={[0.17, 0.19, 0.03, 12]} />
           <meshStandardMaterial color="#B88238" roughness={0.48} metalness={0.68} />
         </mesh>
         {/* Top grapple fixture pin */}
-        <mesh position={[0, 0.29, 0]}>
-          <cylinderGeometry args={[0.018, 0.018, 0.08, 8]} />
+        <mesh position={[0, 0.155, 0]}>
+          <cylinderGeometry args={[0.01, 0.01, 0.045, 8]} />
           <meshStandardMaterial color="#C8923E" roughness={0.4} metalness={0.75} />
         </mesh>
       </group>
 
       {/* Flat umbilical tether from lander to SEIS dome */}
-      <mesh position={[-0.26, 0.026, 0.82]} rotation={[-Math.PI / 2, 0, -0.36]}>
-        <planeGeometry args={[0.075, 1.18]} />
+      <mesh position={[-0.24, 0.024, 0.72]} rotation={[-Math.PI / 2, 0, -0.34]}>
+        <planeGeometry args={[0.048, 0.98]} />
         <meshStandardMaterial color="#B87E38" roughness={0.52} metalness={0.62} />
       </mesh>
 
       {/* 2. HP3 ("The Mole") Support Structure Housing in front-right foreground */}
-      <group position={[0.44, 0, 1.46]} rotation={[0, 0.25, 0]}>
+      <group position={[0.38, 0, 1.24]} rotation={[0, 0.25, 0]}>
         {/* 3-foot base frame */}
-        <mesh position={[0, 0.02, 0]}>
-          <cylinderGeometry args={[0.18, 0.2, 0.03, 6]} />
+        <mesh position={[0, 0.012, 0]}>
+          <cylinderGeometry args={[0.095, 0.11, 0.02, 6]} />
           <meshStandardMaterial color="#8E7A6C" roughness={0.55} metalness={0.6} />
         </mesh>
         {/* Vertical cylindrical mole tube housing (tilted slightly from hammering) */}
-        <mesh position={[0, 0.24, 0]} rotation={[0.08, 0, -0.05]}>
-          <cylinderGeometry args={[0.042, 0.048, 0.44, 10]} />
+        <mesh position={[0, 0.13, 0]} rotation={[0.08, 0, -0.05]}>
+          <cylinderGeometry args={[0.024, 0.028, 0.24, 10]} />
           <meshStandardMaterial color="#2C2A28" roughness={0.5} metalness={0.7} />
         </mesh>
       </group>
 
       {/* Flat umbilical tether from lander to HP3 mole */}
-      <mesh position={[0.24, 0.026, 0.86]} rotation={[-Math.PI / 2, 0, 0.32]}>
-        <planeGeometry args={[0.065, 1.24]} />
+      <mesh position={[0.21, 0.024, 0.76]} rotation={[-Math.PI / 2, 0, 0.3]}>
+        <planeGeometry args={[0.042, 1.04]} />
         <meshStandardMaterial color="#B87E38" roughness={0.52} metalness={0.62} />
       </mesh>
     </group>
