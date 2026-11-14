@@ -83,7 +83,7 @@ const MOON_CRATERS: Record<string, readonly CraterDef[]> = {
 
 function craterBowl(x: number, z: number, cx: number, cz: number, radius: number, depth: number): number {
   const r = Math.hypot(x - cx, z - cz);
-  if (r > radius * 1.48) return 0;
+  if (r > radius * 1.9) return 0;
   const u = r / radius;
   const rim = depth * 0.16;
   if (u < 1.0) {
@@ -92,15 +92,15 @@ function craterBowl(x: number, z: number, cx: number, cz: number, radius: number
   return rim * Math.exp(-Math.pow((u - 0.94) / 0.26, 2));
 }
 
-/** Monumental smooth rounded lunar highland massif (Mount Hadley / North & South Massifs, zero wave stripes). */
+/** Monumental smooth rounded lunar highland massif (Mount Hadley / North & South Massifs, zero cliff steps). */
 function ridgeHill(x: number, z: number, cx: number, cz: number, rx: number, rz: number, h: number): number {
   const dx = (x - cx) / rx;
   const dz = (z - cz) / rz;
   const d2 = dx * dx + dz * dz;
-  if (d2 > 5.0) return 0;
-  const radial = Math.exp(-d2 * 0.85);
-  const shoulder = Math.exp(-d2 * 0.36) * 0.28;
-  return h * (radial * 0.82 + shoulder * 0.18);
+  if (d2 > 14.0) return 0;
+  const radial = Math.exp(-d2 * 0.72);
+  const shoulder = Math.exp(-d2 * 0.38);
+  return h * (radial * 0.76 + shoulder * 0.24);
 }
 
 export function getMoonTerrainHeight(slug: string, x: number, z: number): number {

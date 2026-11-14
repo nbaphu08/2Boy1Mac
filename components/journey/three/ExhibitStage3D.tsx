@@ -244,11 +244,12 @@ function SingleExhibitPlinth({
       setInGlbRange(false);
     }
 
-    // Show target site slightly earlier for Moon/Mars orbital landings (beats 8 & 14) so touchdown dust
-    // and ground search see real terrain; strictly non-overlapping dist < 0.50 between surface exhibits
+    // Show target site slightly earlier for Moon/Mars orbital landings (beats 8 & 14) and use contiguous
+    // half-open [minB, maxB) intervals so exact .5 midpoints (8.5, 9.5, 14.5...) never hide all terrain
     if (!rootRef.current) return;
-    const earlyArrival =
-      beatIndex === 8 ? p >= 7.34 && p < 8.5 : beatIndex === 14 ? p >= 13.34 && p < 14.5 : dist < 0.5;
+    const minB = beatIndex === 8 ? 7.34 : beatIndex === 14 ? 13.34 : beatIndex - 0.5;
+    const maxB = beatIndex === 12 ? 12.5 : beatIndex === 20 ? 20.5 : beatIndex + 0.5;
+    const earlyArrival = p >= minB && p < maxB;
     rootRef.current.visible = earlyArrival;
     if (!earlyArrival) return;
 

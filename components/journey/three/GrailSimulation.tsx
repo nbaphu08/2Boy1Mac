@@ -37,10 +37,10 @@ function polarRidgeHill(x: number, z: number, cx: number, cz: number, rx: number
   const dx = (x - cx) / rx;
   const dz = (z - cz) / rz;
   const d2 = dx * dx + dz * dz;
-  if (d2 > 5.0) return 0;
-  const radial = Math.exp(-d2 * 0.85);
-  const shoulder = Math.exp(-d2 * 0.35) * 0.28;
-  return h * (radial * 0.82 + shoulder * 0.18);
+  if (d2 > 14.0) return 0;
+  const radial = Math.exp(-d2 * 0.72);
+  const shoulder = Math.exp(-d2 * 0.38);
+  return h * (radial * 0.76 + shoulder * 0.24);
 }
 
 function getPolarSlopeHeight(vx: number, vz: number): number {
@@ -238,7 +238,7 @@ function polarCraterBowl(
   rim: number,
 ): number {
   const r = Math.hypot(x, z);
-  if (r > radius * 1.48) return 0;
+  if (r > radius * 1.9) return 0;
   const u = r / radius;
   const softRim = rim * 0.68;
   if (u < 1.0) {
