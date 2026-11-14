@@ -241,3 +241,14 @@ See `GEMINI.md` §1–2 (architecture). Merged to `main` in commit a5633df.
 - `components/journey/three/ExhibitStage3D.tsx`, `SLSRocket.tsx`, `MoonDioramas.tsx`, `MarsDioramas.tsx`, `SpaceScene.tsx`, `RenderPipeline.tsx`, `trajectory.ts`
 - `docs/HANDOFF_ANTIGRAVITY.md`
 
+
+## Opus review — AG-10 accepted with fixes (15/11)
+Merged into `main`; 0 console errors. Grid: `docs/antigravity/shots/review-AG10-grail.jpg` (t = 1, 4, 7, 9.5, 11.6, 15 s) and `review-AG10-pathfinder.png`.
+- **Pathfinder:** big step up — landscape, Twin Peaks, petals, draped airbags, ramps, Sojourner + Yogi all read well. Accepted. (Optional in 9b: less faceted rocks.)
+- **ESM plume at deep-space:** fixed. Accepted.
+- **GRAIL — fix first thing in AG-9b (`ag/9b-landscapes`):**
+  1. Mapping: the globe already looks fully painted at t ≈ 1 s and the twins are not visible at globe scale — show the swath painting progressively and keep Ebb & Flow visible (small but readable, e.g. a highlight/trail) while it paints. Gravity-map colours look washed-out/pastel after tonemapping — render the map `toneMapped={false}` (or equivalent) so the reds/blues match the NASA map.
+  2. The ranging link has a large bright sphere in its middle — remove it; keep only a thin pulsing line.
+  3. Impact flash is a big opaque cream ball — make it a brief additive flash (fast fade, no solid sphere) + the ballistic ejecta.
+  4. Rest frame: the two ~5 m craters with dark ejecta are not visible — make them the clear focus (closer camera or stronger dark ejecta rays); the translucent holograms must **not cast shadows** (dark blobs under them now).
+  5. Remove the **bootprint/track dot rows** from the GRAIL ground — no one ever walked there.
