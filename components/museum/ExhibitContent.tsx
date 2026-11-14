@@ -50,6 +50,13 @@ export function ExhibitMedia({ ex }: { ex: Exhibit }) {
 export function ExhibitText({ ex, headingId }: { ex: Exhibit; headingId: string }) {
   const rows: { label: string; value: string; sourceId?: string }[] = [];
   rows.push({ label: "Site", value: ex.location.site });
+  const { lat, lon, coordNote, coordSource } = ex.location;
+  if (lat !== undefined && lon !== undefined) {
+    const c = `${Math.abs(lat).toFixed(3)}°${lat >= 0 ? "N" : "S"} ${Math.abs(lon).toFixed(3)}°${lon >= 0 ? "E" : "W"}`;
+    rows.push({ label: "Coordinates", value: `${c}${coordNote ? ` · ${coordNote}` : ""}${coordSource ? ` (${coordSource})` : ""}` });
+  } else if (coordNote) {
+    rows.push({ label: "Coordinates", value: `${coordNote}${coordSource ? ` (${coordSource})` : ""}` });
+  }
   for (const s of ex.stats) rows.push({ label: s.label, value: s.value, sourceId: s.sourceId });
 
   return (

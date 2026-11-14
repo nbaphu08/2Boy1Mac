@@ -20,7 +20,9 @@ export const exhibits: Exhibit[] = [
     "location": {
       "site": "Sea of Tranquility",
       "lat": 0.674,
-      "lon": 23.473
+      "lon": 23.473,
+      "coordNote": "Position of the laser reflector, measured from LRO images",
+      "coordSource": "NASA NSSDCA; NASA History Office catalogue (2012)"
     },
     "stats": [
       {
@@ -122,7 +124,9 @@ export const exhibits: Exhibit[] = [
     "location": {
       "site": "Ocean of Storms (Oceanus Procellarum)",
       "lat": -3.015,
-      "lon": -23.418
+      "lon": -23.418,
+      "coordNote": "Landing position, measured from LRO images",
+      "coordSource": "NASA NSSDCA; NASA History Office catalogue (2012)"
     },
     "stats": [
       {
@@ -196,7 +200,9 @@ export const exhibits: Exhibit[] = [
     "location": {
       "site": "Hadley–Apennine",
       "lat": 26.132,
-      "lon": 3.634
+      "lon": 3.634,
+      "coordNote": "Apollo 15 landing site; the rover is parked about 150 m away",
+      "coordSource": "NASA NSSDCA"
     },
     "stats": [
       {
@@ -295,7 +301,9 @@ export const exhibits: Exhibit[] = [
     "location": {
       "site": "Taurus–Littrow valley",
       "lat": 20.1667,
-      "lon": 30.7667
+      "lon": 30.7667,
+      "coordNote": "Apollo 17 landing site",
+      "coordSource": "NASA NSSDCA"
     },
     "stats": [
       {
@@ -359,7 +367,11 @@ export const exhibits: Exhibit[] = [
       "landing": "2012-12-17"
     },
     "location": {
-      "site": "Sally K. Ride Impact Site, near Goldschmidt crater, north polar region"
+      "site": "Sally K. Ride Impact Site, near Goldschmidt crater, north polar region",
+      "lat": 75.609,
+      "lon": -26.593,
+      "coordNote": "Ebb's impact crater; Flow's lies about 2.2 km away at 75.651°N 26.832°W",
+      "coordSource": "LROC, Arizona State University / NASA, 19 Mar 2013"
     },
     "stats": [
       {
@@ -423,7 +435,11 @@ export const exhibits: Exhibit[] = [
       "missionEnd": "1983-05-21"
     },
     "location": {
-      "site": "Chryse Planitia"
+      "site": "Chryse Planitia",
+      "lat": 22.27,
+      "lon": -47.95,
+      "coordNote": "Landing site",
+      "coordSource": "NASA NSSDCA, planetocentric"
     },
     "stats": [
       {
@@ -494,7 +510,11 @@ export const exhibits: Exhibit[] = [
       "missionEnd": "1998-03-10"
     },
     "location": {
-      "site": "Ares Vallis"
+      "site": "Ares Vallis",
+      "lat": 19.33,
+      "lon": -33.55,
+      "coordNote": "Landing site",
+      "coordSource": "NASA NSSDCA"
     },
     "stats": [
       {
@@ -568,7 +588,11 @@ export const exhibits: Exhibit[] = [
       "missionEnd": "2011-05-25"
     },
     "location": {
-      "site": "Gusev Crater → Home Plate, \"Troy\""
+      "site": "Gusev Crater → Home Plate, \"Troy\"",
+      "lat": -14.572,
+      "lon": 175.478,
+      "coordNote": "Landing site; Spirit later drove to Home Plate and stopped at Troy",
+      "coordSource": "NASA NSSDCA"
     },
     "stats": [
       {
@@ -643,7 +667,11 @@ export const exhibits: Exhibit[] = [
       "missionEnd": "2019-02-13"
     },
     "location": {
-      "site": "Meridiani Planum → Endeavour Crater"
+      "site": "Meridiani Planum → Endeavour Crater",
+      "lat": -1.946,
+      "lon": -5.527,
+      "coordNote": "Landing site; Opportunity later drove 45.16 km to Endeavour Crater",
+      "coordSource": "NASA NSSDCA, IAU 2000"
     },
     "stats": [
       {
@@ -726,7 +754,11 @@ export const exhibits: Exhibit[] = [
       "missionEnd": "2010-05-24"
     },
     "location": {
-      "site": "\"Green Valley,\" Vastitas Borealis — the northernmost landing on Mars"
+      "site": "\"Green Valley,\" Vastitas Borealis — the northernmost landing on Mars",
+      "lat": 68.219,
+      "lon": -125.749,
+      "coordNote": "Landing site",
+      "coordSource": "NASA PDS Geosciences Node, IAU 2000"
     },
     "stats": [
       {
@@ -792,7 +824,9 @@ export const exhibits: Exhibit[] = [
     "location": {
       "site": "Elysium Planitia",
       "lat": 4.5,
-      "lon": 135.9
+      "lon": 135.9,
+      "coordNote": "Landing site",
+      "coordSource": "NASA JPL"
     },
     "stats": [
       {
@@ -869,7 +903,9 @@ export const exhibits: Exhibit[] = [
       "missionEnd": "2024-01-25"
     },
     "location": {
-      "site": "Jezero Crater → \"Valinor Hills\""
+      "site": "Jezero Crater → \"Valinor Hills\"",
+      "coordNote": "Exact final position not published; it rests at Valinor Hills in Jezero Crater",
+      "coordSource": "NASA JPL"
     },
     "stats": [
       {

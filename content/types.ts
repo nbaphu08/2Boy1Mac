@@ -12,7 +12,7 @@ export type Exhibit = {
   status: "silent" | "still-active";
   dates: { launch?: string; landing: string; lastContact?: string; missionEnd?: string }; // ISO 8601
   statusLabel?: string; // badge text override, e.g. "IMPACT SITE"
-  location: { site: string; lat?: number; lon?: number }; // coordinates only where COPY gives them
+  location: { site: string; lat?: number; lon?: number; coordNote?: string; coordSource?: string }; // coordinates only from cited NASA/PDS/LROC sources
   stats: { label: string; value: string; sourceId: string }[];
   plaque: string; // <= 60 words
   story: string[];
