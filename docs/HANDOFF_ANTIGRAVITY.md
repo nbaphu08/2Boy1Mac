@@ -164,3 +164,15 @@ See `GEMINI.md` §1–2 (architecture). Merged to `main` in commit a5633df.
 - **Replaced by Opus:** real WebGL captures via the `?poster=<id>` mode (Playwright + system Chrome), same file names. `hero` posters = the real VAB photo (beat 0 is a photograph).
 - **Rule for all future packets:** never composite, recolour or retouch NASA photos as a stand-in for a render. If your sandbox cannot run a browser/WebGL, say so in the handoff and stop — Opus will capture.
 - AG-2c: done by Sonnet (Yogi group scaled 0.5, moved to [1.78,0.1,1.2] beside Sojourner; now ~0.65 m wide / ~0.3 u tall, clearly smaller than lander; posters not regenerated).
+
+
+## AG-8 — Act I–II Visual Polish (Beats 1–6) — branch `ag/8-act-polish`
+**Done:**
+1. **6:35 p.m. EDT Dusk Palette, Shadows & Sky Output Transform (`CelestialWorlds.tsx`, `SpaceScene.tsx`)**: Fixed `AscentSkyDome` missing `#include <tonemapping_fragment>` / `#include <colorspace_fragment>` (which previously wrote near-black sky at pad/ignition) and added western sunset azimuth glow (`[-0.82, 0.11, -0.56]`) fading into stratosphere cobalt and orbital black. Added warm low western `sunRef` (`castShadow={useShadows && p < 3.0}`, 1024px shadow map on `medium`/`high` tiers) + twilight `hemiRef`/`rimRef` and suppressed bright stars at pad level.
+2. **Launch Complex & VAB Surface Craft (`rocketTextures.ts`, `LaunchComplex.tsx`)**: Added cached procedural textures (`<= 1024px`: `getVabFacadeTextures`, `getSteelLatticeTextures`, `getPadConcreteTextures`, `getCrawlerwayGravelTextures`, `getCloudLayerTexture`) for corrugated VAB siding, ML-1 tower steel lattice & rivets, scored pad concrete with exhaust scorch, and dual crushed river-rock Crawlerway tracks. Added Atlantic Ocean horizon + Space Coast berm behind LC-39B, feathered `SoftFloodlightCone` shader beams, converted VAB flag/insignia to subtle `meshStandardMaterial` (`radius 1.08` insignia) and removed the bright white Low Bay Artemis rectangle.
+3. **Ignition, Fairing Fit Fix & Ascent Context (`SLSRocket.tsx`, `CelestialWorlds.tsx`, `trajectory.ts`)**: Fixed the detached ESM fairing bug (`position={[0, 0, 0]}` instead of `[0, 0, 0.49]`), replaced hard polygon engine cones and Max-Q collar with feathered `SoftPlumeCone` / Fresnel shaders, added ground-lit warm orange deluge steam (`padGlowSteamRef` + `padBounceLightRef`) alongside cool outer steam (scaled by `usePerfBudget().steamCount`), delayed Moon approach fade-in until `p > 6.35`, added `AscentCoastAndCloudDeck` (Space Coast + 2 cumulus/cirrus layers dropping away in beats 2–5), and tuned `BEAT_POSES[1..6]` + `earthRef` lift so curved Earth limb frames cleanly beneath Orion in `ascent-4`.
+4. **Guards respected**: No edits to `MarsModels.tsx` or `public/media/three/posters/`; no `THREE.Clock`; tier budgets and `reducedMotion` respected. **WebGL screenshot capture did not run in sandbox — Opus may re-capture `?poster=enter|ignition|ascent-1|ascent-2|ascent-3|ascent-4`.**
+
+**Files changed:**
+- `components/journey/three/rocketTextures.ts`, `CelestialWorlds.tsx`, `LaunchComplex.tsx`, `SLSRocket.tsx`, `SpaceScene.tsx`, `trajectory.ts`
+- `docs/HANDOFF_ANTIGRAVITY.md`

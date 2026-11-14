@@ -4,6 +4,13 @@ import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { scrollState, smoothstep } from "@/lib/scroll/progress";
+import { usePerfBudget } from "./perfTier";
+import {
+  getCrawlerwayGravelTextures,
+  getPadConcreteTextures,
+  getSteelLatticeTextures,
+  getVabFacadeTextures,
+} from "./rocketTextures";
 import { WORLD_ANCHORS } from "./trajectory";
 
 const TOWER_BAYS = [0.6, 1.9, 3.2, 4.5, 5.8, 7.1, 8.4, 9.7, 11.0, 12.3];
@@ -15,12 +22,65 @@ const MAST_COORDS: [number, number][] = [
 
 const FLOODLIGHT_BEAMS: { pos: [number, number, number]; rot: [number, number, number]; color: string }[] = [
   { pos: [7.5, 0.4, 7.5], rot: [-0.55, 0.58, 0.35], color: "#DCE6FF" },
-  { pos: [-7.8, 0.4, 7.8], rot: [-0.55, -0.58, -0.35], color: "#9DB8FF" },
+  { pos: [-7.8, 0.4, 7.8], rot: [-0.55, -0.58, -0.35], color: "#FFE0BA" },
   { pos: [8.2, 0.4, -6.8], rot: [0.52, -0.62, 0.35], color: "#DCE6FF" },
-  { pos: [-8.2, 0.4, -6.8], rot: [0.52, 0.62, -0.35], color: "#9DB8FF" },
+  { pos: [-8.2, 0.4, -6.8], rot: [0.52, 0.62, -0.35], color: "#FFE0BA" },
 ];
 
+/** Feathered volumetric floodlight cone with smooth edge & height attenuation. */
+function SoftFloodlightCone({ color }: { color: string }) {
+  const uniforms = useMemo(
+    () => ({
+      uColor: { value: new THREE.Color(color) },
+    }),
+    [color],
+  );
+  return (
+    <mesh position={[0, 6.2, 0]}>
+      <coneGeometry args={[3.1, 12.6, 24, 1, true]} />
+      <shaderMaterial
+        uniforms={uniforms}
+        transparent
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+        side={THREE.DoubleSide}
+        vertexShader={`
+          varying vec2 vUv;
+          varying vec3 vNormalView;
+          varying vec3 vViewPos;
+          void main() {
+            vUv = uv;
+            vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
+            vViewPos = -mvPos.xyz;
+            vNormalView = normalize(normalMatrix * normal);
+            gl_Position = projectionMatrix * mvPos;
+          }
+        `}
+        fragmentShader={`
+          uniform vec3 uColor;
+          varying vec2 vUv;
+          varying vec3 vNormalView;
+          varying vec3 vViewPos;
+          void main() {
+            vec3 V = normalize(vViewPos);
+            vec3 N = normalize(vNormalView);
+            float centerFade = pow(abs(dot(N, V)), 1.65);
+            // vUv.y is 0 at base (wide end up), 1 at tip (lamp source at y=0? cone base is bottom unless rotated)
+            // Standard ConeGeometry: y=+h/2 tip (uv.y=1), y=-h/2 base (uv.y=0)
+            float beamLen = smoothstep(0.0, 0.55, vUv.y) * smoothstep(1.0, 0.72, vUv.y);
+            float coreFade = pow(1.0 - vUv.y, 0.7) * smoothstep(0.0, 0.25, vUv.y);
+            float alpha = centerFade * (beamLen * 0.55 + coreFade * 0.45) * 0.085;
+            gl_FragColor = vec4(uColor, alpha);
+          }
+        `}
+      />
+    </mesh>
+  );
+}
+
 export function LaunchComplex() {
+  const budget = usePerfBudget();
+  const useShadows = budget.tier !== "low";
   const groupRef = useRef<THREE.Group>(null);
   const crewArmRef = useRef<THREE.Group>(null);
   const osmArmRef = useRef<THREE.Group>(null);
@@ -28,6 +88,11 @@ export function LaunchComplex() {
   const intertankArmRef = useRef<THREE.Group>(null);
   const beaconRefs = useRef<(THREE.Mesh | null)[]>([]);
   const elapsedRef = useRef(0);
+
+  const vabTex = useMemo(() => getVabFacadeTextures(), []);
+  const steelTex = useMemo(() => getSteelLatticeTextures(), []);
+  const padTex = useMemo(() => getPadConcreteTextures(), []);
+  const gravelTex = useMemo(() => getCrawlerwayGravelTextures(), []);
 
   // Procedural steel deck plate bump texture
   const deckBump = useMemo(() => {
@@ -84,52 +149,91 @@ export function LaunchComplex() {
 
   return (
     <group ref={groupRef}>
-      {/* ─── LC-39B PAD APRON, CRAWLERWAY & FLAME TRENCH ─── */}
+      {/* ─── LC-39B PAD APRON, COASTLINE, CRAWLERWAY & FLAME TRENCH ─── */}
       <group position={WORLD_ANCHORS.pad}>
+        {/* Atlantic Ocean horizon & Space Coast dune berm behind/east of Pad LC-39B */}
+        <mesh position={[12, -1.78, -28]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow={useShadows}>
+          <circleGeometry args={[360, 48]} />
+          <meshStandardMaterial color="#0A1E36" roughness={0.28} metalness={0.38} />
+        </mesh>
+        {/* Coastal dune scrubland ring around the pad gravel berm */}
+        <mesh position={[-4, -1.52, -4]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow={useShadows}>
+          <ringGeometry args={[48, 86, 48]} />
+          <meshStandardMaterial color="#1A261E" roughness={0.94} metalness={0.04} />
+        </mesh>
+
         {/* Octagonal concrete pad perimeter apron */}
-        <mesh position={[0, -0.95, 0]}>
+        <mesh position={[0, -0.95, 0]} receiveShadow={useShadows}>
           <cylinderGeometry args={[52, 60, 1.3, 48]} />
           <meshStandardMaterial
-            color="#0B101A"
-            bumpMap={deckBump}
-            bumpScale={0.04}
-            roughness={0.88}
-            metalness={0.14}
+            map={padTex.map}
+            bumpMap={padTex.bumpMap}
+            bumpScale={0.045}
+            roughness={0.86}
+            metalness={0.12}
           />
         </mesh>
 
-        {/* Dual Crawlerway tracks leading toward VAB */}
+        {/* Dual Crawlerway crushed river-rock tracks leading toward VAB */}
         {[-2.4, 2.4].map((tx) => (
-          <mesh key={tx} position={[tx - 8, -0.28, -22]} rotation={[0, 0.52, 0]}>
+          <mesh key={tx} position={[tx - 8, -0.28, -22]} rotation={[0, 0.52, 0]} receiveShadow={useShadows}>
             <boxGeometry args={[2.6, 0.08, 42]} />
-            <meshStandardMaterial color="#171E2E" roughness={0.92} metalness={0.08} />
+            <meshStandardMaterial
+              map={gravelTex.map}
+              bumpMap={gravelTex.bumpMap}
+              bumpScale={0.055}
+              roughness={0.94}
+              metalness={0.05}
+            />
           </mesh>
         ))}
 
         {/* Concrete Flame Trench Walls & Angled Flame Deflector Wedge */}
-        <mesh position={[-3.8, -0.1, 0]}>
+        <mesh position={[-3.8, -0.1, 0]} castShadow={useShadows} receiveShadow={useShadows}>
           <boxGeometry args={[2.2, 0.9, 14]} />
-          <meshStandardMaterial color="#1D2536" roughness={0.82} metalness={0.2} />
+          <meshStandardMaterial
+            map={padTex.map}
+            bumpMap={padTex.bumpMap}
+            bumpScale={0.03}
+            color="#9EA6B5"
+            roughness={0.84}
+            metalness={0.18}
+          />
         </mesh>
-        <mesh position={[3.8, -0.1, 0]}>
+        <mesh position={[3.8, -0.1, 0]} castShadow={useShadows} receiveShadow={useShadows}>
           <boxGeometry args={[2.2, 0.9, 14]} />
-          <meshStandardMaterial color="#1D2536" roughness={0.82} metalness={0.2} />
+          <meshStandardMaterial
+            map={padTex.map}
+            bumpMap={padTex.bumpMap}
+            bumpScale={0.03}
+            color="#9EA6B5"
+            roughness={0.84}
+            metalness={0.18}
+          />
         </mesh>
         {/* Angled steel/refractory flame deflector under the rocket nozzles */}
-        <mesh position={[0, -0.22, 0]} rotation={[0.45, 0, 0]}>
+        <mesh position={[0, -0.22, 0]} rotation={[0.45, 0, 0]} receiveShadow={useShadows}>
           <boxGeometry args={[4.8, 0.65, 3.6]} />
-          <meshStandardMaterial color="#2E3648" roughness={0.65} metalness={0.45} />
+          <meshStandardMaterial
+            map={steelTex.map}
+            bumpMap={steelTex.bumpMap}
+            bumpScale={0.02}
+            color="#5C6475"
+            roughness={0.68}
+            metalness={0.45}
+          />
         </mesh>
 
         {/* ─── MOBILE LAUNCHER PLATFORM (MLP) TWO-STORY DECK ─── */}
         <group position={[0, 0.18, 0]}>
           {/* Main steel deck platform */}
-          <mesh position={[-0.8, 0, 0]}>
+          <mesh position={[-0.8, 0, 0]} castShadow={useShadows} receiveShadow={useShadows}>
             <boxGeometry args={[8.6, 0.42, 9.4]} />
             <meshStandardMaterial
-              color="#2A3346"
+              map={steelTex.map}
               bumpMap={deckBump}
-              bumpScale={0.025}
+              bumpScale={0.03}
+              color="#7A869E"
               roughness={0.52}
               metalness={0.62}
             />
@@ -180,25 +284,46 @@ export function LaunchComplex() {
             [-0.92, 0.92],
             [0.92, 0.92],
           ].map(([cx, cz], i) => (
-            <mesh key={i} position={[cx, 6.85, cz]}>
+            <mesh key={i} position={[cx, 6.85, cz]} castShadow={useShadows} receiveShadow={useShadows}>
               <boxGeometry args={[0.16, 13.7, 0.16]} />
-              <meshStandardMaterial color="#68738A" roughness={0.42} metalness={0.72} />
+              <meshStandardMaterial
+                map={steelTex.map}
+                bumpMap={steelTex.bumpMap}
+                bumpScale={0.02}
+                color="#A2AEBF"
+                roughness={0.46}
+                metalness={0.7}
+              />
             </mesh>
           ))}
 
           {/* Central Elevator & Utility Core Shaft */}
-          <mesh position={[-0.18, 6.8, 0]}>
+          <mesh position={[-0.18, 6.8, 0]} castShadow={useShadows} receiveShadow={useShadows}>
             <boxGeometry args={[0.72, 13.5, 0.78]} />
-            <meshStandardMaterial color="#273042" roughness={0.55} metalness={0.58} />
+            <meshStandardMaterial
+              map={steelTex.map}
+              bumpMap={steelTex.bumpMap}
+              bumpScale={0.02}
+              color="#566278"
+              roughness={0.55}
+              metalness={0.58}
+            />
           </mesh>
 
           {/* 10 Structural Bay Decks + Diagonal X-Bracing Trusses on All 4 Faces */}
           {TOWER_BAYS.map((by, idx) => (
             <group key={idx} position={[0, by, 0]}>
               {/* Floor deck grating */}
-              <mesh>
+              <mesh castShadow={useShadows} receiveShadow={useShadows}>
                 <boxGeometry args={[1.96, 0.1, 1.96]} />
-                <meshStandardMaterial color="#4B556B" roughness={0.5} metalness={0.65} />
+                <meshStandardMaterial
+                  map={steelTex.map}
+                  bumpMap={steelTex.bumpMap}
+                  bumpScale={0.015}
+                  color="#8C97AB"
+                  roughness={0.5}
+                  metalness={0.65}
+                />
               </mesh>
               {/* Safety perimeter handrail */}
               <mesh position={[0, 0.18, 0]}>
@@ -209,13 +334,27 @@ export function LaunchComplex() {
               {/* Diagonal truss braces on +Z and -Z faces */}
               {[-0.92, 0.92].map((fz) => (
                 <group key={fz} position={[0, 0.65, fz]}>
-                  <mesh rotation={[0, 0, 0.62]}>
+                  <mesh rotation={[0, 0, 0.62]} castShadow={useShadows}>
                     <boxGeometry args={[0.055, 2.25, 0.055]} />
-                    <meshStandardMaterial color="#58637A" roughness={0.45} metalness={0.68} />
+                    <meshStandardMaterial
+                      map={steelTex.map}
+                      bumpMap={steelTex.bumpMap}
+                      bumpScale={0.012}
+                      color="#9AA5B8"
+                      roughness={0.45}
+                      metalness={0.68}
+                    />
                   </mesh>
-                  <mesh rotation={[0, 0, -0.62]}>
+                  <mesh rotation={[0, 0, -0.62]} castShadow={useShadows}>
                     <boxGeometry args={[0.055, 2.25, 0.055]} />
-                    <meshStandardMaterial color="#58637A" roughness={0.45} metalness={0.68} />
+                    <meshStandardMaterial
+                      map={steelTex.map}
+                      bumpMap={steelTex.bumpMap}
+                      bumpScale={0.012}
+                      color="#9AA5B8"
+                      roughness={0.45}
+                      metalness={0.68}
+                    />
                   </mesh>
                 </group>
               ))}
@@ -223,13 +362,27 @@ export function LaunchComplex() {
               {/* Diagonal truss braces on +X and -X faces */}
               {[-0.92, 0.92].map((fx) => (
                 <group key={fx} position={[fx, 0.65, 0]}>
-                  <mesh rotation={[0.62, 0, 0]}>
+                  <mesh rotation={[0.62, 0, 0]} castShadow={useShadows}>
                     <boxGeometry args={[0.055, 2.25, 0.055]} />
-                    <meshStandardMaterial color="#58637A" roughness={0.45} metalness={0.68} />
+                    <meshStandardMaterial
+                      map={steelTex.map}
+                      bumpMap={steelTex.bumpMap}
+                      bumpScale={0.012}
+                      color="#9AA5B8"
+                      roughness={0.45}
+                      metalness={0.68}
+                    />
                   </mesh>
-                  <mesh rotation={[-0.62, 0, 0]}>
+                  <mesh rotation={[-0.62, 0, 0]} castShadow={useShadows}>
                     <boxGeometry args={[0.055, 2.25, 0.055]} />
-                    <meshStandardMaterial color="#58637A" roughness={0.45} metalness={0.68} />
+                    <meshStandardMaterial
+                      map={steelTex.map}
+                      bumpMap={steelTex.bumpMap}
+                      bumpScale={0.012}
+                      color="#9AA5B8"
+                      roughness={0.45}
+                      metalness={0.68}
+                    />
                   </mesh>
                 </group>
               ))}
@@ -371,49 +524,45 @@ export function LaunchComplex() {
         {/* ─── VOLUMETRIC PAD FLOODLIGHT BEAMS & SPOTLIGHTS ─── */}
         {FLOODLIGHT_BEAMS.map((b, bi) => (
           <group key={bi} position={b.pos} rotation={b.rot}>
-            <mesh position={[0, 6.2, 0]}>
-              <coneGeometry args={[2.8, 12.4, 20, 1, true]} />
-              <meshBasicMaterial
-                color={b.color}
-                transparent
-                opacity={0.045}
-                blending={THREE.AdditiveBlending}
-                depthWrite={false}
-                side={THREE.DoubleSide}
-              />
-            </mesh>
+            <SoftFloodlightCone color={b.color} />
           </group>
         ))}
 
         <spotLight
           position={[9, 4.5, 11]}
           angle={0.58}
-          penumbra={0.85}
-          intensity={185}
-          distance={65}
+          penumbra={0.88}
+          intensity={215}
+          distance={68}
           color="#DCE6FF"
         />
         <spotLight
           position={[-9, 3.8, 10]}
           angle={0.58}
-          penumbra={0.85}
-          intensity={135}
-          distance={65}
-          color="#9DB8FF"
+          penumbra={0.88}
+          intensity={145}
+          distance={68}
+          color="#FFE2BE"
         />
       </group>
 
       {/* ─── VEHICLE ASSEMBLY BUILDING (VAB) ARCHITECTURAL COMPLEX & CAMPUS CORRIDOR ─── */}
       <group position={WORLD_ANCHORS.vab}>
-        {/* Main High Bay structure — bright KSC light-gray insulated aluminum panels */}
-        <mesh position={[0, 14.5, 0]}>
+        {/* Main High Bay structure — corrugated KSC aluminum panel siding */}
+        <mesh position={[0, 14.5, 0]} castShadow={useShadows} receiveShadow={useShadows}>
           <boxGeometry args={[27, 29, 23]} />
-          <meshStandardMaterial color="#C8D0DC" roughness={0.68} metalness={0.22} />
+          <meshStandardMaterial
+            map={vabTex.map}
+            bumpMap={vabTex.bumpMap}
+            bumpScale={0.035}
+            roughness={0.7}
+            metalness={0.22}
+          />
         </mesh>
 
-        {/* Dark anthracite side High Bay door towers (matching VAB sunrise photo left/center/right bays) */}
+        {/* Dark anthracite side High Bay door towers */}
         {[-10.2, -3.4, 3.4, 10.2].map((vx) => (
-          <mesh key={vx} position={[vx, 14.5, 11.55]}>
+          <mesh key={vx} position={[vx, 14.5, 11.55]} receiveShadow={useShadows}>
             <boxGeometry args={[1.65, 28.9, 0.24]} />
             <meshStandardMaterial color="#1B2230" roughness={0.8} metalness={0.25} />
           </mesh>
@@ -427,69 +576,62 @@ export function LaunchComplex() {
           </mesh>
         ))}
 
-        {/* Iconic US Flag painted on the VAB Left High Bay facade */}
-        <group position={[-6.8, 19.2, 11.64]}>
-          {/* Flag white backing */}
+        {/* Iconic US Flag mural integrated smoothly onto the VAB Left High Bay panels (lit matte paint, not self-glowing) */}
+        <group position={[-6.8, 19.2, 11.58]}>
           <mesh>
             <planeGeometry args={[4.2, 7.8]} />
-            <meshBasicMaterial color="#E8EEF6" />
+            <meshStandardMaterial color="#BAC3D1" roughness={0.82} metalness={0.14} />
           </mesh>
-          {/* 7 Red vertical stripes */}
           {[-1.8, -1.2, -0.6, 0, 0.6, 1.2, 1.8].map((sx, si) => (
             <mesh key={si} position={[sx, 0, 0.01]}>
               <planeGeometry args={[0.32, 7.8]} />
-              <meshBasicMaterial color="#B31942" />
+              <meshStandardMaterial color="#8A2138" roughness={0.8} metalness={0.12} />
             </mesh>
           ))}
-          {/* Blue star canton (upper-left) */}
           <mesh position={[-0.95, 1.95, 0.02]}>
             <planeGeometry args={[2.1, 3.8]} />
-            <meshBasicMaterial color="#0A3161" />
+            <meshStandardMaterial color="#14325B" roughness={0.8} metalness={0.12} />
           </mesh>
         </group>
 
-        {/* Iconic Blue Circular Insignia on the VAB Right High Bay facade */}
-        <group position={[6.8, 17.5, 11.64]}>
+        {/* Subdued small architectural blue circular insignia integrated on the VAB upper-right bay */}
+        <group position={[6.8, 18.2, 11.58]}>
           <mesh>
-            <circleGeometry args={[1.85, 28]} />
-            <meshBasicMaterial color="#0B3D91" />
+            <circleGeometry args={[1.08, 28]} />
+            <meshStandardMaterial color="#143B7A" roughness={0.78} metalness={0.15} />
           </mesh>
-          <mesh position={[0, 0.1, 0.01]} rotation={[0, 0, -0.35]}>
-            <planeGeometry args={[3.4, 0.28]} />
-            <meshBasicMaterial color="#FC3D21" />
+          <mesh position={[0, 0.06, 0.01]} rotation={[0, 0, -0.35]}>
+            <planeGeometry args={[1.95, 0.16]} />
+            <meshStandardMaterial color="#B53726" roughness={0.78} metalness={0.12} />
           </mesh>
         </group>
 
-        {/* Stepped Low Bay & Transfer Aisle wing (front-right in VAB sunrise photo) */}
-        <mesh position={[17.5, 7.2, 3.5]}>
+        {/* Stepped Low Bay & Transfer Aisle wing with matching corrugated panels */}
+        <mesh position={[17.5, 7.2, 3.5]} castShadow={useShadows} receiveShadow={useShadows}>
           <boxGeometry args={[14, 14.4, 18]} />
-          <meshStandardMaterial color="#BFC8D6" roughness={0.72} metalness={0.2} />
+          <meshStandardMaterial
+            map={vabTex.map}
+            bumpMap={vabTex.bumpMap}
+            bumpScale={0.03}
+            color="#D2DAE6"
+            roughness={0.74}
+            metalness={0.2}
+          />
         </mesh>
-        {/* Dark lower trim of Low Bay */}
+        {/* Dark lower trim & horizontal louver band of Low Bay (matches VAB architecture) */}
         <mesh position={[17.5, 3.2, 12.55]}>
           <boxGeometry args={[14.1, 6.4, 0.2]} />
-          <meshStandardMaterial color="#1E2533" roughness={0.8} metalness={0.22} />
+          <meshStandardMaterial color="#1E2533" roughness={0.82} metalness={0.22} />
         </mesh>
-        {/* Artemis Program vertical banner on Low Bay front facade */}
-        <group position={[20.5, 8.2, 12.66]}>
-          <mesh>
-            <planeGeometry args={[3.2, 5.2]} />
-            <meshBasicMaterial color="#EEF3FA" />
-          </mesh>
-          <mesh position={[0, 0.3, 0.01]}>
-            <coneGeometry args={[0.95, 2.4, 3]} />
-            <meshBasicMaterial color="#0B3D91" />
-          </mesh>
-          <mesh position={[0, -0.2, 0.02]} rotation={[0, 0, 0.25]}>
-            <planeGeometry args={[2.2, 0.22]} />
-            <meshBasicMaterial color="#E03C31" />
-          </mesh>
-        </group>
+        <mesh position={[17.5, 9.6, 12.56]}>
+          <boxGeometry args={[13.6, 0.45, 0.12]} />
+          <meshStandardMaterial color="#252E3E" roughness={0.78} metalness={0.25} />
+        </mesh>
 
         {/* Illuminated High Bay 3 Rollout Door Slit + Horizontal Gantry Levels */}
         <mesh position={[0, 11.8, 11.62]}>
           <planeGeometry args={[4.6, 22.5]} />
-          <meshBasicMaterial color="#9DB8FF" transparent opacity={0.22} />
+          <meshBasicMaterial color="#7C98D4" transparent opacity={0.18} />
         </mesh>
         {[4, 8, 12, 16, 20].map((gy) => (
           <mesh key={gy} position={[0, gy, 11.65]}>

@@ -98,11 +98,21 @@ function SceneChoreographer({
 }) {
   const camera = useThree((s) => s.camera);
   const activeExhibit = useMuseum((s) => s.activeExhibit);
+  const budget = usePerfBudget();
+  const useShadows = budget.tier !== "low";
   const sunRef = useRef<THREE.DirectionalLight>(null);
   const rimRef = useRef<THREE.DirectionalLight>(null);
   const ambRef = useRef<THREE.AmbientLight>(null);
   const hemiRef = useRef<THREE.HemisphereLight>(null);
   const elapsedRef = useRef(0);
+  const duskSunColor = useMemo(() => new THREE.Color("#FF9852"), []);
+  const orbitalSunColor = useMemo(() => new THREE.Color("#F5F8FF"), []);
+  const duskRimColor = useMemo(() => new THREE.Color("#5280EA"), []);
+  const orbitalRimColor = useMemo(() => new THREE.Color("#6E96FF"), []);
+  const duskHemiSky = useMemo(() => new THREE.Color("#4D75CA"), []);
+  const orbitalHemiSky = useMemo(() => new THREE.Color("#ADC8FF"), []);
+  const duskHemiGround = useMemo(() => new THREE.Color("#2A1A14"), []);
+  const orbitalHemiGround = useMemo(() => new THREE.Color("#0A0E18"), []);
 
   const traj = useMemo<SampledTrajectory>(
     () => ({
@@ -171,27 +181,57 @@ function SceneChoreographer({
     }
 
     // Dim global background lights by 60% when ExhibitPanel is open (PLAN §4)
+    // Also transition smoothly from 6:35 p.m. EDT western sunset (beats 0..2.2) to orbital daylight (3.4+)
     const dim = activeExhibit ? 0.4 : 1.0;
+    const orbitalT = smoothstep(2.05, 3.45, p);
+
     if (sunRef.current) {
-      sunRef.current.intensity = THREE.MathUtils.damp(sunRef.current.intensity, 3.1 * dim, 6, dt);
+      sunRef.current.position.set(
+        THREE.MathUtils.lerp(-58, 65, orbitalT),
+        THREE.MathUtils.lerp(15, 95, orbitalT),
+        THREE.MathUtils.lerp(-22, 85, orbitalT),
+      );
+      sunRef.current.color.copy(duskSunColor).lerp(orbitalSunColor, orbitalT);
+      const targetSun = THREE.MathUtils.lerp(3.65, 3.1, orbitalT) * dim;
+      sunRef.current.intensity = THREE.MathUtils.damp(sunRef.current.intensity, targetSun, 6, dt);
+      sunRef.current.castShadow = useShadows && p < 3.0;
     }
     if (rimRef.current) {
-      rimRef.current.intensity = THREE.MathUtils.damp(rimRef.current.intensity, 0.85 * dim, 6, dt);
+      rimRef.current.color.copy(duskRimColor).lerp(orbitalRimColor, orbitalT);
+      const targetRim = THREE.MathUtils.lerp(1.05, 0.85, orbitalT) * dim;
+      rimRef.current.intensity = THREE.MathUtils.damp(rimRef.current.intensity, targetRim, 6, dt);
     }
     if (ambRef.current) {
       ambRef.current.intensity = THREE.MathUtils.damp(ambRef.current.intensity, 0.42 * dim, 6, dt);
     }
     if (hemiRef.current) {
-      hemiRef.current.intensity = THREE.MathUtils.damp(hemiRef.current.intensity, 0.48 * dim, 6, dt);
+      hemiRef.current.color.copy(duskHemiSky).lerp(orbitalHemiSky, orbitalT);
+      hemiRef.current.groundColor.copy(duskHemiGround).lerp(orbitalHemiGround, orbitalT);
+      const targetHemi = THREE.MathUtils.lerp(0.58, 0.48, orbitalT) * dim;
+      hemiRef.current.intensity = THREE.MathUtils.damp(hemiRef.current.intensity, targetHemi, 6, dt);
     }
   });
 
   return (
     <>
       <ambientLight ref={ambRef} color="#1A2644" intensity={0.42} />
-      <hemisphereLight ref={hemiRef} args={["#ADC8FF", "#0A0E18", 0.48]} />
-      <directionalLight ref={sunRef} position={[65, 95, 85]} color="#F5F8FF" intensity={3.1} />
-      <directionalLight ref={rimRef} position={[-60, 15, -55]} color="#6E96FF" intensity={0.85} />
+      <hemisphereLight ref={hemiRef} args={["#4D75CA", "#2A1A14", 0.58]} />
+      <directionalLight
+        ref={sunRef}
+        position={[-58, 15, -22]}
+        color="#FF9852"
+        intensity={3.65}
+        castShadow={useShadows}
+        shadow-mapSize={[1024, 1024]}
+        shadow-camera-left={-24}
+        shadow-camera-right={26}
+        shadow-camera-top={24}
+        shadow-camera-bottom={-14}
+        shadow-camera-near={10}
+        shadow-camera-far={165}
+        shadow-bias={-0.0005}
+      />
+      <directionalLight ref={rimRef} position={[48, 22, -45]} color="#5280EA" intensity={1.05} />
     </>
   );
 }
@@ -258,6 +298,7 @@ export default function SpaceScene() {
   return (
     <div aria-hidden className={`fixed inset-0 bg-void ${posterBeat !== null ? "z-50" : "z-0"}`}>
       <Canvas
+        shadows={budget.tier !== "low"}
         frameloop={isPageHidden ? "never" : "always"}
         dpr={reducedMotion ? 1 : budget.dpr}
         camera={{ fov: 44, near: 0.25, far: 2600, position: [14, 5.2, 23] }}

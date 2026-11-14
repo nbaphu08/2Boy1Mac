@@ -37,6 +37,84 @@ const FAIRING_ANGLES = [0, (Math.PI * 2) / 3, (Math.PI * 4) / 3];
 const SOLAR_WING_ANGLES = [Math.PI * 0.25, Math.PI * 0.75, Math.PI * 1.25, Math.PI * 1.75];
 const MACH_DIAMOND_Offsets = [-0.55, -1.25, -2.05, -2.95];
 
+/** Soft feathered exhaust plume shader cone (zero harsh polygon silhouette edges). */
+function SoftPlumeCone({
+  radius,
+  height,
+  segments = 24,
+  position,
+  color,
+  opacity,
+  timeRef,
+}: {
+  radius: number;
+  height: number;
+  segments?: number;
+  position: [number, number, number];
+  color: string;
+  opacity: number;
+  timeRef: RefObject<number>;
+}) {
+  const matRef = useRef<THREE.ShaderMaterial>(null);
+  const uniforms = useMemo(
+    () => ({
+      uColor: { value: new THREE.Color(color) },
+      uOpacity: { value: opacity },
+      uTime: { value: 0 },
+    }),
+    [color, opacity],
+  );
+
+  useFrame(() => {
+    if (matRef.current) {
+      matRef.current.uniforms.uTime.value = timeRef.current;
+    }
+  });
+
+  return (
+    <mesh position={position} rotation={[Math.PI, 0, 0]}>
+      <coneGeometry args={[radius, height, segments, 1, true]} />
+      <shaderMaterial
+        ref={matRef}
+        uniforms={uniforms}
+        transparent
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+        side={THREE.DoubleSide}
+        vertexShader={`
+          varying vec2 vUv;
+          varying vec3 vNormalView;
+          varying vec3 vViewPos;
+          void main() {
+            vUv = uv;
+            vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
+            vViewPos = -mvPos.xyz;
+            vNormalView = normalize(normalMatrix * normal);
+            gl_Position = projectionMatrix * mvPos;
+          }
+        `}
+        fragmentShader={`
+          uniform vec3 uColor;
+          uniform float uOpacity;
+          uniform float uTime;
+          varying vec2 vUv;
+          varying vec3 vNormalView;
+          varying vec3 vViewPos;
+          void main() {
+            vec3 N = normalize(vNormalView);
+            vec3 V = normalize(vViewPos);
+            float radial = pow(abs(dot(N, V)), 1.45);
+            float axial = pow(clamp(1.0 - vUv.y, 0.0, 1.0), 1.3) * smoothstep(0.0, 0.06, vUv.y);
+            float pulse = 0.88 + 0.12 * sin(vUv.y * 28.0 - uTime * 34.0 + vUv.x * 12.56);
+            float a = radial * axial * pulse * uOpacity;
+            gl_FragColor = vec4(uColor * (1.0 + 0.35 * (1.0 - vUv.y)), a);
+          }
+        `}
+      />
+    </mesh>
+  );
+}
+
 export function SLSRocket({
   rocketRef,
   reducedMotion,
@@ -58,15 +136,27 @@ export function SLSRocket({
   const vacuumPlumeRef = useRef<THREE.Group>(null);
   const rcsJetsRef = useRef<THREE.Group>(null);
   const maxQConeRef = useRef<THREE.Mesh>(null);
+  const maxQMatRef = useRef<THREE.ShaderMaterial>(null);
   const padSteamRef = useRef<THREE.Points>(null);
+  const padGlowSteamRef = useRef<THREE.Points>(null);
   const padSparksRef = useRef<THREE.Points>(null);
   const pyroSparksRef = useRef<THREE.Points>(null);
   const engineLightRef = useRef<THREE.PointLight>(null);
+  const padBounceLightRef = useRef<THREE.PointLight>(null);
   const elapsedRef = useRef(0);
   const budget = usePerfBudget();
   const steamCount = budget.steamCount;
+  const glowSteamCount = Math.max(24, Math.floor(steamCount * 0.45));
   const sparkCount = budget.sparkCount;
   const pyroCount = budget.pyroCount;
+
+  const maxQUniforms = useMemo(
+    () => ({
+      uColor: { value: new THREE.Color("#E8F0FF") },
+      uOpacity: { value: 0 },
+    }),
+    [],
+  );
 
   const coreTex = useMemo(() => getCoreStageTextures(), []);
   const srbTex = useMemo(() => getSrbTextures(), []);
@@ -81,6 +171,7 @@ export function SLSRocket({
   // Pre-seed pad acoustic deluge steam particles
   const steamData = useMemo(() => {
     const positions = new Float32Array(steamCount * 3);
+    const glowPositions = new Float32Array(glowSteamCount * 3);
     const seeds = new Float32Array(steamCount * 4);
     for (let i = 0; i < steamCount; i++) {
       seeds[i * 4 + 0] = (i / steamCount) * Math.PI * 2 + (i % 7) * 0.17;
@@ -88,8 +179,8 @@ export function SLSRocket({
       seeds[i * 4 + 2] = ((i * 19) % 13) / 13;
       seeds[i * 4 + 3] = (i % 17) / 17;
     }
-    return { positions, seeds };
-  }, [steamCount]);
+    return { positions, glowPositions, seeds };
+  }, [steamCount, glowSteamCount]);
 
   // Pre-seed ROFI igniter + exhaust spark particles
   const sparkData = useMemo(() => {
@@ -139,7 +230,11 @@ export function SLSRocket({
 
     if (engineLightRef.current) {
       engineLightRef.current.intensity =
-        (rofiActive * 6 + coreThrust * 22 + srbThrust * 30) * flicker;
+        (rofiActive * 9 + coreThrust * 34 + srbThrust * 48) * flicker;
+    }
+    if (padBounceLightRef.current) {
+      const padGlowVis = smoothstep(1.55, 1.95, p) * (1 - smoothstep(2.65, 3.25, p));
+      padBounceLightRef.current.intensity = padGlowVis * 68 * flicker;
     }
 
     // Core RS-25 Plume + Mach Shock Diamonds
@@ -254,37 +349,59 @@ export function SLSRocket({
     }
 
     // 8. Max-Q vapor shock cone (beat 4: ascent-2, progress 3.45 -> 4.45)
-    if (maxQConeRef.current) {
+    if (maxQConeRef.current && maxQMatRef.current) {
       const maxQ = smoothstep(3.45, 3.88, p) * (1 - smoothstep(4.15, 4.5, p));
       maxQConeRef.current.visible = maxQ > 0.02;
-      const mat = maxQConeRef.current.material as THREE.MeshBasicMaterial;
-      mat.opacity = maxQ * 0.28 * flicker;
+      maxQMatRef.current.uniforms.uOpacity.value = maxQ * 0.42 * flicker;
       maxQConeRef.current.scale.setScalar(0.96 + 0.05 * flicker);
     }
 
-    // 9. Pad Acoustic Deluge Steam Cloud (anchored at LC-39B)
+    // 9. Pad Acoustic Deluge Steam Cloud (anchored at LC-39B) + Ground-Lit Warm Underside
+    const steamActive = smoothstep(1.65, 1.95, p) * (1 - smoothstep(2.75, 3.4, p));
     if (padSteamRef.current) {
-      const steamActive = smoothstep(1.72, 1.98, p) * (1 - smoothstep(2.75, 3.35, p));
       padSteamRef.current.visible = steamActive > 0.01;
       if (steamActive > 0.01) {
         const posAttr = padSteamRef.current.geometry.attributes.position as THREE.BufferAttribute;
         const arr = posAttr.array as Float32Array;
         const { seeds } = steamData;
-        const drift = reducedMotion ? 0 : Math.max(0, p - 1.72) * 1.5;
+        const drift = reducedMotion ? 0 : Math.max(0, p - 1.65) * 1.65;
         for (let i = 0; i < steamCount; i++) {
           const ang = seeds[i * 4 + 0];
           const spd = seeds[i * 4 + 1];
           const hBias = seeds[i * 4 + 2];
           const phase = seeds[i * 4 + 3];
-          const cyc = ((reducedMotion ? 0.35 : t * 0.48) + phase + drift) % 1;
-          const radius = 1.0 + cyc * spd * 4.2;
+          const cyc = ((reducedMotion ? 0.35 : t * 0.52) + phase + drift) % 1;
+          const radius = 1.2 + cyc * spd * 4.8;
           arr[i * 3 + 0] = Math.cos(ang) * radius;
-          arr[i * 3 + 1] = 0.25 + cyc * 2.8 + hBias * 1.6;
+          arr[i * 3 + 1] = 0.55 + cyc * 3.6 + hBias * 2.1;
           arr[i * 3 + 2] = Math.sin(ang) * radius;
         }
         posAttr.needsUpdate = true;
         const pMat = padSteamRef.current.material as THREE.PointsMaterial;
-        pMat.opacity = steamActive * 0.46;
+        pMat.opacity = steamActive * 0.58;
+      }
+    }
+    if (padGlowSteamRef.current) {
+      padGlowSteamRef.current.visible = steamActive > 0.01;
+      if (steamActive > 0.01) {
+        const posAttr = padGlowSteamRef.current.geometry.attributes.position as THREE.BufferAttribute;
+        const arr = posAttr.array as Float32Array;
+        const { seeds } = steamData;
+        const drift = reducedMotion ? 0 : Math.max(0, p - 1.65) * 1.4;
+        for (let i = 0; i < glowSteamCount; i++) {
+          const ang = seeds[i * 4 + 0] + 0.25;
+          const spd = seeds[i * 4 + 1] * 0.85;
+          const hBias = seeds[i * 4 + 2];
+          const phase = seeds[i * 4 + 3];
+          const cyc = ((reducedMotion ? 0.28 : t * 0.65) + phase + drift) % 1;
+          const radius = 0.6 + cyc * spd * 4.2;
+          arr[i * 3 + 0] = Math.cos(ang) * radius;
+          arr[i * 3 + 1] = 0.12 + cyc * 1.45 + hBias * 0.75;
+          arr[i * 3 + 2] = Math.sin(ang) * radius;
+        }
+        posAttr.needsUpdate = true;
+        const gMat = padGlowSteamRef.current.material as THREE.PointsMaterial;
+        gMat.opacity = steamActive * (0.48 + 0.12 * flicker);
       }
     }
 
@@ -348,19 +465,41 @@ export function SLSRocket({
 
   return (
     <>
-      {/* ─── PAD ACOUSTIC DELUGE STEAM CLOUD ─── */}
+      {/* ─── PAD ACOUSTIC DELUGE STEAM CLOUD + GROUND-LIT WARM UNDERSIDE ─── */}
+      <pointLight
+        ref={padBounceLightRef}
+        position={[WORLD_ANCHORS.pad[0] + 0.6, WORLD_ANCHORS.pad[1] + 1.2, WORLD_ANCHORS.pad[2] + 2.2]}
+        color="#FF7E36"
+        intensity={0}
+        distance={68}
+        decay={1.55}
+      />
       <points ref={padSteamRef} position={WORLD_ANCHORS.pad} visible={false}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[steamData.positions, 3]} />
         </bufferGeometry>
         <pointsMaterial
           map={smokeTex}
-          size={4.8}
+          size={5.8}
           transparent
-          opacity={0.45}
+          opacity={0.55}
           depthWrite={false}
-          color="#DCE6FF"
+          color="#CFD8E6"
           blending={THREE.NormalBlending}
+        />
+      </points>
+      <points ref={padGlowSteamRef} position={WORLD_ANCHORS.pad} visible={false}>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[steamData.glowPositions, 3]} />
+        </bufferGeometry>
+        <pointsMaterial
+          map={smokeTex}
+          size={4.4}
+          transparent
+          opacity={0.5}
+          depthWrite={false}
+          color="#FF9648"
+          blending={THREE.AdditiveBlending}
         />
       </points>
 
@@ -461,7 +600,7 @@ export function SLSRocket({
           ))}
 
           {/* Main SOFI Cryogenic Core Tank (LOX + Intertank + LH2) */}
-          <mesh position={[0, 4.72, 0]}>
+          <mesh position={[0, 4.72, 0]} castShadow>
             <cylinderGeometry args={[0.64, 0.64, 6.45, 48]} />
             <meshStandardMaterial
               map={coreTex.map}
@@ -543,30 +682,26 @@ export function SLSRocket({
 
           {/* Core RS-25 Supersonic Exhaust Plume + Pulsing Mach Shock Diamonds */}
           <group ref={corePlumeRef} position={[0, -0.15, 0]} visible={false}>
-            {/* Outer hydrogen-oxygen plasma envelope */}
-            <mesh position={[0, -3.1, 0]} rotation={[Math.PI, 0, 0]}>
-              <coneGeometry args={[0.78, 6.2, 24, 1, true]} />
-              <meshBasicMaterial
-                color="#FF6A3D"
-                transparent
-                opacity={0.68}
-                blending={THREE.AdditiveBlending}
-                depthWrite={false}
-                side={THREE.DoubleSide}
-              />
-            </mesh>
+            {/* Outer hydrogen-oxygen plasma envelope (soft feathered shader) */}
+            <SoftPlumeCone
+              radius={0.86}
+              height={6.6}
+              segments={24}
+              position={[0, -3.3, 0]}
+              color="#FF703A"
+              opacity={0.78}
+              timeRef={elapsedRef}
+            />
             {/* Inner high-velocity blue-white core */}
-            <mesh position={[0, -2.1, 0]} rotation={[Math.PI, 0, 0]}>
-              <coneGeometry args={[0.44, 4.2, 20, 1, true]} />
-              <meshBasicMaterial
-                color="#DCE6FF"
-                transparent
-                opacity={0.92}
-                blending={THREE.AdditiveBlending}
-                depthWrite={false}
-                side={THREE.DoubleSide}
-              />
-            </mesh>
+            <SoftPlumeCone
+              radius={0.46}
+              height={4.5}
+              segments={20}
+              position={[0, -2.25, 0]}
+              color="#DCE8FF"
+              opacity={0.95}
+              timeRef={elapsedRef}
+            />
             {/* 4 Supersonic Mach Shock Diamonds */}
             {MACH_DIAMOND_Offsets.map((dy, di) => (
               <mesh key={di} position={[0, dy, 0]} scale={[1 - di * 0.16, 1.35, 1 - di * 0.16]}>
@@ -591,7 +726,7 @@ export function SLSRocket({
             position={[xOff, 3.8, 0]}
           >
             {/* Main 5-segment textured steel motor casing */}
-            <mesh>
+            <mesh castShadow>
               <cylinderGeometry args={[0.315, 0.315, 7.25, 36]} />
               <meshStandardMaterial
                 map={srbTex.map}
@@ -701,28 +836,24 @@ export function SLSRocket({
               position={[0, -4.25, 0]}
               visible={false}
             >
-              <mesh position={[0, -3.4, 0]} rotation={[Math.PI, 0, 0]}>
-                <coneGeometry args={[0.64, 6.8, 22, 1, true]} />
-                <meshBasicMaterial
-                  color="#FF7838"
-                  transparent
-                  opacity={0.84}
-                  blending={THREE.AdditiveBlending}
-                  depthWrite={false}
-                  side={THREE.DoubleSide}
-                />
-              </mesh>
-              <mesh position={[0, -2.2, 0]} rotation={[Math.PI, 0, 0]}>
-                <coneGeometry args={[0.32, 4.5, 16, 1, true]} />
-                <meshBasicMaterial
-                  color="#FFF6E0"
-                  transparent
-                  opacity={0.96}
-                  blending={THREE.AdditiveBlending}
-                  depthWrite={false}
-                  side={THREE.DoubleSide}
-                />
-              </mesh>
+              <SoftPlumeCone
+                radius={0.72}
+                height={7.4}
+                segments={24}
+                position={[0, -3.7, 0]}
+                color="#FF7834"
+                opacity={0.9}
+                timeRef={elapsedRef}
+              />
+              <SoftPlumeCone
+                radius={0.36}
+                height={4.9}
+                segments={18}
+                position={[0, -2.45, 0]}
+                color="#FFF6DC"
+                opacity={0.98}
+                timeRef={elapsedRef}
+              />
             </group>
           </group>
         ))}
@@ -896,8 +1027,8 @@ export function SLSRocket({
             position={[0, 10.6, 0]}
             rotation={[0, ang, 0]}
           >
-            <mesh position={[0, 0, 0.49]}>
-              <cylinderGeometry args={[0.512, 0.512, 0.98, 16, 1, false, -0.98, 1.96]} />
+            <mesh position={[0, 0, 0]}>
+              <cylinderGeometry args={[0.502, 0.502, 0.98, 16, 1, false, -1.03, 2.06]} />
               <meshStandardMaterial
                 map={fairingTex.map}
                 bumpMap={fairingTex.bumpMap}
@@ -955,13 +1086,39 @@ export function SLSRocket({
         {/* ═══════════════════ MAX-Q AERODYNAMIC SHOCK CONE ═══════════════════ */}
         <mesh ref={maxQConeRef} position={[0, 10.8, 0]} visible={false}>
           <coneGeometry args={[3.5, 5.4, 36, 1, true]} />
-          <meshBasicMaterial
-            color="#DCE6FF"
+          <shaderMaterial
+            ref={maxQMatRef}
+            uniforms={maxQUniforms}
             transparent
-            opacity={0}
-            blending={THREE.AdditiveBlending}
             depthWrite={false}
+            blending={THREE.AdditiveBlending}
             side={THREE.DoubleSide}
+            vertexShader={`
+              varying vec2 vUv;
+              varying vec3 vNormalView;
+              varying vec3 vViewPos;
+              void main() {
+                vUv = uv;
+                vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
+                vViewPos = -mvPos.xyz;
+                vNormalView = normalize(normalMatrix * normal);
+                gl_Position = projectionMatrix * mvPos;
+              }
+            `}
+            fragmentShader={`
+              uniform vec3 uColor;
+              uniform float uOpacity;
+              varying vec2 vUv;
+              varying vec3 vNormalView;
+              varying vec3 vViewPos;
+              void main() {
+                vec3 N = normalize(vNormalView);
+                vec3 V = normalize(vViewPos);
+                float fresnel = pow(1.0 - abs(dot(N, V)), 0.7) * abs(dot(N, V));
+                float band = smoothstep(0.0, 0.35, vUv.y) * smoothstep(1.0, 0.62, vUv.y);
+                gl_FragColor = vec4(uColor, fresnel * band * uOpacity);
+              }
+            `}
           />
         </mesh>
       </group>
