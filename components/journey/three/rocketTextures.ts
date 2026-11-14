@@ -633,22 +633,72 @@ export function getSparkTexture(): THREE.CanvasTexture {
   return tex;
 }
 
-/** 9. Soft Billowing Exhaust Steam / Smoke Puff Texture */
-export function getSmokePuffTexture(): THREE.CanvasTexture {
-  if (smokeTexCache) return smokeTexCache;
+let lensGlowCache: THREE.CanvasTexture | null = null;
+
+/** Soft radial atmospheric glow halo for LC-39B stadium floodlights (zero hard cones). */
+export function getLensGlowTexture(): THREE.CanvasTexture {
+  if (lensGlowCache) return lensGlowCache;
   const S = 128;
   const canvas = document.createElement("canvas");
   canvas.width = S;
   canvas.height = S;
   const ctx = canvas.getContext("2d")!;
-  const g = ctx.createRadialGradient(S / 2, S / 2, 2, S / 2, S / 2, S / 2);
-  g.addColorStop(0, "rgba(245, 248, 255, 0.95)");
-  g.addColorStop(0.35, "rgba(220, 230, 250, 0.6)");
-  g.addColorStop(0.7, "rgba(180, 195, 225, 0.2)");
-  g.addColorStop(1, "rgba(150, 170, 210, 0)");
+  const g = ctx.createRadialGradient(S / 2, S / 2, 1, S / 2, S / 2, S / 2);
+  g.addColorStop(0, "rgba(255, 250, 240, 0.92)");
+  g.addColorStop(0.22, "rgba(220, 232, 255, 0.42)");
+  g.addColorStop(0.55, "rgba(180, 205, 245, 0.12)");
+  g.addColorStop(1, "rgba(140, 175, 235, 0)");
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, S, S);
   const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  lensGlowCache = tex;
+  return tex;
+}
+
+/** 9. Turbulent Multi-Lobe Billowing Steam / Cumulus Puff Texture (256x256, non-bokeh organic cloud silhouette) */
+export function getSmokePuffTexture(): THREE.CanvasTexture {
+  if (smokeTexCache) return smokeTexCache;
+  const S = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = S;
+  canvas.height = S;
+  const ctx = canvas.getContext("2d")!;
+  ctx.clearRect(0, 0, S, S);
+
+  // Build organic cauliflower cloud mass from 24 asymmetrical overlapping soft lobes
+  const cx = S * 0.5;
+  const cy = S * 0.5;
+  for (let i = 0; i < 24; i++) {
+    const a = i * 2.39996 + Math.sin(i * 1.7) * 0.35; // golden angle scatter
+    const radDist = i === 0 ? 0 : (0.08 + ((i * 7) % 11) * 0.022) * S;
+    const lx = cx + Math.cos(a) * radDist;
+    const ly = cy + Math.sin(a) * radDist;
+    const lr = (0.19 + (i % 5) * 0.042) * S;
+
+    const g = ctx.createRadialGradient(lx - lr * 0.14, ly - lr * 0.18, lr * 0.08, lx, ly, lr);
+    const bright = 228 + (i % 4) * 7;
+    const mid = 198 + (i % 5) * 6;
+    g.addColorStop(0, `rgba(${bright}, ${bright + 2}, 252, 0.38)`);
+    g.addColorStop(0.55, `rgba(${mid}, ${mid + 4}, 224, 0.24)`);
+    g.addColorStop(1, "rgba(175, 188, 210, 0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(lx, ly, lr, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Soft outer fade so sprite borders never clip visibly
+  ctx.globalCompositeOperation = "destination-in";
+  const mask = ctx.createRadialGradient(cx, cy, S * 0.12, cx, cy, S * 0.48);
+  mask.addColorStop(0, "rgba(255,255,255,1)");
+  mask.addColorStop(0.62, "rgba(255,255,255,0.82)");
+  mask.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = mask;
+  ctx.fillRect(0, 0, S, S);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
   smokeTexCache = tex;
   return tex;
 }

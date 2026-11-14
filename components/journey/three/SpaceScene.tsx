@@ -84,6 +84,7 @@ function SceneChoreographer({
   const hemiRef = useRef<THREE.HemisphereLight>(null);
   const marsModelSpotRef = useRef<THREE.SpotLight>(null);
   const grailImpactLightRef = useRef<THREE.PointLight>(null);
+  const fogRef = useRef<THREE.FogExp2>(null);
   const elapsedRef = useRef(0);
   const shadowModeRef = useRef<"pad" | "exhibit">("pad");
   const sunTarget = useMemo(() => new THREE.Object3D(), []);
@@ -91,7 +92,9 @@ function SceneChoreographer({
   const siteFocusPos = useMemo(() => new THREE.Vector3(), []);
   const simCamPos = useMemo(() => new THREE.Vector3(), []);
   const simCamLook = useMemo(() => new THREE.Vector3(), []);
-  const duskSunColor = useMemo(() => new THREE.Color("#FF9852"), []);
+  const duskSunColor = useMemo(() => new THREE.Color("#FF964C"), []);
+  const duskFogColor = useMemo(() => new THREE.Color("#2D3549"), []);
+  const climbFogColor = useMemo(() => new THREE.Color("#101A33"), []);
   const orbitalSunColor = useMemo(() => new THREE.Color("#F5F8FF"), []);
   const moonSunColor = useMemo(() => new THREE.Color("#FFFDF7"), []);
   const marsSunColor = useMemo(() => new THREE.Color("#FFD6B0"), []);
@@ -278,14 +281,20 @@ function SceneChoreographer({
         sunTarget.position.set(0, 4, 0);
         sunTarget.updateMatrixWorld();
         sunRef.current.position.set(
-          THREE.MathUtils.lerp(-58, 65, orbitalT),
-          THREE.MathUtils.lerp(15, 95, orbitalT),
-          THREE.MathUtils.lerp(-22, 85, orbitalT),
+          THREE.MathUtils.lerp(-78, 65, orbitalT),
+          THREE.MathUtils.lerp(9.5, 95, orbitalT),
+          THREE.MathUtils.lerp(-42, 85, orbitalT),
         );
         sunRef.current.color.copy(duskSunColor).lerp(orbitalSunColor, orbitalT);
-        const targetSun = THREE.MathUtils.lerp(3.65, 3.1, orbitalT) * dim;
+        const targetSun = THREE.MathUtils.lerp(3.55, 3.1, orbitalT) * dim;
         sunRef.current.intensity = THREE.MathUtils.damp(sunRef.current.intensity, targetSun, 6, dt);
       }
+    }
+    if (fogRef.current) {
+      // Gentle aerial perspective on distant VAB & ocean coast during beats 0..2; vanishes above cloud deck (p >= 3.25)
+      const padHaze = 1 - smoothstep(2.05, 3.25, p);
+      fogRef.current.density = padHaze * 0.00125;
+      fogRef.current.color.copy(duskFogColor).lerp(climbFogColor, smoothstep(1.9, 3.2, p));
     }
     if (rimRef.current) {
       if (inMoonHall) {
@@ -329,6 +338,7 @@ function SceneChoreographer({
 
   return (
     <>
+      <fogExp2 ref={fogRef} attach="fog" args={["#2D3549", 0.00125]} />
       <primitive object={sunTarget} />
       <primitive object={marsSpotTarget} />
       <ambientLight ref={ambRef} color="#1A2644" intensity={0.42} />
@@ -621,7 +631,7 @@ export default function SpaceScene() {
         <Suspense fallback={null}>
           <HallEnvironment />
           <CelestialWorlds reducedMotion={reducedMotion} />
-          <LaunchComplex />
+          <LaunchComplex reducedMotion={reducedMotion} />
           <SLSRocket rocketRef={rocketRef} reducedMotion={reducedMotion} />
           <ExhibitStage3D reducedMotion={reducedMotion} />
           <ExpeditionEffects reducedMotion={reducedMotion} />
