@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
+import { beats } from "@/content/beats";
 import { useMuseum } from "@/lib/store";
 import { scrollState, smoothstep } from "@/lib/scroll/progress";
 import { CelestialWorlds } from "./CelestialWorlds";
@@ -236,8 +237,26 @@ export default function SpaceScene() {
     return () => document.removeEventListener("visibilitychange", onVisibilityChange);
   }, []);
 
+  // AG-7: Support ?poster=<beatId|slug> for clean still poster capture (locks beat & hides DOM UI)
+  const [posterBeat] = useState<number | null>(() => {
+    if (typeof window === "undefined") return null;
+    const params = new URLSearchParams(window.location.search);
+    const posterId = params.get("poster");
+    if (!posterId) return null;
+    const idx = beats.findIndex((b) => b.id === posterId || b.exhibitSlug === posterId);
+    return idx >= 0 ? idx : null;
+  });
+
+  useEffect(() => {
+    if (posterBeat !== null) {
+      scrollState.target = posterBeat;
+      scrollState.current = posterBeat;
+      scrollState.velocity = 0;
+    }
+  }, [posterBeat]);
+
   return (
-    <div aria-hidden className="fixed inset-0 z-0 bg-void">
+    <div aria-hidden className={`fixed inset-0 bg-void ${posterBeat !== null ? "z-50" : "z-0"}`}>
       <Canvas
         frameloop={isPageHidden ? "never" : "always"}
         dpr={reducedMotion ? 1 : budget.dpr}
@@ -248,6 +267,7 @@ export default function SpaceScene() {
         }}
         gl={{
           antialias: true,
+          preserveDrawingBuffer: posterBeat !== null,
           powerPreference: "high-performance",
           toneMapping: THREE.ACESFilmicToneMapping,
           toneMappingExposure: 1.08,

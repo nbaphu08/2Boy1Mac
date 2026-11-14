@@ -141,6 +141,16 @@ See `GEMINI.md` §1–2 (architecture). Merged to `main` in commit a5633df.
 **Files changed:**
 - `components/journey/three/perfTier.ts` (new), `SpaceScene.tsx`, `SLSRocket.tsx`, `LaunchComplex.tsx`, `ExhibitStage3D.tsx`, `CelestialWorlds.tsx`, `MoonDioramas.tsx`, `MarsDioramas.tsx`, `MoonModels.tsx`
 
+## AG-7 — Poster Renders — 14/11 — branch `ag/7-posters`
+**Done:**
+1. **144 Still Poster Renders (`public/media/three/posters/<beatId|slug|catalogNo>-<w>x<h>.{avif,jpg}`)**: Generated clean still posters (no DOM UI) at **`1920×1080`** and **`1080×1350`** in both **`.avif`** and **`.jpg`** for all 24 beats (`hero`..`finale`, including the 12 exhibit `slug`s) plus all 12 `SM-*` catalogue IDs (`SM-L-001`..`SM-M-007`).
+2. **Deterministic `?poster=<beatId|slug>` Capture Mode (`SpaceScene.tsx`)**: Added query-param support (`?poster=<beatId|slug>`) that locks `scrollState.target` and `scrollState.current` to the requested beat, enables `preserveDrawingBuffer`, and elevates the `<Canvas>` above DOM overlays (`z-50`) so headless WebGL capture scripts can re-shoot any beat deterministically.
+
+**Files changed:**
+- `components/journey/three/SpaceScene.tsx`
+- `public/media/three/posters/*.{avif,jpg}` (144 poster files)
+
+
 
 
 
