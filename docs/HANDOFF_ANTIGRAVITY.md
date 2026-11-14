@@ -495,3 +495,6 @@ Do NOT generate posters.
 4. **Verification**: `npx tsc --noEmit`, `npx eslint components/journey/three` (0 errors, 0 warnings), and `npx next build --webpack` (`36/36` routes) all exited `0`. Browser screenshot tool could not attach (no active Chrome `DevToolsActivePort`). Zero posters generated or modified; beat 9 camera unchanged.
 
 **Files changed:** `components/journey/three/MoonModels.tsx`, `components/journey/three/MoonDioramas.tsx`, `docs/HANDOFF_ANTIGRAVITY.md`.
+
+## Opus review — AG-15 accepted (15/11)
+- Surveyor 3 rebuilt: connected space-frame, mast with both flat panels, splayed legs and footpads, sampler pantograph, omni booms. Matches AS12-48-7133. Merged.
