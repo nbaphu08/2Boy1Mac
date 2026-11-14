@@ -369,7 +369,6 @@ export function HallOneLunarDiorama({
   children?: React.ReactNode;
 }) {
   const { map: regolithMap, bumpMap: regolithBump } = useMemo(() => getLunarRegolithTextures(), []);
-  const shadowTex = useMemo(() => getSoftContactShadowTexture(), []);
   const bootprintTex = useMemo(() => getBootprintTrailTexture(), []);
   const roverTrackTex = useMemo(() => getRoverTrackTexture(), []);
   const ejectaTex = useMemo(() => getDarkEjectaTexture(), []);
@@ -392,7 +391,12 @@ export function HallOneLunarDiorama({
       </mesh>
 
       {/* Displaced Lunar Regolith Terrain Patch */}
-      <mesh geometry={terrainGeo} position={[0, DIORAMA_SURFACE_Y, 0]}>
+      <mesh
+        name="diorama-terrain"
+        geometry={terrainGeo}
+        position={[0, DIORAMA_SURFACE_Y, 0]}
+        receiveShadow
+      >
         <meshStandardMaterial
           map={regolithMap}
           bumpMap={regolithBump}
@@ -411,12 +415,6 @@ export function HallOneLunarDiorama({
       {/* ─── SITE 1: SM-L-001 · APOLLO 11 (Sea of Tranquility) ─── */}
       {slug === "moon-apollo-11" ? (
         <group>
-          {/* Soft physically plausible contact shadow directly beneath Eagle descent stage */}
-          <mesh position={[0, DIORAMA_SURFACE_Y + 0.032, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <planeGeometry args={[2.1, 2.1]} />
-            <meshBasicMaterial map={shadowTex} transparent opacity={0.45} depthWrite={false} />
-          </mesh>
-
           {/* Astronaut bootprint paths connecting LM ladder -> EASEP -> LRRR */}
           <mesh
             position={[-0.42, DIORAMA_SURFACE_Y + 0.036, 1.36]}
@@ -442,15 +440,6 @@ export function HallOneLunarDiorama({
       {/* ─── SITE 2: SM-L-002 · SURVEYOR 3 (Ocean of Storms crater + Apollo 12 LM on rim) ─── */}
       {slug === "moon-surveyor-3" ? (
         <group>
-          {/* Soft contact shadow directly beneath Surveyor 3 on the inner crater slope */}
-          <mesh
-            position={[0.08, DIORAMA_SURFACE_Y - 0.11, 0.22]}
-            rotation={[-Math.PI / 2 + 0.14, 0, 0]}
-          >
-            <planeGeometry args={[1.85, 1.85]} />
-            <meshBasicMaterial map={shadowTex} transparent opacity={0.42} depthWrite={false} />
-          </mesh>
-
           {/* Bootprint trail from Conrad & Bean walking down the crater slope to Surveyor 3 */}
           <mesh
             position={[0.62, DIORAMA_SURFACE_Y + 0.02, -0.58]}
@@ -499,12 +488,6 @@ export function HallOneLunarDiorama({
             seed={29}
             color="#4E4A45"
           />
-
-          {/* Soft contact shadow under parked LRV */}
-          <mesh position={[0.15, DIORAMA_SURFACE_Y + 0.032, 0.35]} rotation={[-Math.PI / 2, 0, -0.45]}>
-            <planeGeometry args={[2.1, 1.4]} />
-            <meshBasicMaterial map={shadowTex} transparent opacity={0.44} depthWrite={false} />
-          </mesh>
 
           {/* Rover wheel tracks trailing behind the parked LRV */}
           <mesh
@@ -581,16 +564,6 @@ export function HallOneLunarDiorama({
           >
             <planeGeometry args={[2.45, 0.38]} />
             <meshBasicMaterial map={bootprintTex} transparent opacity={0.88} depthWrite={false} />
-          </mesh>
-
-          {/* Soft contact shadows under Challenger descent stage & parked LRV */}
-          <mesh position={[-0.58, DIORAMA_SURFACE_Y + 0.032, -0.18]} rotation={[-Math.PI / 2, 0, 0]}>
-            <planeGeometry args={[1.95, 1.95]} />
-            <meshBasicMaterial map={shadowTex} transparent opacity={0.44} depthWrite={false} />
-          </mesh>
-          <mesh position={[1.28, DIORAMA_SURFACE_Y + 0.032, 0.82]} rotation={[-Math.PI / 2, 0, 0.4]}>
-            <planeGeometry args={[1.55, 1.15]} />
-            <meshBasicMaterial map={shadowTex} transparent opacity={0.4} depthWrite={false} />
           </mesh>
 
           {/* Clipped LM Challenger Descent Stage + clean octagonal top cap */}

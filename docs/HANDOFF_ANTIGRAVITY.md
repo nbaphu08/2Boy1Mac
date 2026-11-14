@@ -188,3 +188,25 @@ See `GEMINI.md` §1–2 (architecture). Merged to `main` in commit a5633df.
 
 ## Opus review — AG-8b accepted (15/11)
 - ascent-1 horizon and deep-space Orion + ESM verified in real WebGL. Opus added one fix: launch complex hidden from p 3.6 (VAB still stood on the cloud deck at ascent-2). Posters for enter…deep-space re-captured. Poster mode now lives at `/journey?poster=<id>` (landing/journey split).
+
+## AG-9a — Render Pipeline & Light — branch `ag/9a-render`
+**Done:**
+1. **Post-processing (`RenderPipeline.tsx`, `package.json`)**: Added `@react-three/postprocessing@3.2.2` + `postprocessing@6.39.6` (with `n8ao@2.0.2`). Built tier-aware `<PostEffects />` with consistent `ACES_FILMIC` tonemapping (`EffectComposer` handles HDR Linear -> ACES Filmic on `high`/`medium`, while `Canvas` uses `ACESFilmicToneMapping` on `low`):
+   - `high`: `N8AO` (`aoRadius={0.85}`, `intensity={1.55}`) + subtle exhibit-only `DepthOfField` dynamically focused on `trajTmp.camLook` + selective HDR `Bloom` (`luminanceThreshold={1.08}`, `mipmapBlur`) + `ToneMapping(ACES_FILMIC)` + `SMAA`.
+   - `medium`: `N8AO` (light half-res AO) + selective `Bloom` + `ToneMapping(ACES_FILMIC)` + `SMAA`.
+   - `low`: no post-processing (`Canvas` native `ACESFilmicToneMapping`).
+2. **Per-hall procedural IBL (`RenderPipeline.tsx`, `SpaceScene.tsx`)**: Replaced `configureAerospaceEnvironment` with `<HallEnvironment />` (`drei` `<Environment key={hall} resolution={128} frames={1}>` built purely from `<Lightformer>` cards, zero external HDRIs):
+   - `launch`: KSC 6:35 p.m. EDT western sunset warmth + cobalt twilight zenith + warm concrete pad bounce.
+   - `deep`: Orbital high-contrast sun key + Earth-albedo blue fill (`earth-sky` -> `tli` -> `deep`).
+   - `moon`: Hard cold white sun disc (`#FFFFFF`) in near-black vacuum + subtle regolith bounce.
+   - `mars`: Warm butterscotch dusty sky hemisphere (`#C8603A` / `#9A5334`) + low ochre fill.
+3. **Real Soft Shadows & Fake Blob Removal (`SpaceScene.tsx`, `ExhibitStage3D.tsx`, `MoonDioramas.tsx`, `MarsDioramas.tsx`)**: Enabled `shadows={budget.tier !== "low" ? "soft" : false}` (`PCFSoftShadowMap`), added `sunTarget` tracking active `EXHIBIT_PLINTH_ANCHORS` with tight shadow frustum (`±5.2`, `2048×2048` on `high`, `1024×1024` on `medium`), added `<ShadowEnabler />` in `SingleExhibitPlinth` + `receiveShadow` on `diorama-terrain` meshes, and removed all 12 fake `shadowTex` blob contact-shadow planes from `MoonDioramas.tsx` (5) and `MarsDioramas.tsx` (7).
+4. **HDR Selective Bloom Calibrations (`SLSRocket.tsx`, `LaunchComplex.tsx`, `MoonModels.tsx`, `ExhibitStage3D.tsx`)**: Added `toneMapped={false}` + HDR luminance (> `1.08`) strictly on true emissives (`SoftPlumeCone` plumes, RS-25 combustion throats, Mach shock diamonds, ROFI/pyro sparks, pad aviation/light pole beacons, Apollo 11 LRRR 532nm laser + glint, Hall of Silence active beacon, and Voyager 1 beacon).
+5. **Perf Tier Calibration & Shader Prewarming (`perfTier.ts`, `SpaceScene.tsx`)**: Adjusted DPR caps (`high: [1, 1.5]`, `medium: [1, 1.25]`, `low: [1, 1]`) and retained `MaterialPrewarmer` (`gl.compile` + `compileAsync`).
+6. **Guards & verification**: Zero edits to `MarsModels.tsx` or `public/media/three/posters/`. `npx tsc --noEmit`, `npx eslint components/journey/three`, and production build pass. **WebGL screenshot capture & live FPS benchmark did not run in headless sandbox — ready for Opus verification before AG-9b (`ag/9b-landscapes`).**
+
+**Files changed:**
+- `package.json`, `package-lock.json`
+- `components/journey/three/RenderPipeline.tsx` (new), `perfTier.ts`, `SpaceScene.tsx`, `ExhibitStage3D.tsx`, `MoonDioramas.tsx`, `MarsDioramas.tsx`, `MoonModels.tsx`, `LaunchComplex.tsx`, `SLSRocket.tsx`
+- `docs/HANDOFF_ANTIGRAVITY.md`
+

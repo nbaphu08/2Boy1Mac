@@ -20,7 +20,7 @@ export type PerfBudget = {
 const BUDGETS: Record<PerfTier, PerfBudget> = {
   high: {
     tier: "high",
-    dpr: [1, 2],
+    dpr: [1, 1.5],
     starCount: 1100,
     steamCount: 140,
     sparkCount: 260,
@@ -31,7 +31,7 @@ const BUDGETS: Record<PerfTier, PerfBudget> = {
   },
   medium: {
     tier: "medium",
-    dpr: [1, 1.5],
+    dpr: [1, 1.25],
     starCount: 640,
     steamCount: 88,
     sparkCount: 160,
@@ -42,7 +42,7 @@ const BUDGETS: Record<PerfTier, PerfBudget> = {
   },
   low: {
     tier: "low",
-    dpr: [1, 1.25],
+    dpr: [1, 1],
     starCount: 320,
     steamCount: 48,
     sparkCount: 84,

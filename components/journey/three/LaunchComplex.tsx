@@ -525,7 +525,12 @@ export function LaunchComplex() {
               position={[0, 18.6, 0]}
             >
               <sphereGeometry args={[0.16, 10, 10]} />
-              <meshBasicMaterial color="#FF6A3D" transparent opacity={0.9} />
+              <meshBasicMaterial
+                color={[2.6, 0.72, 0.34]}
+                toneMapped={false}
+                transparent
+                opacity={0.95}
+              />
             </mesh>
           </group>
         ))}
@@ -658,7 +663,7 @@ export function LaunchComplex() {
             </mesh>
             <mesh position={[0.35, 4.35, 0]}>
               <sphereGeometry args={[0.14, 8, 8]} />
-              <meshBasicMaterial color="#FFCC88" />
+              <meshBasicMaterial color={[1.95, 1.35, 0.78]} toneMapped={false} />
             </mesh>
           </group>
         ))}

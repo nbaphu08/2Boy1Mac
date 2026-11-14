@@ -3,7 +3,7 @@
 import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-import { DIORAMA_SURFACE_Y, getSoftContactShadowTexture } from "./MoonDioramas";
+import { DIORAMA_SURFACE_Y } from "./MoonDioramas";
 import { usePerfBudget } from "./perfTier";
 import {
   InSightSurfaceInstruments,
@@ -409,7 +409,6 @@ export function HallTwoMarsDiorama({
     () => getMarsRegolithTextures(isArctic),
     [isArctic],
   );
-  const shadowTex = useMemo(() => getSoftContactShadowTexture(), []);
   const trackTex = useMemo(() => getMarsRoverTrackTexture(), []);
   const terrainGeo = useMemo(() => createMarsTerrainGeometry(slug), [slug]);
 
@@ -450,7 +449,12 @@ export function HallTwoMarsDiorama({
       <MarsButterscotchHazeArc isStorm={isStorm} />
 
       {/* Displaced Martian Regolith Terrain Patch */}
-      <mesh geometry={terrainGeo} position={[0, DIORAMA_SURFACE_Y, 0]}>
+      <mesh
+        name="diorama-terrain"
+        geometry={terrainGeo}
+        position={[0, DIORAMA_SURFACE_Y, 0]}
+        receiveShadow
+      >
         <meshStandardMaterial
           map={regolithMap}
           bumpMap={regolithBump}
@@ -470,10 +474,6 @@ export function HallTwoMarsDiorama({
       {/* ─── 1. SM-M-001 · VIKING 1 LANDER (Rock-strewn Chryse Planitia plain) ─── */}
       {slug === "mars-viking-1" ? (
         <group>
-          <mesh position={[0, DIORAMA_SURFACE_Y + 0.032, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <planeGeometry args={[2.2, 2.2]} />
-            <meshBasicMaterial map={shadowTex} transparent opacity={0.44} depthWrite={false} />
-          </mesh>
           {children}
           <Viking1SiteProps baseY={DIORAMA_SURFACE_Y} />
         </group>
@@ -499,10 +499,6 @@ export function HallTwoMarsDiorama({
             seed={22}
             color="#7E4028"
           />
-          <mesh position={[-0.45, DIORAMA_SURFACE_Y + 0.03, -0.22]} rotation={[-Math.PI / 2, 0, 0]}>
-            <planeGeometry args={[2.3, 2.3]} />
-            <meshBasicMaterial map={shadowTex} transparent opacity={0.42} depthWrite={false} />
-          </mesh>
           <PathfinderAndSojournerModel baseY={DIORAMA_SURFACE_Y} />
         </group>
       ) : null}
@@ -526,10 +522,6 @@ export function HallTwoMarsDiorama({
           <mesh position={[0.05, DIORAMA_SURFACE_Y - 0.03, 0.08]} rotation={[-Math.PI / 2, 0, 0.2]}>
             <circleGeometry args={[1.05, 24]} />
             <meshStandardMaterial color="#DFC492" roughness={0.92} metalness={0.02} />
-          </mesh>
-          <mesh position={[0.05, DIORAMA_SURFACE_Y - 0.022, 0.08]} rotation={[-Math.PI / 2, 0, 0]}>
-            <planeGeometry args={[1.9, 1.9]} />
-            <meshBasicMaterial map={shadowTex} transparent opacity={0.42} depthWrite={false} />
           </mesh>
 
           {/* Rover tracks + deep gouged furrow from Spirit dragging its inoperable right-front wheel */}
@@ -562,13 +554,6 @@ export function HallTwoMarsDiorama({
             seed={44}
             color="#6E321D"
           />
-          <mesh
-            position={[0, DIORAMA_SURFACE_Y + 0.03, 0]}
-            rotation={[-Math.PI / 2 + 0.14, 0, 0]}
-          >
-            <planeGeometry args={[2.0, 2.0]} />
-            <meshBasicMaterial map={shadowTex} transparent opacity={0.46} depthWrite={false} />
-          </mesh>
           {/* Opportunity pitched on the inclined slope of Perseverance Valley */}
           <group position={[0, 0.02, 0]} rotation={[0.14, -0.28, 0.05]}>
             {children}
@@ -579,11 +564,6 @@ export function HallTwoMarsDiorama({
       {/* ─── 5. SM-M-005 · PHOENIX (Polygon-patterned arctic ground, dug trenches with bright ice, collapsed solar array) ─── */}
       {slug === "mars-phoenix" ? (
         <group>
-          <mesh position={[0, DIORAMA_SURFACE_Y + 0.028, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <planeGeometry args={[2.2, 2.2]} />
-            <meshBasicMaterial map={shadowTex} transparent opacity={0.44} depthWrite={false} />
-          </mesh>
-
           {/* Excavated arctic trenches ("Dodo-Goldilocks" & "Snow Queen") exposing bright white water ice */}
           <group position={[0.14, DIORAMA_SURFACE_Y + 0.024, 1.12]} rotation={[0, -0.18, 0]}>
             {/* Dark excavated trench pit */}
@@ -628,10 +608,6 @@ export function HallTwoMarsDiorama({
       {/* ─── 6. SM-M-006 · INSIGHT (Smooth flat Elysium plain, dust-covered panels, SEIS dome & HP3 mole in front) ─── */}
       {slug === "mars-insight" ? (
         <group>
-          <mesh position={[0, DIORAMA_SURFACE_Y + 0.028, -0.15]} rotation={[-Math.PI / 2, 0, 0]}>
-            <planeGeometry args={[2.3, 2.1]} />
-            <meshBasicMaterial map={shadowTex} transparent opacity={0.44} depthWrite={false} />
-          </mesh>
           <group position={[0, 0, -0.18]} scale={1.08}>
             {children}
           </group>
@@ -652,10 +628,6 @@ export function HallTwoMarsDiorama({
             seed={72}
             color="#965234"
           />
-          <mesh position={[0, DIORAMA_SURFACE_Y + 0.035, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <planeGeometry args={[1.65, 1.65]} />
-            <meshBasicMaterial map={shadowTex} transparent opacity={0.4} depthWrite={false} />
-          </mesh>
           {/* Ingenuity helicopter resting on a Valinor Hills sand ripple with Flight 72 damaged rotor blade */}
           <group position={[0, 0.03, 0.1]} rotation={[0.06, -0.35, -0.05]} scale={1.08}>
             {children}

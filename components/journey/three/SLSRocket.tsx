@@ -107,7 +107,7 @@ function SoftPlumeCone({
             float axial = pow(clamp(1.0 - vUv.y, 0.0, 1.0), 1.3) * smoothstep(0.0, 0.06, vUv.y);
             float pulse = 0.88 + 0.12 * sin(vUv.y * 28.0 - uTime * 34.0 + vUv.x * 12.56);
             float a = radial * axial * pulse * uOpacity;
-            gl_FragColor = vec4(uColor * (1.0 + 0.35 * (1.0 - vUv.y)), a);
+            gl_FragColor = vec4(uColor * (1.45 + 0.65 * (1.0 - vUv.y)), a);
           }
         `}
       />
@@ -506,7 +506,8 @@ export function SLSRocket({
           transparent
           opacity={0.5}
           depthWrite={false}
-          color="#FF9648"
+          color={[1.7, 0.85, 0.38]}
+          toneMapped={false}
           blending={THREE.AdditiveBlending}
         />
       </points>
@@ -522,7 +523,8 @@ export function SLSRocket({
           transparent
           opacity={0.95}
           depthWrite={false}
-          color="#FFB464"
+          color={[2.4, 1.45, 0.72]}
+          toneMapped={false}
           blending={THREE.AdditiveBlending}
         />
       </points>
@@ -549,7 +551,8 @@ export function SLSRocket({
             transparent
             opacity={0.9}
             depthWrite={false}
-            color="#FFD28A"
+            color={[2.4, 1.65, 0.85]}
+            toneMapped={false}
             blending={THREE.AdditiveBlending}
           />
         </points>
@@ -602,7 +605,12 @@ export function SLSRocket({
               {/* Glowing inner combustion throat */}
               <mesh position={[0, -0.12, 0]}>
                 <cylinderGeometry args={[0.09, 0.18, 0.28, 16]} />
-                <meshBasicMaterial color="#DCE6FF" transparent opacity={0.65} />
+                <meshBasicMaterial
+                  color={[1.65, 1.78, 2.15]}
+                  toneMapped={false}
+                  transparent
+                  opacity={0.75}
+                />
               </mesh>
             </group>
           ))}
@@ -715,7 +723,8 @@ export function SLSRocket({
               <mesh key={di} position={[0, dy, 0]} scale={[1 - di * 0.16, 1.35, 1 - di * 0.16]}>
                 <octahedronGeometry args={[0.26, 1]} />
                 <meshBasicMaterial
-                  color="#FFFFFF"
+                  color={[2.3, 1.95, 1.65]}
+                  toneMapped={false}
                   transparent
                   opacity={0.85 - di * 0.15}
                   blending={THREE.AdditiveBlending}

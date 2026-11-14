@@ -17,6 +17,48 @@ import { usePerfBudget } from "./perfTier";
 
 const PLINTH_SURFACE_Y = 0.22;
 
+/**
+ * Enables real PCFSoftShadowMap shadow casting/receiving on opaque artifact
+ * and diorama meshes (skipping translucent spotlights, dust points, craters/decals,
+ * and the terrain surface which receives shadows without self-shadowing).
+ */
+function ShadowEnabler({
+  targetRef,
+  enabled,
+}: {
+  targetRef: React.RefObject<THREE.Group | null>;
+  enabled: boolean;
+}) {
+  useEffect(() => {
+    const root = targetRef.current;
+    if (!root) return;
+    const apply = () => {
+      root.traverse((obj) => {
+        if (!(obj as THREE.Mesh).isMesh) return;
+        const mesh = obj as THREE.Mesh;
+        if (mesh.name === "diorama-terrain") {
+          mesh.castShadow = false;
+          mesh.receiveShadow = enabled;
+          return;
+        }
+        const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        const hasTransparentOnly = mats.every((m) => m && m.transparent && !m.depthWrite);
+        if (hasTransparentOnly) {
+          mesh.castShadow = false;
+          mesh.receiveShadow = false;
+        } else {
+          mesh.castShadow = enabled;
+          mesh.receiveShadow = enabled;
+        }
+      });
+    };
+    apply();
+    const raf = requestAnimationFrame(apply);
+    return () => cancelAnimationFrame(raf);
+  }, [targetRef, enabled]);
+  return null;
+}
+
 function GlbExhibitMesh({
   url,
   slug,
@@ -273,6 +315,7 @@ function SingleExhibitPlinth({
             {exhibit.media.model && inGlbRange ? (
               <Suspense fallback={<PlinthFallback />}>
                 <GlbExhibitMesh url={exhibit.media.model} slug={exhibit.slug} isApolloLm={isApolloLm} />
+                <ShadowEnabler targetRef={spinRef} enabled={budget.tier !== "low"} />
               </Suspense>
             ) : null}
           </HallOneLunarDiorama>
@@ -281,10 +324,12 @@ function SingleExhibitPlinth({
             {exhibit.media.model && inGlbRange ? (
               <Suspense fallback={<PlinthFallback />}>
                 <GlbExhibitMesh url={exhibit.media.model} slug={exhibit.slug} isApolloLm={false} />
+                <ShadowEnabler targetRef={spinRef} enabled={budget.tier !== "low"} />
               </Suspense>
             ) : null}
           </HallTwoMarsDiorama>
         )}
+        <ShadowEnabler targetRef={spinRef} enabled={budget.tier !== "low"} />
       </group>
     </group>
   );
@@ -429,7 +474,7 @@ function HallOfSilence3D({
           >
             <sphereGeometry args={[b.stillActive ? 0.16 : 0.11, 16, 12]} />
             <meshBasicMaterial
-              color={b.stillActive ? "#9DB8FF" : "#DCE6FF"}
+              color={b.stillActive ? [1.35, 1.65, 2.55] : [1.45, 1.55, 1.9]}
               transparent
               opacity={0.95}
               toneMapped={false}
@@ -457,9 +502,10 @@ function HallOfSilence3D({
             <mesh ref={activeBeamRef} position={[0, 2.6, 0]}>
               <cylinderGeometry args={[0.01, 0.045, 5.2, 10, 1, true]} />
               <meshBasicMaterial
-                color="#9DB8FF"
+                color={[1.25, 1.55, 2.4]}
+                toneMapped={false}
                 transparent
-                opacity={0.38}
+                opacity={0.42}
                 depthWrite={false}
                 blending={THREE.AdditiveBlending}
               />
@@ -553,7 +599,12 @@ function SilhouetteModel({
         <group position={[0.18, 0.42, 0.55]}>
           <mesh ref={beaconCoreRef}>
             <sphereGeometry args={[0.065, 14, 12]} />
-            <meshBasicMaterial color="#9DB8FF" transparent opacity={0.95} toneMapped={false} />
+            <meshBasicMaterial
+              color={[1.55, 1.9, 2.9]}
+              transparent
+              opacity={0.95}
+              toneMapped={false}
+            />
           </mesh>
           <mesh ref={beaconHaloRef}>
             <sphereGeometry args={[0.24, 14, 12]} />
