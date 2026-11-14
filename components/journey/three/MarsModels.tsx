@@ -611,30 +611,21 @@ export function IngenuityAndBackshellProps({ baseY }: { baseY: number }) {
         <meshStandardMaterial color="#1E2026" roughness={0.42} metalness={0.68} />
       </mesh>
 
-      {/* Separate mini-plinth in the background right/left showing Perseverance's shattered backshell + parachute (PIA25219) */}
-      <group position={[-1.95, 0.06, -1.55]} rotation={[0, 0.45, 0]}>
-        {/* Mini vitrine disc */}
-        <mesh position={[0, -0.04, 0]}>
-          <cylinderGeometry args={[0.62, 0.68, 0.08, 24]} />
-          <meshStandardMaterial color="#261C18" roughness={0.85} metalness={0.18} />
-        </mesh>
-        <mesh position={[0, 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[0.58, 0.62, 24]} />
-          <meshBasicMaterial color="#C8603A" transparent opacity={0.45} />
-        </mesh>
+      {/* Distant shattered Perseverance backshell + supersonic parachute resting on Martian sand (PIA25219) */}
+      <group position={[-2.35, -0.02, -2.6]} rotation={[0, 0.45, 0]}>
         {/* Shattered cream-tan conical Perseverance backshell */}
-        <mesh position={[0.12, 0.09, 0.12]} rotation={[0.22, 0.4, -0.18]}>
-          <coneGeometry args={[0.24, 0.18, 14, 1, true]} />
-          <meshStandardMaterial color="#DFC4A6" roughness={0.58} metalness={0.25} side={THREE.DoubleSide} />
+        <mesh position={[0.12, 0.09, 0.12]} rotation={[0.22, 0.4, -0.18]} castShadow receiveShadow>
+          <coneGeometry args={[0.26, 0.2, 14, 1, true]} />
+          <meshStandardMaterial color="#DFC4A6" roughness={0.62} metalness={0.22} side={THREE.DoubleSide} />
         </mesh>
         {/* Draped orange-and-white supersonic parachute canopy behind backshell */}
-        <mesh position={[-0.18, 0.02, -0.18]} rotation={[-Math.PI / 2 + 0.06, 0, 0.35]}>
-          <circleGeometry args={[0.26, 12, 0, Math.PI * 1.3]} />
-          <meshStandardMaterial color="#C85A32" roughness={0.78} metalness={0.08} />
+        <mesh position={[-0.18, 0.025, -0.18]} rotation={[-Math.PI / 2 + 0.06, 0, 0.35]} receiveShadow>
+          <circleGeometry args={[0.3, 12, 0, Math.PI * 1.3]} />
+          <meshStandardMaterial color="#C85A32" roughness={0.82} metalness={0.05} />
         </mesh>
-        <mesh position={[-0.16, 0.024, -0.16]} rotation={[-Math.PI / 2 + 0.06, 0, 0.85]}>
-          <circleGeometry args={[0.22, 10, 0, Math.PI * 0.7]} />
-          <meshStandardMaterial color="#E6D8C8" roughness={0.78} metalness={0.08} />
+        <mesh position={[-0.16, 0.028, -0.16]} rotation={[-Math.PI / 2 + 0.06, 0, 0.85]} receiveShadow>
+          <circleGeometry args={[0.25, 10, 0, Math.PI * 0.7]} />
+          <meshStandardMaterial color="#E6D8C8" roughness={0.82} metalness={0.05} />
         </mesh>
       </group>
     </group>

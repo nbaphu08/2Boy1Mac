@@ -472,9 +472,9 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
       if (lunarSkyEarthRef.current.visible) {
         sampleTrajectory(p, trajTmp);
         lunarSkyEarthRef.current.position.set(
-          trajTmp.camLook.x - 11.8,
-          trajTmp.camLook.y + 1.4,
-          trajTmp.camLook.z - 15.0,
+          trajTmp.camLook.x + 8.6,
+          trajTmp.camLook.y + 3.4,
+          trajTmp.camLook.z - 15.5,
         );
         lunarSkyEarthRef.current.scale.setScalar(skyVis);
         lunarSkyEarthRef.current.rotation.y += spin * 0.4;
