@@ -1,5 +1,6 @@
 import type { Exhibit } from "@/content/types";
 import { AgeCounter } from "@/components/ui/AgeCounter";
+import { ModelViewer } from "./ModelViewer";
 import { Plaque } from "./Plaque";
 import { SourceList, SourceTag } from "./SourceList";
 import { ThenNowSlider } from "./ThenNowSlider";
@@ -17,20 +18,12 @@ function Heading({ children }: { children: React.ReactNode }) {
   return <h3 className="font-hud mt-8 mb-3 text-xs text-mute">{children}</h3>;
 }
 
-/** Media column: poster (for exhibits with a 3D model, until the viewer lands) + Then/Now. */
+/** Media column: 3D viewer (when a model exists) + Then/Now. */
 export function ExhibitMedia({ ex }: { ex: Exhibit }) {
   const { media } = ex;
   return (
     <div className="space-y-6">
-      {media.model && (
-        <figure>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={media.fallbackImage} alt={media.then.alt} className="aspect-[3/2] w-full rounded-md border border-line object-cover" />
-          <figcaption className="mt-2 text-xs text-mute">
-            {media.then.alt} <span className="text-mute/80">({media.then.credit})</span>
-          </figcaption>
-        </figure>
-      )}
+      {media.model && <ModelViewer url={media.model} poster={media.fallbackImage} label={ex.name} />}
       {media.now ? (
         <ThenNowSlider then={media.then} now={media.now} label={ex.name} />
       ) : (

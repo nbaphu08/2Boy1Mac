@@ -57,7 +57,7 @@ export const journey = {
     stamp: "◉ Stamp collected",
   },
   silence: { eyebrow: "EPILOGUE" },
-  beyond: { badge: "TEASER · 3D SILHOUETTES" },
+  beyond: { badge: "TEASER · 3D SILHOUETTES", hint: "Hover or focus a silhouette", soon: "OPENING SOON" },
   finale: {
     eyebrow: "ARTEMIS ERA EARTHRISE · 6 APR 2026",
     revisit: "Revisit the galleries →",

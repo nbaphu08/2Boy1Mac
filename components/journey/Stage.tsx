@@ -387,9 +387,35 @@ export default function Stage() {
       }
     });
 
+    // Beat-snapped keys: PageDown/PageUp/Space/Shift+Space jump exactly one beat. Arrows stay native.
+    let pending: { idx: number; at: number } | null = null;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
+      if (useMuseum.getState().activeExhibit !== null) return;
+      const t = e.target as HTMLElement | null;
+      if (t) {
+        if (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
+        // Space activates focused buttons/links natively.
+        if (e.key === " " && /^(BUTTON|A|SUMMARY)$/.test(t.tagName)) return;
+      }
+      let dir = 0;
+      if (e.key === "PageDown" || (e.key === " " && !e.shiftKey)) dir = 1;
+      else if (e.key === "PageUp" || (e.key === " " && e.shiftKey)) dir = -1;
+      if (!dir) return;
+      e.preventDefault();
+      const now = performance.now();
+      const base =
+        pending && now - pending.at < 1600 ? pending.idx : Math.round(scrollState.target);
+      const idx = Math.max(0, Math.min(maxIdx, base + dir));
+      pending = { idx, at: now };
+      scrollTo(idx);
+    };
+    window.addEventListener("keydown", onKeyDown);
+
     ScrollTrigger.refresh();
 
     return () => {
+      window.removeEventListener("keydown", onKeyDown);
       window.clearTimeout(hashTimer);
       registerScroller(null);
       unsubStore();

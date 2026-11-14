@@ -1,17 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { beats } from "@/content/beats";
+import { beatIndexById, beats } from "@/content/beats";
 import { journey } from "@/content/journey";
 import { exhibitBySlug } from "@/content/exhibits";
 import { silence } from "@/content/silence";
 import { site } from "@/content/site";
 import { teaser, teaserItems } from "@/content/teaser";
 import type { Beat } from "@/content/types";
-import { scrollToBeat } from "@/lib/scroll/progress";
+import { scrollState, scrollToBeat } from "@/lib/scroll/progress";
 import { useMuseum } from "@/lib/store";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -257,25 +257,65 @@ function ExhibitBeatOverlay({ beat }: { beat: Beat }) {
   );
 }
 
+const SILENCE_INDEX = beatIndexById("silence");
+
+/** Hall of Silence: wall lines appear one by one as the scroll approaches the beat. Reflector glows instead of dimming. */
 function SilenceOverlay() {
+  const wallRef = useRef<HTMLUListElement>(null);
+  const reducedMotion = useMuseum((s) => s.reducedMotion);
+  const rows = silence.wall;
+
+  useLayoutEffect(() => {
+    const list = wallRef.current;
+    if (!list) return;
+    const items = Array.from(list.querySelectorAll<HTMLElement>("[data-wall-row]"));
+    const n = items.length;
+    // Reveal window: from 0.55 beat before the silence beat until the beat itself.
+    const START = SILENCE_INDEX - 0.55;
+    const SPAN = 0.55;
+    const apply = () => {
+      const t = reducedMotion ? 1 : (scrollState.current - START) / SPAN;
+      items.forEach((el, i) => {
+        const r = Math.min(1, Math.max(0, t * (n + 1) - i));
+        const active = el.dataset.active === "true";
+        el.style.opacity = String(r * (active ? 1 : 0.7));
+        el.style.transform = `translateY(${((1 - r) * 8).toFixed(2)}px)`;
+      });
+    };
+    apply();
+    if (reducedMotion) return;
+    gsap.ticker.add(apply);
+    return () => {
+      gsap.ticker.remove(apply);
+    };
+  }, [reducedMotion]);
+
   return (
-    <div className="relative flex h-full w-full items-center px-6 py-12 pr-14 sm:px-12 sm:pr-32">
+    <div className="relative flex h-full w-full items-center px-4 py-14 pr-12 sm:px-12 sm:pr-32">
       <div
         data-hud-card
-        className="pointer-events-auto max-h-[82dvh] w-full max-w-4xl overflow-y-auto rounded-lg border border-line bg-surface/80 p-6 backdrop-blur-lg sm:p-8"
+        className="pointer-events-auto w-full max-w-4xl rounded-lg border border-platinum/25 bg-surface/80 p-4 backdrop-blur-lg sm:p-8"
       >
-        <p className="font-hud text-[11px] text-mute">{journey.silence.eyebrow}</p>
-        <h2 className="font-display mt-2 text-2xl text-text sm:text-4xl">{silence.title}</h2>
-        <p className="mt-2 max-w-2xl text-sm text-mute sm:text-base">{silence.intro}</p>
+        <p className="font-hud text-[10px] text-mute sm:text-[11px]">{journey.silence.eyebrow}</p>
+        <h2 className="font-display mt-1.5 text-xl text-text sm:mt-2 sm:text-4xl">{silence.title}</h2>
+        <p className="mt-1.5 max-w-2xl text-xs text-mute sm:mt-2 sm:text-base">{silence.intro}</p>
 
-        <ul className="mt-5 grid gap-x-8 gap-y-2 border-y border-line py-4 text-sm sm:grid-cols-2">
-          {silence.wall.map((row) => (
+        <ul
+          ref={wallRef}
+          className="mt-3 grid gap-x-8 gap-y-0.5 border-y border-platinum/20 py-2.5 sm:mt-5 sm:grid-cols-2 sm:gap-y-1.5 sm:py-4"
+        >
+          {rows.map((row) => (
             <li
               key={row.name}
-              className="flex items-baseline justify-between gap-3 border-b border-line/40 pb-1.5 last:border-b-0"
+              data-wall-row
+              data-active={row.active ? "true" : "false"}
+              className="flex flex-wrap items-baseline justify-between gap-x-3 border-b border-line/30 py-0.5 text-[12px] will-change-[opacity,transform] sm:text-sm"
             >
-              <span className="font-medium text-text">{row.name}</span>
-              <span className={`font-hud text-[10px] ${row.active ? "text-starlight" : "text-mute"}`}>
+              <span className={`font-medium ${row.active ? "text-starlight" : "text-text"}`}>{row.name}</span>
+              <span
+                className={`font-hud text-[9px] sm:text-[10px] ${row.active ? "text-starlight" : "text-mute"}`}
+                style={row.active ? { textShadow: "0 0 10px var(--starlight), 0 0 22px var(--starlight)" } : undefined}
+              >
                 {row.last}
                 {row.note ? ` · ${row.note}` : ""}
               </span>
@@ -283,62 +323,85 @@ function SilenceOverlay() {
           ))}
         </ul>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="mt-3 grid gap-2 sm:mt-4 sm:grid-cols-2 sm:gap-3">
           {silence.numbers.map((n, idx) => (
             <p
               key={idx}
-              className="rounded border border-line bg-raised/50 p-3 text-xs leading-relaxed text-text/90"
+              className="rounded border border-line bg-raised/50 p-2.5 text-[11px] leading-snug text-text/90 sm:p-3 sm:text-xs sm:leading-relaxed"
             >
               {n.text}
             </p>
           ))}
         </div>
-        <p className="mt-4 text-xs leading-relaxed text-mute">{silence.heritage.text}</p>
+        <p className="mt-3 text-[11px] leading-snug text-mute sm:mt-4 sm:text-xs sm:leading-relaxed">
+          {silence.heritage.text}
+        </p>
       </div>
     </div>
   );
 }
 
 function BeyondOverlay() {
+  const [active, setActive] = useState<number | null>(null);
+  const item = active !== null ? teaserItems[active] : null;
+
   return (
-    <div className="relative flex h-full w-full items-end px-6 pb-12 pr-14 sm:px-12 sm:pb-14 sm:pr-32">
+    <div className="relative flex h-full w-full items-end px-4 pb-10 pr-12 sm:px-12 sm:pb-14 sm:pr-32">
       <div
         data-hud-card
-        className="pointer-events-auto w-full max-w-5xl rounded-lg border border-platinum/25 bg-surface/65 p-5 backdrop-blur-md sm:p-7"
+        className="pointer-events-auto w-full max-w-5xl rounded-lg border border-platinum/25 bg-surface/65 p-4 backdrop-blur-md sm:p-7"
       >
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <div>
-            <p className="font-hud text-[11px] text-starlight">{teaser.title}</p>
-            <p className="mt-1.5 text-sm text-text/90 sm:text-base">{teaser.line}</p>
+            <p className="font-hud text-[10px] text-starlight sm:text-[11px]">{teaser.title}</p>
+            <p className="mt-1.5 text-xs text-text/90 sm:text-base">{teaser.line}</p>
           </div>
           <span className="font-hud rounded border border-platinum/30 px-2.5 py-1 text-[10px] text-platinum">
             {journey.beyond.badge}
           </span>
         </div>
 
-        <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {teaserItems.map((item) => (
-            <li
-              key={item.catalogNo}
-              className="rounded border border-line bg-raised/65 p-3.5 transition-colors hover:border-starlight/50"
-            >
-              <p className="font-hud text-[10px] text-mute">
-                {item.catalogNo} · {item.year}
-              </p>
-              <h3 className="font-display mt-1 text-base text-text">{item.name}</h3>
-              <p className="font-hud mt-0.5 text-[10px] text-platinum">{item.target}</p>
-              <p
-                className={`mt-2 text-xs ${
-                  item.status === "still-travelling" ? "font-hud text-starlight" : "text-mute"
+        <ul className="mt-4 grid grid-cols-2 gap-2 sm:mt-5 sm:gap-3 lg:grid-cols-4">
+          {teaserItems.map((it, i) => (
+            <li key={it.catalogNo}>
+              <button
+                type="button"
+                onMouseEnter={() => setActive(i)}
+                onMouseLeave={() => setActive((a) => (a === i ? null : a))}
+                onFocus={() => setActive(i)}
+                onBlur={() => setActive((a) => (a === i ? null : a))}
+                onClick={() => setActive(i)}
+                aria-label={`${it.catalogNo}: ${it.name}, ${it.year}. ${it.line}`}
+                className={`flex h-20 w-full cursor-pointer flex-col justify-between rounded border bg-void/60 p-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-starlight sm:h-28 ${
+                  active === i ? "border-starlight/70" : "border-line hover:border-starlight/50"
                 }`}
               >
-                {item.line}
-              </p>
+                <span className="font-hud text-[10px] text-mute">{it.catalogNo}</span>
+                <span
+                  className={`font-hud text-[10px] ${it.status === "still-travelling" ? "text-starlight" : "text-platinum/70"}`}
+                >
+                  {it.status === "still-travelling" ? "STILL TRAVELLING" : journey.beyond.soon}
+                </span>
+              </button>
             </li>
           ))}
         </ul>
 
-        <p className="font-hud mt-4 text-[10px] text-starlight">{teaser.voyagerNote}</p>
+        <p aria-hidden className="mt-3 min-h-10 text-xs text-text sm:min-h-6 sm:text-sm">
+          {item ? (
+            <>
+              <span className="font-display text-sm sm:text-base">{item.name}</span>
+              <span className="text-platinum"> · {item.year} · </span>
+              <span className={item.status === "still-travelling" ? "font-hud text-starlight" : "text-text/90"}>
+                {item.line}
+              </span>
+            </>
+          ) : (
+            <span className="text-mute">{journey.beyond.hint}</span>
+          )}
+        </p>
+
+        <p className="font-hud mt-2 text-[10px] text-starlight">{teaser.voyagerNote}</p>
       </div>
     </div>
   );
