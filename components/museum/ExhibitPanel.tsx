@@ -95,7 +95,7 @@ export function ExhibitPanel() {
             <ExhibitMedia ex={ex} />
           </div>
           <div className="p-5 md:overflow-y-auto md:border-l md:border-line md:p-8">
-            <ExhibitText ex={ex} headingId="exhibit-title" />
+            <ExhibitText ex={ex} headingId="exhibit-title" autoAudio />
           </div>
         </div>
 

@@ -17,6 +17,19 @@ export const expedition = {
     hide: "Hide briefing",
   },
 
+  // Audio guide (AI-generated narration of the sourced scripts in docs/AUDIO_SCRIPTS.md).
+  audio: {
+    label: "AUDIO GUIDE",
+    play: "Play audio guide",
+    pause: "Pause audio guide",
+    starting: "Starting in 2 s…",
+    tapToListen: "Paused — tap to listen",
+    autoOn: "Audio guide: on",
+    autoOff: "Audio guide: off",
+    autoHint: "Toggle automatic audio guide",
+    region: "Audio guide player",
+  },
+
   // Field log (replaces "passport" wording in the HUD).
   fieldLog: (n: number) => `FIELD LOG · ${n} OF 12 FOUND`,
   fieldLogShort: (n: number) => `${n}/12 FOUND`,

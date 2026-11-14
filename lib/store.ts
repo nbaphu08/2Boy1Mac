@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { unlockAudio, endAudioSession } from "@/lib/audioGuide";
 
 const KEY = "spacemuse:visited";
 
@@ -63,10 +64,14 @@ export const useMuseum = create<MuseumState>((set, get) => ({
   isTransitioning: false,
   activeExhibit: null,
   openExhibit: (slug) => {
+    unlockAudio(); // must run synchronously inside the user's click/key gesture (iOS)
     set({ activeExhibit: slug });
     get().markVisited(slug);
   },
-  closeExhibit: () => set({ activeExhibit: null }),
+  closeExhibit: () => {
+    endAudioSession();
+    set({ activeExhibit: null });
+  },
   visited: [],
   visitedAt: {},
   markVisited: (slug) => {

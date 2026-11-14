@@ -1,6 +1,7 @@
 import type { Exhibit } from "@/content/types";
 import { expedition, guide } from "@/content/guide";
 import { AgeCounter } from "@/components/ui/AgeCounter";
+import { AudioGuide } from "./AudioGuide";
 import { ModelViewer } from "./ModelViewer";
 import { Plaque } from "./Plaque";
 import { SourceList, SourceTag } from "./SourceList";
@@ -47,7 +48,7 @@ export function ExhibitMedia({ ex }: { ex: Exhibit }) {
   );
 }
 
-export function ExhibitText({ ex, headingId }: { ex: Exhibit; headingId: string }) {
+export function ExhibitText({ ex, headingId, autoAudio = false }: { ex: Exhibit; headingId: string; autoAudio?: boolean }) {
   const rows: { label: string; value: string; sourceId?: string }[] = [];
   rows.push({ label: "Site", value: ex.location.site });
   const { lat, lon, coordNote, coordSource } = ex.location;
@@ -71,6 +72,7 @@ export function ExhibitText({ ex, headingId }: { ex: Exhibit; headingId: string 
       <p className="mt-1 text-sm text-mute">
         {ex.formalName} · {ex.agency}
       </p>
+      <AudioGuide key={ex.slug} slug={ex.slug} auto={autoAudio} />
 
       <div className="mt-5 border-y border-line py-4">
         <AgeCounter since={ex.dates.landing} label={ageLabel(ex)} />
