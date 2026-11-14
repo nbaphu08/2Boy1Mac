@@ -50,12 +50,12 @@ function Narration({ beat }: { beat: Beat }) {
   // Silence: the card intro already says this line, so skip it there.
   if (!text || beat.id === "silence") return null;
   // The Beyond card fills small screens; the line would collide, so it is desktop-only there.
-  const desktopOnly = beat.id === "beyond";
+  const desktopOnly = beat.id === "beyond" || beat.id === "hero";
   return (
     <p
       ref={ref}
       aria-hidden
-      className={`narration pointer-events-none absolute left-6 top-[4.75rem] z-10 max-w-[34ch] text-base leading-snug text-text sm:left-12 sm:top-24 sm:text-[clamp(1.125rem,1.4vw,1.375rem)] ${
+      className={`narration pointer-events-none absolute left-6 top-[5.25rem] z-10 max-w-[34ch] text-base leading-snug text-text sm:left-12 sm:top-24 sm:text-[clamp(1.125rem,1.4vw,1.375rem)] ${
         desktopOnly ? "hidden sm:block" : ""
       }`}
       style={{ opacity: 0, textShadow: "0 1px 14px rgba(5,6,10,0.9), 0 0 3px rgba(5,6,10,0.8)" }}
@@ -388,7 +388,7 @@ function SilenceOverlay() {
   }, [reducedMotion]);
 
   return (
-    <div className="relative flex h-full w-full items-start px-4 pb-6 pt-[4.75rem] pr-12 sm:items-center sm:px-12 sm:py-14 sm:pr-32">
+    <div className="relative flex h-full w-full items-start px-4 pb-6 pt-[5.5rem] pr-12 sm:items-center sm:px-12 sm:py-14 sm:pr-32">
       <div
         data-hud-card
         data-lenis-prevent

@@ -46,3 +46,14 @@
 - Done: reduced-motion / WebGL-unavailable / header "Lightweight" toggle (localStorage `spacemuse:lightweight`) now skip the WebGL canvas and show per-beat 3D posters (`components/journey/StaticPoster.tsx`, AVIF->JPG, 1080x1350 on portrait/<768px, lazy after first two) under the existing overlays with native scroll; rail, `scrollToBeat`, hash links unchanged. Canvas crashes are caught by an error boundary and flip to static mode.
 - Gallery cards use the 3D poster ("3D reconstruction" chip), Then photo on hover/focus ("Archive photo" chip). `/exhibit/[slug]` OG uses the 3D poster + "3D RECONSTRUCTION" note. Poster alt text = "3D reconstruction of ...".
 - Next: manual test on a real phone. Risks: Lenis is also off in lightweight mode (native scroll only).
+
+## Review report (Sonnet, main) — AG-2c, mobile header, full QA
+Done: Yogi boulder scaled 0.5 and moved beside Sojourner (MarsModels.tsx only; posters not re-captured). Mobile header is one row at 390x844 / 360x640 (wordmark + "00/23", passport star count, lightweight icon with aria-label/title, hamburger menu for Gallery/About); narration moved to top-[5.25rem], hero narration desktop-only on mobile, exhibit overlay padding raised.
+- PASS build health: tsc, eslint, `npm run build` clean.
+- PASS console: `/`, `/gallery`, `/about`, all 12 `/exhibit/*` — 0 errors. Only warning: "THREE.Clock deprecated" on 3D pages (three/** is Antigravity scope; not fixed).
+- PASS broken links/images: every img/source src returns 200 on all 15 pages (0 4xx/5xx).
+- PASS keyboard: passport dialog and exhibit panel keep focus (Tab and Shift+Tab, 40 presses), Esc closes, ArrowRight navigates.
+- PASS grep lorem/TODO/Lưu ý: none in app, components, content.
+- PASS Lighthouse desktop: /gallery Perf 0.96, A11y 1.00; /exhibit/moon-apollo-11 Perf 0.97, A11y 0.96 -> fixed color-contrast (text-mute/80 credits -> text-mute); expected 1.0 after fix (not re-run).
+- NOT RUN: step-engine swipe counts, poster-frame screenshots of all 24 beats, preview deploy, `/` Lighthouse, real-device checks.
+Remaining: THREE.Clock warning (Antigravity); beat-0 location tag sits at y~88 under the header on small phones (checked visually only mid-transition); Yogi poster needs Opus re-capture with `?poster=`.

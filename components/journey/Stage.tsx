@@ -71,13 +71,14 @@ function TopHudBar() {
   const beat = beats[beatIndex] ?? beats[0];
   const pad = String(beatIndex).padStart(2, "0");
   const [passportOpen, setPassportOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const lightweight = useMuseum((s) => s.lightweight);
   const forced = useMuseum((s) => s.reducedMotion || s.webglFailed);
   const isStatic = lightweight || forced;
 
   return (
-    <header className="pointer-events-none fixed inset-x-0 top-0 z-30 flex items-center justify-between px-5 py-4 sm:px-10">
-      <div className="pointer-events-auto flex items-center gap-3 rounded-full border border-line/80 bg-surface/65 px-3.5 py-1.5 backdrop-blur-md">
+    <header className="pointer-events-none fixed inset-x-0 top-0 z-30 flex items-center justify-between gap-2 px-3 py-3 sm:px-10 sm:py-4">
+      <div className="pointer-events-auto flex min-w-0 items-center gap-2 whitespace-nowrap rounded-full border border-line/80 bg-surface/65 px-3 py-1.5 backdrop-blur-md sm:gap-3 sm:px-3.5">
         <button
           type="button"
           onClick={() => scrollToBeat(0)}
@@ -87,39 +88,71 @@ function TopHudBar() {
         </button>
         <span aria-hidden className="text-line">|</span>
         <span className="font-hud text-[10px] text-platinum">
-          {pad} / {String(beats.length - 1).padStart(2, "0")} · {beat.rail}
+          {pad}/{String(beats.length - 1).padStart(2, "0")}
+          <span className="hidden sm:inline"> · {beat.rail}</span>
         </span>
       </div>
 
       <nav
         aria-label={journey.ui.navLabel}
-        className="pointer-events-auto flex items-center gap-3 rounded-full border border-line/80 bg-surface/65 px-3.5 py-1.5 backdrop-blur-md"
+        className="pointer-events-auto relative flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-line/80 bg-surface/65 px-3 py-1.5 backdrop-blur-md sm:gap-3 sm:px-3.5"
       >
         <button
           type="button"
           onClick={() => setPassportOpen(true)}
           aria-haspopup="dialog"
           aria-label={`Open museum passport, ${visitedCount} of 12 stamps`}
+          title="Museum passport"
           className="font-hud cursor-pointer text-[10px] text-mute transition-colors hover:text-text"
         >
-          {journey.ui.stamps(visitedCount)}
+          <span aria-hidden className="sm:hidden">&#9733; {visitedCount}/12</span>
+          <span className="hidden sm:inline">{journey.ui.stamps(visitedCount)}</span>
         </button>
         <span aria-hidden className="text-line">|</span>
         <button
           type="button"
           onClick={() => useMuseum.getState().setLightweight(!lightweight)}
           aria-pressed={isStatic}
+          aria-label={`Lightweight mode: ${isStatic ? "on" : "off"}`}
           disabled={forced}
           title={forced ? "Static mode is on for this device" : "Swap the live 3D scene for still images (faster on weak phones)"}
           className={`font-hud cursor-pointer text-[10px] transition-colors hover:text-text disabled:cursor-default ${isStatic ? "text-starlight" : "text-mute"}`}
         >
-          Lightweight: {isStatic ? "on" : "off"}
+          <span aria-hidden className="sm:hidden">{isStatic ? "\u25A3" : "\u25A1"}</span>
+          <span className="hidden sm:inline">Lightweight: {isStatic ? "on" : "off"}</span>
         </button>
-        <span aria-hidden className="text-line">|</span>
-        <Link href="/gallery" className="font-hud text-[10px] text-text transition-colors hover:text-starlight">
+        <span aria-hidden className="text-line sm:hidden">|</span>
+        <button
+          type="button"
+          onClick={() => setMenuOpen((o) => !o)}
+          aria-expanded={menuOpen}
+          aria-haspopup="true"
+          aria-label="Menu"
+          title="Menu"
+          className="font-hud cursor-pointer text-[12px] leading-none text-text sm:hidden"
+        >
+          &#9776;
+        </button>
+        {menuOpen ? (
+          <div
+            className="absolute right-0 top-full mt-2 flex min-w-32 flex-col gap-3 rounded-2xl border border-line/80 bg-surface/95 px-4 py-3 backdrop-blur-md sm:hidden"
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setMenuOpen(false);
+            }}
+          >
+            <Link href="/gallery" className="font-hud text-[11px] text-text hover:text-starlight">
+              {journey.ui.gallery}
+            </Link>
+            <Link href="/about" className="font-hud text-[11px] text-mute hover:text-text">
+              {journey.ui.about}
+            </Link>
+          </div>
+        ) : null}
+        <span aria-hidden className="hidden text-line sm:inline">|</span>
+        <Link href="/gallery" className="font-hud hidden text-[10px] text-text transition-colors hover:text-starlight sm:inline">
           {journey.ui.gallery}
         </Link>
-        <Link href="/about" className="font-hud text-[10px] text-mute transition-colors hover:text-text">
+        <Link href="/about" className="font-hud hidden text-[10px] text-mute transition-colors hover:text-text sm:inline">
           {journey.ui.about}
         </Link>
       </nav>

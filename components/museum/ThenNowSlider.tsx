@@ -65,10 +65,10 @@ export function ThenNowSlider({ then, now, label }: { then: Img; now: Img; label
       </div>
       <figcaption className="mt-2 grid gap-2 text-xs text-mute sm:grid-cols-2">
         <span>
-          <b className="font-hud text-text">Then.</b> {then.alt} <span className="text-mute/80">({then.credit})</span>
+          <b className="font-hud text-text">Then.</b> {then.alt} <span className="text-mute">({then.credit})</span>
         </span>
         <span>
-          <b className="font-hud text-text">Now.</b> {now.alt} <span className="text-mute/80">({now.credit})</span>
+          <b className="font-hud text-text">Now.</b> {now.alt} <span className="text-mute">({now.credit})</span>
         </span>
       </figcaption>
     </figure>

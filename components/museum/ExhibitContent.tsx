@@ -38,7 +38,7 @@ export function ExhibitMedia({ ex }: { ex: Exhibit }) {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={im.src} alt={im.alt} className="w-full rounded-md border border-line" loading="lazy" />
           <figcaption className="mt-2 text-xs text-mute">
-            {im.alt} <span className="text-mute/80">({im.credit})</span>
+            {im.alt} <span className="text-mute">({im.credit})</span>
           </figcaption>
         </figure>
       ))}

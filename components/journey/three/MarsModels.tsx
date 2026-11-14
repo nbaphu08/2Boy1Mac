@@ -319,7 +319,7 @@ export function PathfinderAndSojournerModel({ baseY }: { baseY: number }) {
       </mesh>
 
       {/* ─── "YOGI" BOULDER (Craggy ~1 m tall dark reddish-grey Ares Vallis flood boulder inspected by Sojourner in PIA00632, AG-2b #4) ─── */}
-      <group position={[1.36, 0.22, 1.02]} rotation={[0.06, 0.55, -0.05]}>
+      <group position={[1.78, 0.1, 1.2]} rotation={[0.06, 0.55, -0.05]} scale={0.5}>
         <mesh geometry={yogiRockGeo} scale={[1.05, 0.96, 0.94]}>
           <meshStandardMaterial color="#5E3A2C" roughness={0.95} metalness={0.04} flatShading />
         </mesh>
