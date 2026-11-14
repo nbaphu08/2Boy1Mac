@@ -12,10 +12,10 @@
 **Challenge:** Abandoned but not Forgotten: Storytelling about NASA's Discarded Equipment on the Moon and Mars
 
 **High-level summary (≈150 words):**
-SpaceMuse is an interactive museum for the machines humanity left behind on the Moon and Mars. Visitors start at Kennedy Space Center's Vehicle Assembly Building, ride real NASA footage of the Artemis II launch into space — one scroll at a time — and arrive at two galleries built on other worlds. Each of the twelve exhibits, from Apollo 11's still-working laser reflector to the Ingenuity helicopter, stands under a spotlight with a museum plaque: catalogue number, a live counter of how long it has been there, its story, what it discovered, why it went silent, and a "Then / Now" slider pairing surface photos with today's orbital images from LRO and HiRISE. Every number links to its NASA source. A final Hall of Silence lists the last time Earth heard from each machine. Built for school-age explorers, SpaceMuse turns "space junk" into heritage worth remembering — and protecting.
+SpaceMuse is an interactive museum for the machines humanity left behind on the Moon and Mars. Visitors start at Kennedy Space Center's Vehicle Assembly Building, ride a 3D reconstruction of the SLS rocket and Orion spacecraft from Launch Complex 39B into space — scrolling continuously — and arrive at two galleries built on other worlds. Each of the twelve exhibits, from Apollo 11's still-working laser reflector to the Ingenuity helicopter, is recreated in its real setting — Spirit stuck in the sand, Phoenix with its ice-crushed solar panel, InSight under its dust — and stands under a spotlight with a museum plaque: catalogue number, a live counter of how long it has been there, its story, what it discovered, why it went silent, and a "Then / Now" slider pairing surface photos with today's orbital images from LRO and HiRISE. Every number links to its NASA source. A final Hall of Silence lists the last time Earth heard from each machine. Built for school-age explorers, SpaceMuse turns "space junk" into heritage worth remembering — and protecting.
 
 **Details / how it works:**
-- Step-scroll cinematic journey: each scroll plays one fixed flight segment (real NASA Artemis II footage), then the site becomes a real-time 3D museum (React Three Fiber) with NASA 3D models, NASA LRO lunar textures and Viking Mars mosaics.
+- Continuous-scroll 3D journey (Three.js / React Three Fiber, GSAP ScrollTrigger, Lenis): a procedural SLS Block 1 + Orion launch from LC-39B, ascent, booster separation and fairing jettison, then real-time dioramas on the Moon and Mars built on NASA 3D Resources models, LRO lunar textures and the Viking Mars mosaic. Every model is checked against NASA dimensions (NSSDCA, JPL press kits) and labelled as an illustrative reconstruction.
 - 12 exhibits (5 Moon, 7 Mars) + a "Hall III — Beyond" teaser (NEAR, MESSENGER, Cassini, Voyager 1).
 - Museum features: catalogue numbers, live "time on the surface" counters, Then/Now orbital comparisons, sources on every fact, a visitor passport, and an accessible gallery view.
 - Tech: Next.js, TypeScript, GSAP, React Three Fiber, deployed on Vercel. Works with keyboard and reduced-motion settings.
@@ -29,7 +29,7 @@ SpaceMuse is an interactive museum for the machines humanity left behind on the 
 | t (s) | Screen | Subtitle |
 |---|---|---|
 | 0–3 | Hero: VAB at dawn, title SPACEMUSE | A museum of the machines we left behind. |
-| 3–7 | Scroll → VAB doors → countdown → LIFTOFF | Every scroll is one step of the journey — real NASA Artemis II footage. |
+| 3–7 | Scroll → VAB → SLS on the pad → main engine start → liftoff | Scroll to fly: a 3D reconstruction of the Artemis II launch. |
 | 7–11 | Ascent → booster separation → WELCOME TO SPACE | From Kennedy Space Center to space… |
 | 11–15 | Moon appears → spotlight on Apollo 11 | …to galleries on the Moon and Mars. |
 | 15–20 | Open Apollo 11 panel: live counter, STILL ACTIVE, Then/Now slider drag | Each exhibit: its story, its age, and how it looks from orbit today. |
@@ -46,7 +46,7 @@ A museum of the machines we left behind.
 
 2
 00:00:03,000 --> 00:00:07,000
-Every scroll is one step of the journey — real NASA Artemis II footage.
+Scroll to fly: a 3D reconstruction of the Artemis II launch.
 
 3
 00:00:07,000 --> 00:00:11,000
@@ -75,7 +75,7 @@ SpaceMuse — abandoned, but not forgotten.
 
 ## 4. NASA data & resources used
 
-- NASA Image and Video Library — Artemis II launch footage (VAB rollout, VAB-roof and Cessna 8K launch views, Orion solar-array cameras), Artemis II "Artemis Era Earthrise", Apollo surface photography, Mars mission images (PIA series).
+- NASA Image and Video Library — Vehicle Assembly Building photography (hero), Artemis II "Artemis Era Earthrise" (finale reference), Apollo surface photography and Mars mission images (PIA series) used in every exhibit's Then/Now comparison.
 - NASA History Program Office — Catalogue of Manmade Material on the Moon (2012).
 - Lunar Reconnaissance Orbiter Camera (NASA/GSFC/Arizona State University) — Apollo 11, 12, 15, 17 and GRAIL impact sites.
 - HiRISE on Mars Reconnaissance Orbiter (NASA/JPL-Caltech/University of Arizona) — Viking 1, Pathfinder, Spirit, Opportunity, Phoenix, InSight, Ingenuity.
@@ -87,7 +87,7 @@ SpaceMuse — abandoned, but not forgotten.
 
 ## 5. AI usage disclosure (dùng nếu form yêu cầu)
 
-We used AI assistants (Anthropic Claude models) to help plan the project, research and cross-check facts against NASA sources, draft text and write code. All facts were verified against the primary sources cited on the site. All imagery and footage are real NASA/partner media; no AI-generated images or video are used (illustrations are labelled "Artist's concept").
+We used AI assistants (Anthropic Claude models and Google Gemini) to help plan the project, research and cross-check facts against NASA sources, draft text, write code and build procedural 3D reconstructions. All facts were verified against the primary sources cited on the site. All photographs are real NASA/partner media; the 3D scenes are procedural reconstructions built in code from NASA dimensions and imagery and are labelled as illustrative; no AI-generated images or video are presented as real (illustrations are labelled "Artist's concept").
 
 ---
 
