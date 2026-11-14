@@ -240,10 +240,11 @@ function polarCraterBowl(
   const r = Math.hypot(x, z);
   if (r > radius * 1.48) return 0;
   const u = r / radius;
+  const softRim = rim * 0.68;
   if (u < 1.0) {
-    return -depth * (1 - u * u) + rim * Math.exp(-Math.pow((u - 0.94) / 0.15, 2));
+    return -depth * (1 - u * u) + softRim * Math.exp(-Math.pow((u - 0.94) / 0.2, 2));
   }
-  return rim * Math.exp(-Math.pow((u - 0.94) / 0.19, 2));
+  return softRim * Math.exp(-Math.pow((u - 0.94) / 0.24, 2));
 }
 
 function getPolarFullHeight(vx: number, vz: number): number {
@@ -318,9 +319,9 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
     applyWorldTerrainShader(mat, {
       planet: "moon",
       anchorXZ: [ANCHOR_WORLD.x, ANCHOR_WORLD.z],
-      baseTint: "#524B42",
-      brightTint: "#9E9689",
-      highlandBrightTint: "#E4DDD2",
+      baseTint: "#48423B",
+      brightTint: "#8C8579",
+      highlandBrightTint: "#C8C1B4",
       fadeStart: 72,
       fadeEnd: 87.5,
       qualityTier: budget.tier,
@@ -771,32 +772,35 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
         receiveShadow
       />
 
-      {/* Instanced dense half-buried lunar highland pebbles + scattered boulders (strictly ZERO tracks/bootprints) */}
+      {/* Instanced dense deeply-seated soil-toned pebbles + boulders (strictly ZERO tracks/bootprints) */}
       <InstancedLandscapeRocks
         planet="moon"
         anchorXZ={[ANCHOR_WORLD.x, ANCHOR_WORLD.z]}
-        count={budget.tier === "high" ? 560 : budget.tier === "medium" ? 300 : 120}
+        count={budget.tier === "high" ? 520 : budget.tier === "medium" ? 280 : 120}
         seed={1219}
         maxRadius={15}
         clearRadius={2.6}
-        scaleRange={[0.028, 0.11]}
+        scaleRange={[0.026, 0.1]}
         scalePower={1.75}
-        embedOffset={-0.06}
+        embedOffset={-0.18}
         moonCraters={GRAIL_CRATERS}
+        maxLocalHeight={1.65}
+        castShadows={false}
         surfaceY={SURFACE_Y}
         heightFn={getPolarFullHeight}
       />
       <InstancedLandscapeRocks
         planet="moon"
         anchorXZ={[ANCHOR_WORLD.x, ANCHOR_WORLD.z]}
-        count={budget.tier === "high" ? 115 : budget.tier === "medium" ? 68 : 32}
+        count={budget.tier === "high" ? 110 : budget.tier === "medium" ? 65 : 30}
         seed={1203}
-        maxRadius={38}
+        maxRadius={25}
         clearRadius={2.8}
-        scaleRange={[0.14, 0.44]}
+        scaleRange={[0.14, 0.42]}
         scalePower={2.35}
-        embedOffset={-0.04}
+        embedOffset={-0.12}
         moonCraters={GRAIL_CRATERS}
+        maxLocalHeight={1.8}
         surfaceY={SURFACE_Y}
         heightFn={getPolarFullHeight}
       />

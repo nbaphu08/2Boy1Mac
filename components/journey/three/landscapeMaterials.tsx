@@ -55,8 +55,9 @@ export function getNeutralRegolithMap(): THREE.CanvasTexture {
 }
 
 /**
- * Warps a flat grid non-uniformly so near-field terrain (0..16 m) has ~0.2 m vertex
- * precision for real small lunar craters & clods while seamlessly spanning ±halfSize.
+ * Warps a flat grid non-uniformly so near-field terrain (0..16 m) has ~0.24 m vertex
+ * precision for real lunar craters while using smooth central-difference normals to
+ * eliminate quad-diagonal Mach bands on sunlit distant massifs.
  */
 export function createNearFieldHorizonGeometry(
   size: number,
@@ -67,16 +68,26 @@ export function createNearFieldHorizonGeometry(
   const geo = new THREE.PlaneGeometry(size, size, segs, segs);
   geo.rotateX(-Math.PI / 2);
   const pos = geo.attributes.position as THREE.BufferAttribute;
+  const norm = geo.attributes.normal as THREE.BufferAttribute;
+  const eps = 0.28;
 
   for (let i = 0; i < pos.count; i++) {
     const ux = pos.getX(i) / half;
     const uz = pos.getZ(i) / half;
-    const wx = Math.sign(ux) * (0.22 * Math.abs(ux) + 0.78 * Math.pow(Math.abs(ux), 2.35)) * half;
-    const wz = Math.sign(uz) * (0.22 * Math.abs(uz) + 0.78 * Math.pow(Math.abs(uz), 2.35)) * half;
-    pos.setXYZ(i, wx, heightFn(wx, wz), wz);
+    const wx = Math.sign(ux) * (0.28 * Math.abs(ux) + 0.72 * Math.pow(Math.abs(ux), 1.75)) * half;
+    const wz = Math.sign(uz) * (0.28 * Math.abs(uz) + 0.72 * Math.pow(Math.abs(uz), 1.75)) * half;
+    const wy = heightFn(wx, wz);
+    pos.setXYZ(i, wx, wy, wz);
+
+    // Analytic central-difference normal prevents diagonal "/" triangle facet striping on slopes
+    const dhdx = (heightFn(wx + eps, wz) - heightFn(wx - eps, wz)) / (2 * eps);
+    const dhdz = (heightFn(wx, wz + eps) - heightFn(wx, wz - eps)) / (2 * eps);
+    const invLen = 1 / Math.hypot(dhdx, 1, dhdz);
+    norm.setXYZ(i, -dhdx * invLen, invLen, -dhdz * invLen);
   }
 
-  geo.computeVertexNormals();
+  pos.needsUpdate = true;
+  norm.needsUpdate = true;
   return geo;
 }
 
@@ -229,17 +240,19 @@ export function applyWorldTerrainShader(
           return vec3(val, grad);
         }
 
-        // Cauliflower / clod Worley cell distance & gradient toward nearest lump center
+        // Domain-warped organic lumpy regolith clods + irregular sub-decimeter powder crumbs
         vec3 sampleWorleyClod(vec2 p) {
-          vec2 n = floor(p);
-          vec2 f = fract(p);
+          vec3 warp = terrainNoiseD(p * 0.48);
+          vec2 wp = p + warp.yz * 0.24;
+          vec2 n = floor(wp);
+          vec2 f = fract(wp);
           float md = 4.0;
           vec2 bestVec = vec2(0.0);
           for (int jy = -1; jy <= 1; jy++) {
             for (int jx = -1; jx <= 1; jx++) {
               vec2 g = vec2(float(jx), float(jy));
               vec2 o = terrainHash2(n + g);
-              vec2 r = g + (0.14 + 0.72 * o) - f;
+              vec2 r = g + (0.12 + 0.76 * o) - f;
               float d = dot(r, r);
               if (d < md) {
                 md = d;
@@ -248,15 +261,15 @@ export function applyWorldTerrainShader(
             }
           }
           float d1 = sqrt(max(md, 0.0001));
-          // Convex clod dome height peaks at cell center
-          float dome = smoothstep(0.68, 0.05, d1);
-          vec2 dir = bestVec / max(d1, 0.04);
-          return vec3(dome, dir * (1.0 - smoothstep(0.0, 0.65, d1)));
+          float dome = smoothstep(0.72, 0.06, d1);
+          vec2 dir = bestVec / max(d1, 0.05);
+          return vec3(dome, dir * (1.0 - smoothstep(0.0, 0.68, d1)));
         }
 
-        // Procedural jittered sub-meter eroded lunar micro-craters with raised rim & analytic normal gradient
+        // Sparse, heavy-tailed, soft-eroded micro-crater dimples (breaks bubble-wrap tiling)
         void sampleMicroCraterLayer(vec2 p, float scale, float seedOff, out float bowlAO, out vec2 cGrad) {
-          vec2 sp = p * scale;
+          vec3 jNoise = terrainNoiseD(p * 0.37 + seedOff);
+          vec2 sp = p * scale + jNoise.yz * 0.28;
           vec2 cell = floor(sp);
           vec2 f = fract(sp);
           bowlAO = 0.0;
@@ -265,20 +278,23 @@ export function applyWorldTerrainShader(
             for (int jx = -1; jx <= 1; jx++) {
               vec2 nb = vec2(float(jx), float(jy));
               vec2 h = terrainHash2(cell + nb + seedOff);
-              float spawn = terrainHash(cell + nb + seedOff * 1.7);
-              if (spawn < 0.56) {
-                float rad = mix(0.18, 0.44, terrainHash(cell + nb + seedOff * 2.9));
-                vec2 diff = f - (nb + 0.22 + 0.56 * h);
+              float spawn = terrainHash(cell + nb + seedOff * 1.73);
+              if (spawn < 0.145) {
+                // Heavy-tailed crater radius distribution: mostly tiny pits, rare medium eroded bowls
+                float rt = terrainHash(cell + nb + seedOff * 2.91);
+                float rad = mix(0.065, 0.42, rt * rt * rt);
+                vec2 diff = f - (nb + 0.16 + 0.68 * h);
                 float dist = length(diff);
                 float u = dist / rad;
-                if (u < 1.38) {
-                  // Eroded bowl depression + soft bright collar rim
+                if (u < 1.32) {
                   float bowl = max(0.0, 1.0 - u * u);
-                  float rim = exp(-pow((u - 0.96) / 0.22, 2.0)) * 0.28;
-                  float dhdu = (u < 1.0 ? 2.0 * u : 0.0) - 0.28 * 2.0 * (u - 0.96) / 0.0484 * exp(-pow((u - 0.96) / 0.22, 2.0));
-                  vec2 dir = diff / max(dist, 0.008);
-                  bowlAO = max(bowlAO, bowl * 0.85 - rim * 0.4);
-                  cGrad += dir * (dhdu * (scale / rad)) * 0.14;
+                  float rim = exp(-pow((u - 0.98) / 0.34, 2.0)) * 0.06;
+                  float dhdu =
+                    (u < 1.0 ? 1.55 * u : 0.0) -
+                    0.06 * 2.0 * (u - 0.98) / 0.1156 * exp(-pow((u - 0.98) / 0.34, 2.0));
+                  vec2 dir = diff / max(dist, 0.01);
+                  bowlAO = max(bowlAO, bowl * 0.55 - rim * 0.25);
+                  cGrad += dir * (dhdu * (scale / rad)) * 0.042;
                 }
               }
             }
@@ -321,54 +337,59 @@ export function applyWorldTerrainShader(
         soil *= (0.93 + 0.14 * grain);
 
         if (uIsMoon > 0.5) {
-          // Near-ground warm brownish-grey clumpy soil vs luminous sunlit cream-white highlands
+          // Fine lumpy powdery regolith grain on mare/valley floor vs silky cream-white massifs
           float distFromCenter = length(vTerrainWorldPos.xz - uAnchorXZ);
-          float massifSmooth = smoothstep(1.2, 6.2, vTerrainLocalPos.y);
-          float farSmoothing = 1.0 - smoothstep(10.0, 34.0, distFromCenter);
+          float massifSmooth = smoothstep(0.7, 3.0, vTerrainLocalPos.y);
+          float farSmoothing = 1.0 - smoothstep(9.0, 30.0, distFromCenter);
 
-          vec3 clodCoarse = sampleWorleyClod(vTerrainWorldPos.xz * 1.45);
+          vec3 clodCoarse = sampleWorleyClod(vTerrainWorldPos.xz * 2.15);
           float clodDome = clodCoarse.x;
-          vec2 clodGrad = clodCoarse.yz * 0.72;
+          vec2 clodGrad = clodCoarse.yz * 0.65;
           float pitAO = 0.0;
 
           if (uQualityLevel > 0.5) {
-            vec3 clodFine = sampleWorleyClod(vTerrainWorldPos.xz * 4.2 + 13.7);
-            clodDome = mix(clodDome, clodFine.x, 0.44);
-            clodGrad += clodFine.yz * 0.85;
+            vec3 clodMid = sampleWorleyClod(vTerrainWorldPos.xz * 5.6 + 13.7);
+            clodDome = mix(clodDome, clodMid.x, 0.52);
+            clodGrad += clodMid.yz * 0.82;
+
+            vec3 clodCrumb = terrainNoiseD(vTerrainWorldPos.xz * 10.5);
+            clodGrad += clodCrumb.yz * 0.52;
+            grain = mix(grain, clodCrumb.x, 0.35);
 
             float pitAO1 = 0.0;
             vec2 pitG1 = vec2(0.0);
-            sampleMicroCraterLayer(vTerrainWorldPos.xz, 0.88, 17.3, pitAO1, pitG1);
+            sampleMicroCraterLayer(vTerrainWorldPos.xz, 0.72, 17.3, pitAO1, pitG1);
             pitAO = pitAO1;
-            clodGrad += pitG1 * 1.15;
+            clodGrad += pitG1;
 
             if (uQualityLevel > 1.5) {
               float pitAO2 = 0.0;
               vec2 pitG2 = vec2(0.0);
-              sampleMicroCraterLayer(vTerrainWorldPos.xz, 2.35, 53.1, pitAO2, pitG2);
-              pitAO = max(pitAO, pitAO2 * 0.85);
-              clodGrad += pitG2 * 0.92;
-              vec3 powder = terrainNoiseD(vTerrainWorldPos.xz * 14.5);
-              clodGrad += powder.yz * 0.36;
-              grain = mix(grain, powder.x, 0.38);
+              sampleMicroCraterLayer(vTerrainWorldPos.xz, 1.85, 53.1, pitAO2, pitG2);
+              pitAO = max(pitAO, pitAO2 * 0.75);
+              clodGrad += pitG2;
+
+              vec3 powder = terrainNoiseD(vTerrainWorldPos.xz * 22.0);
+              clodGrad += powder.yz * 0.32;
+              grain = mix(grain, powder.x, 0.42);
             }
           }
 
-          // Combine FBM, cauliflower clod crowns & micro-crater shading on mare/valley floor
-          float floorRelief = (clodDome - 0.5) * 0.22 - pitAO * 0.24;
-          soil *= clamp(0.95 + floorRelief * (1.0 - massifSmooth * 0.85), 0.62, 1.18);
+          // Combine fine clumpy regolith texture with occasional soft eroded pits
+          float floorRelief = (clodDome - 0.5) * 0.24 - pitAO * 0.16;
+          soil *= clamp(0.95 + floorRelief * (1.0 - massifSmooth * 0.92), 0.68, 1.15);
 
-          // Attenuate micro-bump on smooth distant massif faces (Mt Hadley / North & South Massifs)
-          float bumpScale = (0.38 + 0.62 * farSmoothing) * (1.0 - massifSmooth * 0.82);
-          terrainGradXZ = mix(terrainGradXZ, clodGrad + terrainGradXZ * 0.45, bumpScale);
+          // Attenuate micro-bump cleanly on smooth distant massif slopes
+          float bumpScale = (0.32 + 0.68 * farSmoothing) * (1.0 - massifSmooth * 0.94);
+          terrainGradXZ = mix(terrainGradXZ * 0.6, clodGrad + terrainGradXZ * 0.35, bumpScale);
 
-          // Elevated rounded massifs shift smoothly to cream-white lunar anorthosite
-          soil = mix(soil, uHighlandBright * (0.94 + 0.08 * grain), massifSmooth * 0.88);
+          // Elevated rounded massifs shift smoothly to warm-cream lunar anorthosite
+          soil = mix(soil, uHighlandBright * (0.94 + 0.08 * grain), massifSmooth * 0.86);
 
-          // Real Apollo soil Lommel-Seeliger / Hapke opposition surge (bright looking away from sun)
+          // Gentle Lommel-Seeliger / Hapke opposition surge (backscatter toward sun without clipping)
           vec3 toCam = normalize(cameraPosition - vTerrainWorldPos);
-          float backScatter = pow(max(0.0, dot(toCam, normalize(uMoonSunDir))), 2.1);
-          soil *= (1.0 + 0.32 * backScatter);
+          float backScatter = pow(max(0.0, dot(toCam, normalize(uMoonSunDir))), 2.2);
+          soil *= (1.0 + 0.22 * backScatter);
         }
 
         if (uIsRipples > 0.5) {
@@ -415,9 +436,9 @@ export function applyWorldTerrainShader(
         "#include <normal_fragment_maps>",
         `#include <normal_fragment_maps>
         // Transform analytic world XZ gradient cleanly into view space; stronger in lunar near field
-        float bumpMaxDist = uIsMoon > 0.5 ? 28.0 : 18.0;
+        float bumpMaxDist = uIsMoon > 0.5 ? 24.0 : 18.0;
         float bumpFade = 1.0 - smoothstep(4.5, bumpMaxDist, length(vTerrainWorldPos.xz - uAnchorXZ));
-        float bumpAmp = uIsMoon > 0.5 ? 0.38 * (1.0 - smoothstep(1.2, 5.5, vTerrainLocalPos.y)) : 0.16;
+        float bumpAmp = uIsMoon > 0.5 ? 0.34 * (1.0 - smoothstep(0.65, 2.6, vTerrainLocalPos.y)) : 0.16;
         vec3 bumpWorld = vec3(-terrainGradXZ.x, 0.0, -terrainGradXZ.y) * bumpAmp * bumpFade;
         vec3 bumpView = (viewMatrix * vec4(bumpWorld, 0.0)).xyz;
         normal = normalize(normal + bumpView);`,
@@ -496,6 +517,8 @@ export function InstancedLandscapeRocks({
   scalePower = 2.2,
   embedOffset = 0.14,
   moonCraters,
+  maxLocalHeight,
+  castShadows = true,
   marsStorm = false,
 }: {
   planet: "moon" | "mars";
@@ -510,9 +533,12 @@ export function InstancedLandscapeRocks({
   surfaceY?: number;
   scaleRange?: [number, number];
   scalePower?: number;
-  /** Vertical placement factor * sy relative to local groundY (Mars default +0.14; Moon half-buried -0.06) */
+  /** Vertical placement factor * sy relative to local groundY */
   embedOffset?: number;
   moonCraters?: readonly CraterAnchor[];
+  /** Optional local height ceiling (keeps stray Moon rocks/pebbles off distant mountain flanks) */
+  maxLocalHeight?: number;
+  castShadows?: boolean;
   marsStorm?: boolean;
 }) {
   const refA = useRef<THREE.InstancedMesh>(null);
@@ -527,9 +553,9 @@ export function InstancedLandscapeRocks({
 
   const rockMat = useMemo(() => {
     const m = new THREE.MeshStandardMaterial({
-      color: planet === "moon" ? "#B8B1A5" : "#FFFFFF",
-      roughness: 0.93,
-      metalness: 0.03,
+      color: planet === "moon" ? "#6C665D" : "#FFFFFF",
+      roughness: planet === "moon" ? 0.97 : 0.93,
+      metalness: planet === "moon" ? 0.0 : 0.03,
     });
     const horizonCol =
       planet === "moon"
@@ -612,42 +638,49 @@ export function InstancedLandscapeRocks({
       for (let i = 0; i < n; i++) {
         let rx = 0;
         let rz = 0;
-        if (moonCraters && moonCraters.length > 0 && rand() < 0.44) {
-          // Bias ~44% of ejected pebbles & rocks around nearby crater rim aprons
-          const cr = moonCraters[Math.floor(rand() * moonCraters.length)];
-          const a = rand() * Math.PI * 2;
-          const rimR = cr.r * (0.86 + rand() * 0.62);
-          rx = cr.x + Math.cos(a) * rimR;
-          rz = cr.z + Math.sin(a) * rimR;
-          if (Math.hypot(rx, rz) < clearRadius) {
+        let localH = 0;
+        for (let attempt = 0; attempt < 4; attempt++) {
+          if (attempt === 0 && moonCraters && moonCraters.length > 0 && rand() < 0.4) {
+            const cr = moonCraters[Math.floor(rand() * moonCraters.length)];
+            const a = rand() * Math.PI * 2;
+            const rimR = cr.r * (0.88 + rand() * 0.58);
+            rx = cr.x + Math.cos(a) * rimR;
+            rz = cr.z + Math.sin(a) * rimR;
+            if (Math.hypot(rx, rz) < clearRadius) {
+              const angle = rand() * Math.PI * 2;
+              const r = clearRadius + Math.pow(rand(), 0.78) * (radiusOuter - clearRadius);
+              rx = Math.cos(angle) * r;
+              rz = Math.sin(angle) * r;
+            }
+          } else {
             const angle = rand() * Math.PI * 2;
-            const r = clearRadius + Math.pow(rand(), 0.78) * (radiusOuter - clearRadius);
+            const span = attempt >= 2 ? Math.min(radiusOuter, 14) : radiusOuter;
+            const r = clearRadius + Math.pow(rand(), 0.78) * Math.max(1, span - clearRadius);
             rx = Math.cos(angle) * r;
             rz = Math.sin(angle) * r;
           }
-        } else {
-          const angle = rand() * Math.PI * 2;
-          const r = clearRadius + Math.pow(rand(), 0.78) * (radiusOuter - clearRadius);
-          rx = Math.cos(angle) * r;
-          rz = Math.sin(angle) * r;
+          localH = sampleH ? sampleH(rx, rz) : 0;
+          if (maxLocalHeight === undefined || localH <= maxLocalHeight) break;
         }
 
-        const groundY = surfaceY + (sampleH ? sampleH(rx, rz) : 0);
+        const groundY = surfaceY + localH;
         const baseScale = minS + Math.pow(rand(), scalePower) * spanS;
         const sx = baseScale * (0.85 + rand() * 0.55);
         const sy = baseScale * (0.45 + rand() * 0.42);
         const sz = baseScale * (0.8 + rand() * 0.55);
+        // Sink Moon rocks/pebbles cleanly into sloping regolith so zero edges hover above soil
+        const extraSeat = isMoon ? -0.008 : 0;
 
-        dummy.position.set(rx, groundY + sy * embedOffset, rz);
-        dummy.rotation.set((rand() - 0.5) * 0.42, rand() * Math.PI * 2, (rand() - 0.5) * 0.42);
+        dummy.position.set(rx, groundY + sy * embedOffset + extraSeat, rz);
+        dummy.rotation.set((rand() - 0.5) * 0.36, rand() * Math.PI * 2, (rand() - 0.5) * 0.36);
         dummy.scale.set(sx, sy, sz);
         dummy.updateMatrix();
         mesh.setMatrixAt(i, dummy.matrix);
 
         if (isMoon) {
-          // Neutral warm-cream basaltic to anorthositic breccia clast tone variation
-          const shade = 0.64 + rand() * 0.36;
-          tint.setRGB(shade * 1.02, shade * 0.99, shade * 0.93);
+          // Soil-toned basaltic-to-grey clast variation (avoids specular/HDR white sparkles)
+          const shade = 0.56 + rand() * 0.34;
+          tint.setRGB(shade * 1.03, shade * 0.99, shade * 0.91);
           mesh.setColorAt(i, tint);
         }
       }
@@ -671,15 +704,26 @@ export function InstancedLandscapeRocks({
     scalePower,
     embedOffset,
     moonCraters,
+    maxLocalHeight,
   ]);
 
   if (count <= 0) return null;
 
   return (
     <group>
-      <instancedMesh ref={refA} args={[geoA, rockMat, countA]} castShadow receiveShadow />
+      <instancedMesh
+        ref={refA}
+        args={[geoA, rockMat, countA]}
+        castShadow={castShadows}
+        receiveShadow
+      />
       {countB > 0 ? (
-        <instancedMesh ref={refB} args={[geoB, rockMat, countB]} castShadow receiveShadow />
+        <instancedMesh
+          ref={refB}
+          args={[geoB, rockMat, countB]}
+          castShadow={castShadows}
+          receiveShadow
+        />
       ) : null}
     </group>
   );

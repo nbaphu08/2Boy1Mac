@@ -154,14 +154,16 @@ function SceneChoreographer({
     const nearestSlug = beats[nearestIdx]?.exhibitSlug;
     const exhibitAnchor = nearestSlug ? EXHIBIT_PLINTH_ANCHORS[nearestSlug] : undefined;
 
-    // Smooth mid-beat transition veil between adjacent exhibit horizons (0 opacity everywhere else)
+    // Very brief, shallow transition softening between exhibits so lunar terrain never dips to black (AG-12b)
     if (veilRef.current) {
       const inMoonSwap = p >= 8.05 && p <= 11.95;
       const inMarsSwap = p >= 14.05 && p <= 19.95;
       if (!reducedMotion && (inMoonSwap || inMarsSwap)) {
         const frac = p - Math.floor(p);
         const distMid = Math.abs(frac - 0.5);
-        const veilAlpha = distMid < 0.09 ? Math.pow(1 - distMid / 0.09, 1.35) * 0.94 : 0;
+        const halfWin = inMoonSwap ? 0.042 : 0.06;
+        const maxAlpha = inMoonSwap ? 0.18 : 0.34;
+        const veilAlpha = distMid < halfWin ? Math.pow(1 - distMid / halfWin, 1.4) * maxAlpha : 0;
         veilRef.current.style.opacity = veilAlpha.toFixed(3);
         if (veilAlpha > 0.01) {
           veilRef.current.style.backgroundColor = inMoonSwap ? "rgb(4, 6, 11)" : "rgb(154, 94, 58)";
@@ -199,10 +201,10 @@ function SceneChoreographer({
         sunTarget.position.set(ax, ay + 0.35, az);
         sunTarget.updateMatrixWorld();
         if (inMoonHall) {
-          // Single hard crisp low white lunar sun from right-front -> razor shadows & sunlit Mt Hadley face
+          // Single hard crisp low white lunar sun from right-front (balanced exposure, zero blown-out wash)
           sunRef.current.position.set(ax + 9.4, ay + 2.85, az + 4.3);
           sunRef.current.color.copy(moonSunColor);
-          sunRef.current.intensity = THREE.MathUtils.damp(sunRef.current.intensity, 5.8 * dim, 8, dt);
+          sunRef.current.intensity = THREE.MathUtils.damp(sunRef.current.intensity, 3.8 * dim, 8, dt);
         } else {
           // Warm low Martian sun across all 7 Mars landscapes
           const stormT = smoothstep(16.3, 16.85, p) * (1 - smoothstep(17.15, 17.7, p));
@@ -239,7 +241,7 @@ function SceneChoreographer({
     if (ambRef.current) {
       if (inMoonHall) {
         ambRef.current.color.copy(moonAmbColor);
-        ambRef.current.intensity = THREE.MathUtils.damp(ambRef.current.intensity, 0.014 * dim, 8, dt);
+        ambRef.current.intensity = THREE.MathUtils.damp(ambRef.current.intensity, 0.01 * dim, 8, dt);
       } else if (inMarsHall) {
         ambRef.current.color.copy(marsAmbColor);
         ambRef.current.intensity = THREE.MathUtils.damp(ambRef.current.intensity, 0.38 * dim, 8, dt);
@@ -252,7 +254,7 @@ function SceneChoreographer({
       if (inMoonHall) {
         hemiRef.current.color.copy(moonHemiSky);
         hemiRef.current.groundColor.copy(moonHemiGround);
-        hemiRef.current.intensity = THREE.MathUtils.damp(hemiRef.current.intensity, 0.024 * dim, 8, dt);
+        hemiRef.current.intensity = THREE.MathUtils.damp(hemiRef.current.intensity, 0.016 * dim, 8, dt);
       } else if (inMarsHall) {
         hemiRef.current.color.copy(marsHemiSky);
         hemiRef.current.groundColor.copy(marsHemiGround);

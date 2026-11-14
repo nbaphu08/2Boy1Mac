@@ -85,11 +85,11 @@ function craterBowl(x: number, z: number, cx: number, cz: number, radius: number
   const r = Math.hypot(x - cx, z - cz);
   if (r > radius * 1.48) return 0;
   const u = r / radius;
-  const rim = depth * 0.26;
+  const rim = depth * 0.16;
   if (u < 1.0) {
-    return -depth * (1 - u * u) + rim * Math.exp(-Math.pow((u - 0.94) / 0.16, 2));
+    return -depth * (1 - u * u) + rim * Math.exp(-Math.pow((u - 0.94) / 0.22, 2));
   }
-  return rim * Math.exp(-Math.pow((u - 0.94) / 0.2, 2));
+  return rim * Math.exp(-Math.pow((u - 0.94) / 0.26, 2));
 }
 
 /** Monumental smooth rounded lunar highland massif (Mount Hadley / North & South Massifs, zero wave stripes). */
@@ -114,14 +114,14 @@ export function getMoonTerrainHeight(slug: string, x: number, z: number): number
   }
 
   if (slug === "moon-surveyor-3") {
-    // Broad Surveyor Crater bowl: tilted inner regolith slope + smooth rising far crater rim holding Apollo 12 LM
-    const innerSlope = Math.max(-0.42, Math.min(0.65, x * 0.085 - z * 0.095));
+    // Bounded Surveyor Crater bowl (~30 m span, natural ~3.8 m far crater rim against pure black sky)
+    const innerSlope = Math.max(-0.36, Math.min(0.45, x * 0.065 - z * 0.075));
     const bowlDist = Math.hypot(x + 0.8, z + 3.8);
-    const bowlShape = bowlDist * bowlDist * 0.011 - 0.32 * Math.exp(-bowlDist * 0.14);
+    const bowlShape = Math.min(2.6, bowlDist * bowlDist * 0.0085) - 0.3 * Math.exp(-bowlDist * 0.14);
     const bowl = farBlend * bowlShape + (1 - farBlend) * innerSlope;
     const farWall =
-      ridgeHill(x, z, 2.0, -54.0, 42.0, 20.0, 7.6) + ridgeHill(x, z, -28.0, -48.0, 26.0, 16.0, 5.2);
-    return innerSlope * 0.65 + bowl * 0.55 + farBlend * craters + farWall;
+      ridgeHill(x, z, 3.5, -52.0, 34.0, 18.0, 3.6) + ridgeHill(x, z, -28.0, -48.0, 24.0, 15.0, 2.8);
+    return innerSlope * 0.52 + bowl * 0.62 + farBlend * craters + farWall;
   }
 
   if (slug === "moon-apollo-15-lrv") {
@@ -205,7 +205,7 @@ export function HallOneLunarDiorama({
       anchorXZ,
       baseTint: isTaurus ? "#4E4840" : "#443E37",
       brightTint: isTaurus ? "#989185" : "#898276",
-      highlandBrightTint: isTaurus ? "#E2DCD0" : "#DAD3C7",
+      highlandBrightTint: isTaurus ? "#CCC5B8" : "#C4BDB0",
       fadeStart: 72,
       fadeEnd: 87.5,
       qualityTier: budget.tier,
@@ -262,7 +262,7 @@ export function HallOneLunarDiorama({
         receiveShadow
       />
 
-      {/* Instanced dense half-buried 2–10 cm pebbles + scattered 20–50 cm crater-rim rocks */}
+      {/* Instanced dense deeply-seated 2–10 cm pebbles + scattered 14–48 cm floor rocks */}
       <InstancedLandscapeRocks
         planet="moon"
         anchorXZ={anchorXZ}
@@ -270,10 +270,12 @@ export function HallOneLunarDiorama({
         seed={rockSeed + 17}
         maxRadius={15}
         clearRadius={rockClear}
-        scaleRange={[0.028, 0.115]}
+        scaleRange={[0.028, 0.105]}
         scalePower={1.75}
-        embedOffset={-0.06}
+        embedOffset={-0.16}
         moonCraters={craters}
+        maxLocalHeight={0.95}
+        castShadows={false}
         surfaceY={DIORAMA_SURFACE_Y}
         heightFn={(vx, vz) => getMoonTerrainHeight(slug, vx, vz)}
       />
@@ -282,12 +284,13 @@ export function HallOneLunarDiorama({
         anchorXZ={anchorXZ}
         count={boulderCount}
         seed={rockSeed}
-        maxRadius={38}
+        maxRadius={28}
         clearRadius={rockClear + 0.5}
-        scaleRange={slug === "moon-apollo-17" ? [0.15, 0.52] : [0.14, 0.42]}
+        scaleRange={slug === "moon-apollo-17" ? [0.15, 0.48] : [0.14, 0.38]}
         scalePower={2.35}
-        embedOffset={-0.04}
+        embedOffset={-0.1}
         moonCraters={craters}
+        maxLocalHeight={1.05}
         surfaceY={DIORAMA_SURFACE_Y}
         heightFn={(vx, vz) => getMoonTerrainHeight(slug, vx, vz)}
       />

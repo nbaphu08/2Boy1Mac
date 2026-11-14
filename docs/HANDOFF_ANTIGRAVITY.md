@@ -383,3 +383,26 @@ Scale figures gone, black sky, hard shadows, smooth bright massifs — a real st
 4. **Surveyor 3:** the upper half of the frame looks hazy/washed out (bright beige glow) — the Moon has no haze; check bloom/exposure there.
 5. **Mid-flight between sites (p ≈ 8.5) the screen dips almost to black** — the humans dislike dark screens passing while scrolling. Keep the veil dip very short and shallow (or replace it with flying over a ridge), so the ground stays visible.
 Do NOT generate posters.
+
+---
+
+## AG-12b — Grain-First Regolith, Artifact-Free Massifs, Soil-Toned Pebbles, Vacuum Bloom Suppression & Shallow Site Swaps (15/11)
+
+**Branch:** `ag/12b-polish` (from `main` `c1825ad`)
+
+1. **Fine Lumpy Grain Over Sparse Heavy-Tailed Craters (`landscapeMaterials.tsx`, `MoonDioramas.tsx`, `GrailSimulation.tsx`)**:
+   - Cut `sampleMicroCraterLayer` spawn density by ~75% (`0.56` → `0.145`), added domain warp jitter (`terrainNoiseD(p * 0.37)`) to break grid alignment, switched crater radii to heavy-tailed `r^3` scaling (`0.065–0.42`), softened rims & bowl gradients (`0.28` → `0.06` rim, `0.14` → `0.042` grad), and boosted multi-scale domain-warped Worley cauliflower clods + sub-decimeter crumb/powder grit (`10.5` / `22.0`).
+   - Softened geometric macro crater rims (`craterBowl` rim `0.26` → `0.16`, `polarCraterBowl` `rim * 0.68`).
+2. **Eliminated Diagonal `///` Massif Artifacts (`landscapeMaterials.tsx`, `MoonDioramas.tsx`, `GrailSimulation.tsx`)**:
+   - Switched `createNearFieldHorizonGeometry` from faceted `geo.computeVertexNormals()` to smooth central-difference analytic normals (`eps = 0.28`, warp exponent `2.35` → `1.75`) so curved ridges have zero quad-diagonal Mach bands.
+   - Added `maxLocalHeight` floor constraint (`0.95–1.05 m` Moon dioramas, `1.65–1.8 m` GRAIL slope) in `InstancedLandscapeRocks` so no scattered rocks/pebbles project onto distant massif flanks, and tightened `massifSmooth` / `bumpAmp` fadeout above `0.65 m`.
+3. **Soil-Toned, Ground-Seated GRAIL & Lunar Pebbles (`landscapeMaterials.tsx`, `MoonDioramas.tsx`, `GrailSimulation.tsx`)**:
+   - Darkened Moon rock material from `#B8B1A5` to `#6C665D` (`roughness = 0.97`, `metalness = 0.0`) with lower instance shade range (`0.56..0.90`), deepened seating offset (`embedOffset = -0.16 / -0.18` + `-0.008 m` slope seat), and disabled `castShadows` on tiny `2–10 cm` pebbles (`castShadows={false}`) to stop white sparkles & shadow-acne speckling.
+4. **Eliminated Surveyor 3 Washed-Out Bloom Haze (`MoonDioramas.tsx`, `SpaceScene.tsx`, `RenderPipeline.tsx`, `trajectory.ts`)**:
+   - Bounded Surveyor 3 crater `bowlShape` (`Math.min(2.6, ...)` instead of unbounded quadratic growth to `+27 m`) + `3.6 m` `farWall` crest so the crisp black lunar sky clearly frames the crater rim above distant Apollo 12 LM; pitched `BEAT_POSES[9]` (`camPos.y = 344.55`).
+   - Reduced Moon directional key intensity (`5.8` → `3.8`), `HallEnvironment` intensity (`0.14` → `0.09`), and dynamically suppressed `Bloom` intensity down to `0.02` across Moon surface beats `8..12` in `PostEffects` (`RenderPipeline.tsx`).
+5. **Shallow Mid-Flight Crossing (`SpaceScene.tsx`)**:
+   - Reduced inter-site transition veil in `SpaceScene.tsx` on Moon (`p ≈ 8.5..11.5`) from `0.94` (`distMid < 0.09`) down to a very brief `0.18` dip (`distMid < 0.042`) so lunar ground remains clearly visible throughout scroll transitions.
+6. **Verification**: Verified `npx tsc --noEmit`, `npx eslint components/journey/three`, and `npx next build --webpack` pass cleanly; zero posters generated or modified.
+
+**Files changed:** `GrailSimulation.tsx`, `MoonDioramas.tsx`, `RenderPipeline.tsx`, `SpaceScene.tsx`, `landscapeMaterials.tsx`, `trajectory.ts`, `docs/HANDOFF_ANTIGRAVITY.md`.
