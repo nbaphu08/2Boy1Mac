@@ -205,6 +205,7 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
   ]);
 
   const earthRef = useRef<THREE.Group>(null);
+  const lunarSkyEarthRef = useRef<THREE.Group>(null);
   const moonRef = useRef<THREE.Group>(null);
   const marsRef = useRef<THREE.Group>(null);
   const finaleRef = useRef<THREE.Group>(null);
@@ -238,8 +239,13 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
     const spin = reducedMotion ? 0 : delta * 0.014;
 
     if (earthRef.current) {
-      earthRef.current.visible = p > 2.3 && p < 10.5;
+      earthRef.current.visible = p > 2.3 && p < 9.2;
       earthRef.current.rotation.y += spin * 0.55;
+    }
+    if (lunarSkyEarthRef.current) {
+      // Near-side lunar sites (Apollo 11, Surveyor 3/Apollo 12, Apollo 15, Apollo 17) see Earth in the sky; GRAIL polar site (beat 12) does not
+      lunarSkyEarthRef.current.visible = p > 7.5 && p < 11.45;
+      lunarSkyEarthRef.current.rotation.y += spin * 0.4;
     }
     if (moonRef.current) {
       moonRef.current.visible = p > 4.8 && p < 16.0;
@@ -286,6 +292,15 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
           transparent
           opacity={0.55}
         />
+      </group>
+
+      {/* ─── DISTANT EARTH IN THE LUNAR SKY (Near-side Hall I sites only: beats 8..11, hidden at polar beat 12) ─── */}
+      <group ref={lunarSkyEarthRef} position={[-16, 360, -236]} rotation={[0.2, -2.1, 0.1]} visible={false}>
+        <mesh>
+          <sphereGeometry args={[2.1, 32, 24]} />
+          <meshStandardMaterial map={earthTex} roughness={0.65} metalness={0.1} />
+        </mesh>
+        <AtmosphereRim radius={2.1 * 1.04} color="#6AA8FF" intensity={0.85} power={3.0} />
       </group>
 
       {/* ─── 3D MOON (Hall I — beats 7..13) ─── */}

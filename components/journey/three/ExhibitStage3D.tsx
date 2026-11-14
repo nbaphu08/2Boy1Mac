@@ -11,6 +11,7 @@ import type { Exhibit } from "@/content/types";
 import { useMuseum } from "@/lib/store";
 import { scrollState, smoothstep } from "@/lib/scroll/progress";
 import { EXHIBIT_PLINTH_ANCHORS } from "./trajectory";
+import { HallOneLunarDiorama } from "./MoonDioramas";
 
 const PLINTH_SURFACE_Y = 0.22;
 
@@ -28,6 +29,7 @@ function GlbExhibitMesh({
   const cutRef = useRef<THREE.Object3D>(null);
   const normalRef = useRef(new THREE.Vector3(0, -1, 0));
   const worldPtRef = useRef(new THREE.Vector3());
+  const quatRef = useRef(new THREE.Quaternion());
 
   const { cloned, scale, offset } = useMemo(() => {
     const copy = scene.clone(true);
@@ -66,48 +68,15 @@ function GlbExhibitMesh({
   useFrame(() => {
     if (!isApolloLm || !cutRef.current || !spinRef.current) return;
     cutRef.current.getWorldPosition(worldPtRef.current);
-    normalRef.current.set(0, -1, 0).applyQuaternion(spinRef.current.getWorldQuaternion(new THREE.Quaternion())).normalize();
+    spinRef.current.getWorldQuaternion(quatRef.current);
+    normalRef.current.set(0, -1, 0).applyQuaternion(quatRef.current).normalize();
     clipPlane.setFromNormalAndCoplanarPoint(normalRef.current, worldPtRef.current);
   });
 
   return (
     <group>
       <primitive object={cloned} scale={scale} position={offset} />
-      {isApolloLm ? (
-        <>
-          <object3D ref={cutRef} position={[0, PLINTH_SURFACE_Y + 1.08, 0]} />
-          {/* Apollo 11 Laser Ranging Retroreflector (LRRR) 10x10 prism array + active ranging beam */}
-          <group position={[0.92, PLINTH_SURFACE_Y + 0.08, 0.52]} rotation={[0, -0.45, 0]}>
-            {/* Tilted pallet base */}
-            <mesh position={[0, 0.04, 0]}>
-              <boxGeometry args={[0.34, 0.08, 0.32]} />
-              <meshStandardMaterial color="#D6DCE8" roughness={0.35} metalness={0.75} />
-            </mesh>
-            {/* 10x10 Corner-Cube Mirror Array */}
-            <mesh position={[0, 0.11, 0.02]} rotation={[-0.42, 0, 0]}>
-              <boxGeometry args={[0.28, 0.03, 0.28]} />
-              <meshStandardMaterial
-                color="#9DB8FF"
-                emissive="#4A78E0"
-                emissiveIntensity={0.65}
-                roughness={0.12}
-                metalness={0.95}
-              />
-            </mesh>
-            {/* Subtle laser ranging beam returning to Earth */}
-            <mesh position={[0, 2.1, 0.85]} rotation={[0.38, 0, 0]}>
-              <cylinderGeometry args={[0.012, 0.035, 4.2, 8, 1, true]} />
-              <meshBasicMaterial
-                color="#9DB8FF"
-                transparent
-                opacity={0.32}
-                blending={THREE.AdditiveBlending}
-                depthWrite={false}
-              />
-            </mesh>
-          </group>
-        </>
-      ) : null}
+      {isApolloLm ? <object3D ref={cutRef} position={[0, PLINTH_SURFACE_Y + 1.08, 0]} /> : null}
     </group>
   );
 }
@@ -172,33 +141,40 @@ function SingleExhibitPlinth({
     };
   }, [hovered]);
 
-  useFrame((_, delta) => {
+  const isMoon = anchor?.planet === "moon";
+
+  useFrame((state, delta) => {
     const p = scrollState.current;
     const dist = Math.abs(p - beatIndex);
-    const vis = 1 - smoothstep(0.65, 1.35, dist);
+    const vis = 1 - smoothstep(0.68, 1.38, dist);
     if (!rootRef.current) return;
     rootRef.current.visible = vis > 0.01;
     if (!rootRef.current.visible) return;
 
-    rootRef.current.scale.setScalar(0.7 + 0.3 * vis);
+    rootRef.current.scale.setScalar(0.76 + 0.24 * vis);
 
     if (spinRef.current && !reducedMotion) {
-      spinRef.current.rotation.y += delta * 0.22;
+      if (isMoon) {
+        // Subtle diorama presentation sway so mountain backdrops and laser beams remain oriented toward camera
+        spinRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.28 + beatIndex) * 0.08;
+      } else {
+        spinRef.current.rotation.y += delta * 0.22;
+      }
     }
 
-    const boost = activeExhibit === exhibit.slug ? 1.5 : hovered ? 1.25 : 1.0;
+    const boost = activeExhibit === exhibit.slug ? 1.45 : hovered ? 1.22 : 1.0;
     if (spotRef.current) {
-      spotRef.current.intensity = 42 * vis * boost;
+      spotRef.current.intensity = (isMoon ? 58 : 42) * vis * boost;
     }
     if (coneRef.current) {
       const mat = coneRef.current.material as THREE.MeshBasicMaterial;
-      mat.opacity = 0.08 * vis * boost;
+      mat.opacity = (isMoon ? 0.065 : 0.08) * vis * boost;
     }
   });
 
   if (!anchor) return null;
-  const plinthColor = anchor.planet === "moon" ? "#3A404D" : "#4E2E24";
-  const accentColor = anchor.planet === "moon" ? "#B9BEC8" : "#C8603A";
+  const plinthColor = isMoon ? "#3A404D" : "#4E2E24";
+  const accentColor = isMoon ? "#B9BEC8" : "#C8603A";
 
   return (
     <group
@@ -218,47 +194,65 @@ function SingleExhibitPlinth({
       {/* Cold museum spotlight (#DCE6FF) */}
       <spotLight
         ref={spotRef}
-        position={[0, 5.2, 1.1]}
-        angle={0.42}
+        position={[0, isMoon ? 6.4 : 5.2, isMoon ? 1.35 : 1.1]}
+        angle={isMoon ? 0.56 : 0.42}
         penumbra={0.85}
-        intensity={42}
-        distance={14}
+        intensity={isMoon ? 58 : 42}
+        distance={isMoon ? 18 : 14}
         color="#DCE6FF"
       />
 
       {/* Volumetric spotlight beam */}
-      <mesh ref={coneRef} position={[0, 2.65, 0.35]} rotation={[0.16, 0, 0]}>
-        <coneGeometry args={[2.1, 5.2, 24, 1, true]} />
+      <mesh
+        ref={coneRef}
+        position={[0, isMoon ? 3.2 : 2.65, isMoon ? 0.42 : 0.35]}
+        rotation={[0.15, 0, 0]}
+      >
+        <coneGeometry args={[isMoon ? 3.35 : 2.1, isMoon ? 6.2 : 5.2, 28, 1, true]} />
         <meshBasicMaterial
           color="#DCE6FF"
           transparent
-          opacity={0.08}
+          opacity={isMoon ? 0.065 : 0.08}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
           side={THREE.DoubleSide}
         />
       </mesh>
 
-      {/* Bevelled planetary museum plinth */}
-      <mesh position={[0, 0, 0]}>
-        <cylinderGeometry args={[1.55, 1.85, 0.44, 32]} />
-        <meshStandardMaterial color={plinthColor} roughness={0.86} metalness={0.12} />
-      </mesh>
-      <mesh position={[0, 0.21, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[1.48, 1.55, 36]} />
-        <meshBasicMaterial color={accentColor} transparent opacity={0.45} />
-      </mesh>
+      {isMoon ? (
+        <group ref={spinRef}>
+          <HallOneLunarDiorama slug={exhibit.slug} reducedMotion={reducedMotion}>
+            {exhibit.media.model ? (
+              <Suspense fallback={<PlinthFallback />}>
+                <GlbExhibitMesh url={exhibit.media.model} isApolloLm={isApolloLm} spinRef={spinRef} />
+              </Suspense>
+            ) : null}
+          </HallOneLunarDiorama>
+        </group>
+      ) : (
+        <>
+          {/* Bevelled planetary museum plinth (Hall II Mars until AG-2) */}
+          <mesh position={[0, 0, 0]}>
+            <cylinderGeometry args={[1.55, 1.85, 0.44, 32]} />
+            <meshStandardMaterial color={plinthColor} roughness={0.86} metalness={0.12} />
+          </mesh>
+          <mesh position={[0, 0.21, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[1.48, 1.55, 36]} />
+            <meshBasicMaterial color={accentColor} transparent opacity={0.45} />
+          </mesh>
 
-      {/* Rotating exhibit model or 2.5D platinum lightbox */}
-      <group ref={spinRef}>
-        <Suspense fallback={<PlinthFallback />}>
-          {exhibit.media.model ? (
-            <GlbExhibitMesh url={exhibit.media.model} isApolloLm={isApolloLm} spinRef={spinRef} />
-          ) : (
-            <LightboxExhibitMesh imageSrc={lightboxImg} />
-          )}
-        </Suspense>
-      </group>
+          {/* Rotating exhibit model or 2.5D platinum lightbox */}
+          <group ref={spinRef}>
+            <Suspense fallback={<PlinthFallback />}>
+              {exhibit.media.model ? (
+                <GlbExhibitMesh url={exhibit.media.model} isApolloLm={isApolloLm} spinRef={spinRef} />
+              ) : (
+                <LightboxExhibitMesh imageSrc={lightboxImg} />
+              )}
+            </Suspense>
+          </group>
+        </>
+      )}
     </group>
   );
 }

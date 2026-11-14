@@ -94,42 +94,42 @@ export const BEAT_POSES: BeatPose[] = [
     rocketRot: [-0.88, 0.05, -0.25],
     rocketScale: 0.72,
   },
-  // 8: moon-apollo-11 (SM-L-001) — Descending to Sea of Tranquility plinth
+  // 8: moon-apollo-11 (SM-L-001) — Descending to Sea of Tranquility diorama (Eagle descent stage, EASEP, LRRR + green laser)
   {
-    camPos: [13.5, 344, -172],
-    camLook: [5.5, 340.8, -187],
+    camPos: [8.6, 343.1, -180.6],
+    camLook: [4.8, 341.2, -187.4],
     rocketPos: [-12, 355, -186],
     rocketRot: [-0.3, 0.8, 0.15],
     rocketScale: 0.45,
   },
-  // 9: moon-surveyor-3 (SM-L-002) — Gliding across lunar hemisphere
+  // 9: moon-surveyor-3 (SM-L-002) — Ocean of Storms crater slope + distant Apollo 12 LM on rim
   {
-    camPos: [-10.5, 336.5, -173],
-    camLook: [-1.5, 335, -189],
+    camPos: [-5.1, 337.2, -182.3],
+    camLook: [-1.8, 335.4, -189.2],
     rocketPos: [-16, 352, -192],
     rocketRot: [-0.2, 0.9, 0.1],
     rocketScale: 0.42,
   },
-  // 10: moon-apollo-15-lrv (SM-L-003) — Northern Hadley-Apennine ridge
+  // 10: moon-apollo-15-lrv (SM-L-003) — Hadley–Apennine plain, Mount Hadley massif, parked LRV & distant LM
   {
-    camPos: [10.5, 354, -176],
-    camLook: [2.5, 350.5, -191],
+    camPos: [5.9, 352.8, -184.2],
+    camLook: [2.1, 350.9, -191.2],
     rocketPos: [-14, 362, -195],
     rocketRot: [-0.25, 1.0, 0.08],
     rocketScale: 0.42,
   },
-  // 11: moon-apollo-17 (SM-L-004) — Taurus-Littrow valley
+  // 11: moon-apollo-17 (SM-L-004) — Taurus–Littrow valley massifs, Challenger descent stage, LRV & tracks
   {
-    camPos: [19.5, 349, -184],
-    camLook: [10.5, 346, -198],
+    camPos: [14.1, 348.4, -191.0],
+    camLook: [10.1, 346.4, -198.2],
     rocketPos: [-10, 360, -200],
     rocketRot: [-0.2, 1.1, 0.05],
     rocketScale: 0.42,
   },
-  // 12: moon-grail (SM-L-005) — North polar impact site
+  // 12: moon-grail (SM-L-005) — North polar mountain slope, two ~5 m craters with dark ejecta & twin ghost holograms
   {
-    camPos: [3.5, 367, -184],
-    camLook: [0.5, 360, -199],
+    camPos: [3.6, 362.7, -192.1],
+    camLook: [0.2, 360.8, -199.2],
     rocketPos: [-12, 372, -206],
     rocketRot: [-0.4, 0.7, 0.1],
     rocketScale: 0.45,

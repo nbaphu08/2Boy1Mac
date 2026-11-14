@@ -117,10 +117,24 @@ function SceneChoreographer({
     const shakeX = liftoffRumble * Math.sin(t * 52) * 0.2;
     const shakeY = liftoffRumble * Math.cos(t * 59) * 0.15;
 
+    // Subtle camera micro-orbit while the visitor rests on an exhibit beat (respects reducedMotion -> no orbit)
+    const inExhibitRange = smoothstep(7.5, 8.0, p) * (1 - smoothstep(20.1, 20.6, p));
+    const isResting = 1 - smoothstep(0.06, 0.38, Math.abs(scrollState.velocity));
+    const orbitWeight = reducedMotion ? 0 : inExhibitRange * isResting;
+
+    const dx = traj.camPos.x - traj.camLook.x;
+    const dz = traj.camPos.z - traj.camLook.z;
+    const orbitAngle = Math.sin(t * 0.36) * 0.14 * orbitWeight;
+    const cosA = Math.cos(orbitAngle);
+    const sinA = Math.sin(orbitAngle);
+    const orbitedX = traj.camLook.x + dx * cosA - dz * sinA;
+    const orbitedZ = traj.camLook.z + dx * sinA + dz * cosA;
+    const orbitLiftY = Math.cos(t * 0.28) * 0.12 * orbitWeight;
+
     camera.position.set(
-      traj.camPos.x + breathX + shakeX,
-      traj.camPos.y + breathY + shakeY,
-      traj.camPos.z,
+      orbitedX + breathX + shakeX,
+      traj.camPos.y + breathY + shakeY + orbitLiftY,
+      orbitedZ,
     );
     camera.lookAt(traj.camLook);
 
