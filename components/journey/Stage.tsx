@@ -276,6 +276,23 @@ export default function Stage() {
     const onLenisScroll = () => ScrollTrigger.update();
     lenis?.on("scroll", onLenisScroll);
 
+    // Gentle settle-snap (Opus): when the visitor stops scrolling between two beats, glide to the nearest beat
+    // so every exhibit (and the GRAIL simulation) is seen in its composed rest shot.
+    let snapTimer = 0;
+    const onLenisSettle = () => {
+      window.clearTimeout(snapTimer);
+      snapTimer = window.setTimeout(() => {
+        if (!lenis || useMuseum.getState().reducedMotion) return;
+        const pos = MIN_BEAT + window.scrollY / Math.max(window.innerHeight, 1);
+        const nearest = Math.max(MIN_BEAT, Math.min(beats.length - 1, Math.round(pos)));
+        const off = Math.abs(pos - nearest);
+        if (off > 0.015 && off < 0.5) {
+          lenis.scrollTo((nearest - MIN_BEAT) * Math.max(window.innerHeight, 1), { duration: 0.9 });
+        }
+      }, 220);
+    };
+    lenis?.on("scroll", onLenisSettle);
+
     const tickerRaf = (time: number) => {
       lenis?.raf(time * 1000);
     };
@@ -410,6 +427,8 @@ export default function Stage() {
       masterTrigger.kill();
       gsap.ticker.remove(tickerRaf);
       lenis?.off("scroll", onLenisScroll);
+      lenis?.off("scroll", onLenisSettle);
+      window.clearTimeout(snapTimer);
       lenis?.destroy();
     };
   }, [isStatic]);

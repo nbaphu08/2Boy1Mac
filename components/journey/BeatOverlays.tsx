@@ -326,7 +326,21 @@ function ExhibitBeatOverlay({ beat }: { beat: Beat }) {
           {hasStamp ? <span className="font-hud text-[10px] text-platinum">{expedition.found}</span> : null}
         </div>
         {ex.slug === "moon-grail" && !isStatic ? (
+          <>
+          <div className="mt-3" aria-label={grailSim.legend.title}>
+            <p className="font-hud text-[9px] text-platinum">{grailSim.legend.title}</p>
+            <div
+              aria-hidden
+              className="mt-1 h-1.5 w-full max-w-64 rounded-full"
+              style={{ background: "linear-gradient(90deg,#6b3fa0,#2f6fd6,#3fb3a0,#e8e05a,#f0913a,#e33b2e)" }}
+            />
+            <div className="font-hud mt-1 flex w-full max-w-64 justify-between text-[9px] text-mute">
+              <span>{grailSim.legend.weak}</span>
+              <span>{grailSim.legend.strong}</span>
+            </div>
+          </div>
           <p className="font-hud mt-2 text-[9px] text-mute">{grailSim.note}</p>
+          </>
         ) : null}
       </div>
     </div>

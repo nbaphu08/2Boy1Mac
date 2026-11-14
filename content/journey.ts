@@ -80,6 +80,11 @@ export const journey = {
 export const grailSim = {
   replay: "Replay simulation",
   note: "Simulation · time compressed · gravity map: NASA/ARC-MIT/JPL-Caltech/GSFC",
+  legend: {
+    title: "The colours are GRAIL's real gravity map of the Moon",
+    weak: "Weaker gravity",
+    strong: "Stronger gravity",
+  },
 };
 
 export const narration: Record<string, string> = {

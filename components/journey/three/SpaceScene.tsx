@@ -175,7 +175,7 @@ function SceneChoreographer({
 
     // Smoothly blend camera toward GRAIL 14 s simulation when settled on beat 12 (yields instantly on scroll)
     if (grailSimState.active && grailSimState.camBlend > 0.001) {
-      const scrollMask = 1 - smoothstep(0.04, 0.14, Math.abs(p - 12));
+      const scrollMask = 1 - smoothstep(0.26, 0.36, Math.abs(p - 12)); // Opus: wider window
       const blend = grailSimState.camBlend * scrollMask;
       if (blend > 0.001) {
         simCamPos.lerp(grailSimState.camPos, blend);

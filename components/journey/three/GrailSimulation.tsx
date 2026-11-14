@@ -729,7 +729,7 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
     }
 
     // Handle beat arrival settle & scroll-away interruption
-    if (distFromBeat >= 0.12) {
+    if (distFromBeat >= 0.36) { // Opus: match the beat card window (visitors rarely stop exactly on 12.00)
       st.settleTimer = 0;
       st.hasAutoPlayedThisVisit = false;
       if (st.playing) {
@@ -747,7 +747,7 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
       return;
     }
 
-    if (distFromBeat < 0.08 && !st.playing && !st.hasAutoPlayedThisVisit) {
+    if (distFromBeat < 0.22 && Math.abs(scrollState.velocity ?? 0) < 0.02 && !st.playing && !st.hasAutoPlayedThisVisit) {
       st.settleTimer += dt;
       if (st.settleTimer >= 0.12) {
         st.playing = true;
@@ -782,7 +782,7 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
     // ─── 1. MAPPING PHASE (0–5.9 s): Moon globe turning under polar-orbiting Ebb & Flow ───
     // Keep local lunar terrain slab hidden cleanly while orbital Moon globe is shown (t < 5.9 s)
     if (surfaceGroupRef.current) {
-      surfaceGroupRef.current.visible = !(st.playing && t < 5.9);
+      surfaceGroupRef.current.visible = !(st.playing && t > 0.6 && t < 5.9); // Opus: keep ground until the camera has blended away
     }
 
     const showGlobe = st.playing && t < 6.5;
