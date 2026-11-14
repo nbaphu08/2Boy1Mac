@@ -101,5 +101,16 @@ See `GEMINI.md` §1–2 (architecture). Merged to `main` in commit a5633df.
 **Requests for Sonnet:**
 - None required — `openExhibit(slug)` click behavior preserved across all 7 Mars dioramas.
 
+## AG-2b — Mars Fixes + Remaining Moon Ascent Stage Fix — 14/11 — branch `ag/2b-fixes`
+**Done (all 4 items from `docs/antigravity/AG-2b.md`):**
+1. **Apollo 11 & 17 Ascent Stage 100% hidden (`ExhibitStage3D.tsx`)**: Multi-primitive meshes (`polySurfac.002`, `pCube2`, `group32 gr`, `group31 17/18`) in `SM-L-001_apollo_lunar_module.web.glb` had `mesh.position.y === 0` because `GLTFLoader` places their `translation` on the parent `THREE.Group`. `GlbExhibitMesh` now runs `copy.updateMatrixWorld(true)` and computes `new THREE.Box3().setFromObject(child)` in root space, hiding every mesh with `meshCenter.y > cutY` or `meshBox.max.y > cutY + 0.14` while keeping `<ClippedLmTopCap />` at `y = 0.765`.
+2. **Martian daytime butterscotch sky (`CelestialWorlds.tsx`, `ExhibitStage3D.tsx`)**: Added `<MarsDaytimeSkyDome />` (full-screen butterscotch/tan gradient `#C98659 -> #4A2618` on beats 14–20, darkening to `#7E361E -> #281009` on Opportunity's beat 17 dust storm), masked out background stars during `13.35 <= p <= 20.65`, and lowered the Mars spotlight cone opacity to `0.028` so it reads as museum light in Martian daylight.
+3. **Mars exhibit framing & InSight vs SEIS scale (`ExhibitStage3D.tsx`, `MarsModels.tsx`, `trajectory.ts`)**: Scaled InSight up to `targetSize = 3.85` and scaled `InSightSurfaceInstruments`'s SEIS dome down to `radius = 0.13..0.17 m` (`height = 0.13 m`) and HP³ mole to `height = 0.24 m` so the 6 m lander clearly dominates. Increased `mars-viking-1` (`3.3`), `mars-spirit`/`mars-opportunity` (`2.65`), `mars-ingenuity` (`2.45`), `PhoenixLanderModel` (`0.92`), and `PathfinderAndSojournerModel` (`1.18`), and moved `BEAT_POSES[14..20].camPos` ~30% closer so each Mars machine fills ~38–45% of the viewport height.
+4. **Craggy "Yogi" boulder (`MarsModels.tsx`)**: Replaced the smooth sphere on `SM-M-002` with a displaced `IcosahedronGeometry(0.56, 2)` (`flatShading`, ~1 m tall, two-tone wind-streak cap) next to Sojourner.
+
+**Files changed:**
+- `components/journey/three/ExhibitStage3D.tsx`, `CelestialWorlds.tsx`, `MarsModels.tsx`, `trajectory.ts`
+
+
 
 

@@ -139,6 +139,81 @@ function AscentSkyDome() {
   );
 }
 
+const MARS_ZENITH_NORMAL = new THREE.Color("#4A2618");
+const MARS_HORIZON_NORMAL = new THREE.Color("#C98659");
+const MARS_NADIR_NORMAL = new THREE.Color("#26120B");
+const MARS_ZENITH_STORM = new THREE.Color("#281009");
+const MARS_HORIZON_STORM = new THREE.Color("#7E361E");
+
+/**
+ * Martian daytime butterscotch/tan sky dome for Hall II surface beats (14–20).
+ * Darkens into a reddish-brown dust storm mood on Opportunity (beat 17, AG-2b #2).
+ */
+function MarsDaytimeSkyDome() {
+  const domeRef = useRef<THREE.Mesh>(null);
+  const matRef = useRef<THREE.ShaderMaterial>(null);
+
+  const uniforms = useMemo(
+    () => ({
+      uZenith: { value: new THREE.Color("#4A2618") },
+      uHorizon: { value: new THREE.Color("#C98659") },
+      uNadir: { value: new THREE.Color("#26120B") },
+      uOpacity: { value: 0.0 },
+    }),
+    [],
+  );
+
+  useFrame(({ camera }) => {
+    const p = scrollState.current;
+    const vis = smoothstep(13.35, 13.85, p) * (1 - smoothstep(20.15, 20.65, p));
+    if (!domeRef.current || !matRef.current) return;
+    domeRef.current.visible = vis > 0.01;
+    if (!domeRef.current.visible) return;
+
+    domeRef.current.position.copy(camera.position);
+
+    // Opportunity (beat 17) global dust storm darkening
+    const storm = smoothstep(16.25, 16.75, p) * (1 - smoothstep(17.25, 17.75, p));
+    matRef.current.uniforms.uZenith.value.copy(MARS_ZENITH_NORMAL).lerp(MARS_ZENITH_STORM, storm);
+    matRef.current.uniforms.uHorizon.value.copy(MARS_HORIZON_NORMAL).lerp(MARS_HORIZON_STORM, storm);
+    matRef.current.uniforms.uNadir.value.copy(MARS_NADIR_NORMAL);
+    matRef.current.uniforms.uOpacity.value = vis;
+  });
+
+  return (
+    <mesh ref={domeRef} renderOrder={-12} visible={false}>
+      <sphereGeometry args={[850, 32, 24]} />
+      <shaderMaterial
+        ref={matRef}
+        side={THREE.BackSide}
+        transparent
+        depthWrite={false}
+        uniforms={uniforms}
+        vertexShader={`
+          varying vec3 vDir;
+          void main() {
+            vDir = normalize(position);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `}
+        fragmentShader={`
+          uniform vec3 uZenith;
+          uniform vec3 uHorizon;
+          uniform vec3 uNadir;
+          uniform float uOpacity;
+          varying vec3 vDir;
+          void main() {
+            float y = vDir.y;
+            vec3 upper = mix(uHorizon, uZenith, clamp(pow(max(0.0, y + 0.12), 0.75), 0.0, 1.0));
+            vec3 col = y >= -0.12 ? upper : mix(uHorizon, uNadir, clamp((-y - 0.12) * 2.5, 0.0, 1.0));
+            gl_FragColor = vec4(col, uOpacity);
+          }
+        `}
+      />
+    </mesh>
+  );
+}
+
 /** 3D twinkling star points + NASA Deep Star Maps equirectangular skybox. */
 function SpaceBackdrop({ reducedMotion }: { reducedMotion: boolean }) {
   const starTex = useTexture("/media/textures/starfield_4k.jpg");
@@ -162,21 +237,25 @@ function SpaceBackdrop({ reducedMotion }: { reducedMotion: boolean }) {
   }, []);
 
   useFrame(({ camera, clock }) => {
+    const p = scrollState.current;
+    // Hide stars during Martian daytime surface beats 14–20 (AG-2b #2)
+    const marsDayMask = 1 - smoothstep(13.35, 13.8, p) * (1 - smoothstep(20.2, 20.65, p));
+
     if (skyRef.current) {
       skyRef.current.position.copy(camera.position);
-      const p = scrollState.current;
       const starVis = smoothstep(2.4, 5.2, p);
       const mat = skyRef.current.material as THREE.MeshBasicMaterial;
-      mat.opacity = 0.25 + starVis * 0.75;
+      mat.opacity = (0.25 + starVis * 0.75) * marsDayMask;
+      skyRef.current.visible = mat.opacity > 0.01;
     }
     if (pointsRef.current) {
       pointsRef.current.position.copy(camera.position);
       if (!reducedMotion) {
         pointsRef.current.rotation.y = clock.elapsedTime * 0.0035;
       }
-      const p = scrollState.current;
       const pMat = pointsRef.current.material as THREE.PointsMaterial;
-      pMat.opacity = 0.25 + smoothstep(2.2, 4.8, p) * 0.65;
+      pMat.opacity = (0.25 + smoothstep(2.2, 4.8, p) * 0.65) * marsDayMask;
+      pointsRef.current.visible = pMat.opacity > 0.01;
     }
   });
 
@@ -311,6 +390,7 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
     <>
       <SpaceBackdrop reducedMotion={reducedMotion} />
       <AscentSkyDome />
+      <MarsDaytimeSkyDome />
 
       {/* ─── 3D EARTH (Below ascent & visible during edge-of-space / deep-space) ─── */}
       <group ref={earthRef} position={WORLD_ANCHORS.earthCenter} rotation={[0.15, -1.9, 0.1]}>

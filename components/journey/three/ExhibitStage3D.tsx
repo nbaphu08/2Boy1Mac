@@ -35,16 +35,39 @@ function GlbExhibitMesh({
     box.getSize(size);
     box.getCenter(center);
     const maxDim = Math.max(size.x, size.y, size.z, 0.001);
-    const targetSize = isApolloLm ? 2.8 : slug === "mars-ingenuity" ? 1.85 : 2.35;
+    const targetSize = isApolloLm
+      ? 2.8
+      : slug === "mars-insight"
+        ? 3.85
+        : slug === "mars-viking-1"
+          ? 3.3
+          : slug === "mars-spirit" || slug === "mars-opportunity"
+            ? 2.65
+            : slug === "mars-ingenuity"
+              ? 2.45
+              : 2.4;
     const s = targetSize / maxDim;
 
     if (isApolloLm) {
-      // In SM-L-001_apollo_lunar_module.web.glb, all Descent Stage meshes sit at y <= 1.85
-      // and all Ascent Stage meshes sit at y >= 2.14. Hide the Ascent Stage meshes cleanly
-      // at the node level so no jagged cross-section triangles remain (AG-1b #4).
+      // Check bounding box in root space after updateMatrixWorld so multi-primitive Ascent Stage
+      // groups (where GLTFLoader puts translation on the parent Group and mesh.position.y === 0)
+      // are 100% hidden, leaving only the gold octagonal Descent Stage (AG-2b #1).
+      copy.updateMatrixWorld(true);
+      const meshBox = new THREE.Box3();
+      const meshCenter = new THREE.Vector3();
+      const cutY = box.min.y + (box.max.y - box.min.y) * 0.37;
       copy.traverse((child) => {
-        if ((child as THREE.Mesh).isMesh && child.position.y > 1.85) {
-          child.visible = false;
+        if ((child as THREE.Mesh).isMesh) {
+          meshBox.setFromObject(child);
+          meshBox.getCenter(meshCenter);
+          if (
+            meshCenter.y > cutY ||
+            meshBox.max.y > cutY + 0.14 ||
+            child.position.y > 1.85 ||
+            (child.parent && child.parent.position.y > 1.85)
+          ) {
+            child.visible = false;
+          }
         }
       });
     }
@@ -182,7 +205,7 @@ function SingleExhibitPlinth({
     }
     if (coneRef.current) {
       const mat = coneRef.current.material as THREE.MeshBasicMaterial;
-      mat.opacity = (isMoon ? 0.065 : 0.06) * vis * boost;
+      mat.opacity = (isMoon ? 0.065 : 0.028) * vis * boost;
     }
   });
 

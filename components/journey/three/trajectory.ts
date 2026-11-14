@@ -94,42 +94,42 @@ export const BEAT_POSES: BeatPose[] = [
     rocketRot: [-0.88, 0.05, -0.25],
     rocketScale: 0.72,
   },
-  // 8: moon-apollo-11 (SM-L-001) — Descending to Sea of Tranquility diorama (Eagle descent stage, EASEP, LRRR + green laser)
+  // 8: moon-apollo-11 (SM-L-001) — Descending to Sea of Tranquility diorama (Eagle descent stage only, EASEP, LRRR + green laser)
   {
-    camPos: [8.3, 336.75, -165.2],
-    camLook: [4.85, 335.32, -172.0],
+    camPos: [7.6, 336.4, -166.2],
+    camLook: [4.85, 335.02, -172.0],
     rocketPos: [-18, 352, -182],
     rocketRot: [-0.3, 0.8, 0.15],
     rocketScale: 0.42,
   },
   // 9: moon-surveyor-3 (SM-L-002) — Ocean of Storms crater slope + distant Apollo 12 LM on rim
   {
-    camPos: [-6.7, 344.75, -169.2],
-    camLook: [-10.15, 343.32, -176.0],
+    camPos: [-7.2, 344.55, -170.0],
+    camLook: [-10.15, 343.18, -176.0],
     rocketPos: [-22, 356, -188],
     rocketRot: [-0.2, 0.9, 0.1],
     rocketScale: 0.4,
   },
   // 10: moon-apollo-15-lrv (SM-L-003) — Hadley–Apennine plain, Mount Hadley massif, parked LRV & distant LM
   {
-    camPos: [7.3, 353.75, -173.2],
-    camLook: [3.85, 352.32, -180.0],
+    camPos: [6.8, 353.55, -174.0],
+    camLook: [3.85, 352.18, -180.0],
     rocketPos: [-20, 364, -194],
     rocketRot: [-0.25, 1.0, 0.08],
     rocketScale: 0.4,
   },
-  // 11: moon-apollo-17 (SM-L-004) — Taurus–Littrow valley massifs, Challenger descent stage, LRV & tracks (AG-1b #1 fixed)
+  // 11: moon-apollo-17 (SM-L-004) — Taurus–Littrow valley massifs, Challenger descent stage only, LRV & tracks
   {
-    camPos: [19.3, 362.75, -177.2],
-    camLook: [15.85, 361.32, -184.0],
+    camPos: [18.6, 362.4, -178.2],
+    camLook: [15.85, 361.02, -184.0],
     rocketPos: [-16, 370, -198],
     rocketRot: [-0.2, 1.1, 0.05],
     rocketScale: 0.4,
   },
   // 12: moon-grail (SM-L-005) — North polar mountain slope, two ~5 m craters with dark ejecta & twin ghost holograms
   {
-    camPos: [3.3, 372.75, -181.2],
-    camLook: [-0.15, 371.32, -188.0],
+    camPos: [2.9, 372.6, -182.0],
+    camLook: [-0.15, 371.22, -188.0],
     rocketPos: [-18, 380, -204],
     rocketRot: [-0.4, 0.7, 0.1],
     rocketScale: 0.42,
@@ -142,58 +142,58 @@ export const BEAT_POSES: BeatPose[] = [
     rocketRot: [-0.95, 0.25, -0.2],
     rocketScale: 0.65,
   },
-  // 14: mars-viking-1 (SM-M-001) — Chryse Planitia
+  // 14: mars-viking-1 (SM-M-001) — Chryse Planitia (closer camera so Viking fills ~40% of frame height, AG-2b #3)
   {
-    camPos: [9.8, 474.75, -361.2],
-    camLook: [6.35, 473.32, -368.0],
+    camPos: [8.45, 474.32, -363.2],
+    camLook: [6.55, 473.12, -368.0],
     rocketPos: [-20, 496, -384],
     rocketRot: [-0.2, 0.7, 0.12],
     rocketScale: 0.42,
   },
-  // 15: mars-pathfinder (SM-M-002) — Ares Vallis
+  // 15: mars-pathfinder (SM-M-002) — Ares Vallis (tetrahedral lander + Sojourner + craggy Yogi rock)
   {
-    camPos: [-5.2, 481.75, -364.2],
-    camLook: [-8.65, 480.32, -371.0],
+    camPos: [-6.35, 481.35, -366.1],
+    camLook: [-8.35, 480.08, -371.0],
     rocketPos: [-24, 500, -388],
     rocketRot: [-0.25, 0.85, 0.1],
     rocketScale: 0.4,
   },
   // 16: mars-spirit (SM-M-003) — Gusev Crater ("Troy" beside Home Plate)
   {
-    camPos: [-15.2, 488.75, -367.2],
-    camLook: [-18.65, 487.32, -374.0],
+    camPos: [-16.45, 488.35, -369.1],
+    camLook: [-18.45, 487.12, -374.0],
     rocketPos: [-28, 504, -392],
     rocketRot: [-0.3, 0.95, 0.05],
     rocketScale: 0.4,
   },
   // 17: mars-opportunity (SM-M-004) — Meridiani Planum (Perseverance Valley rim of Endeavour Crater)
   {
-    camPos: [-0.2, 495.75, -370.2],
-    camLook: [-3.65, 494.32, -377.0],
+    camPos: [-1.45, 495.35, -372.1],
+    camLook: [-3.45, 494.12, -377.0],
     rocketPos: [-22, 508, -396],
     rocketRot: [-0.2, 1.0, 0.08],
     rocketScale: 0.4,
   },
   // 18: mars-phoenix (SM-M-005) — Vastitas Borealis north pole
   {
-    camPos: [12.8, 502.75, -373.2],
-    camLook: [9.35, 501.32, -380.0],
+    camPos: [11.55, 502.38, -375.0],
+    camLook: [9.55, 501.08, -380.0],
     rocketPos: [-18, 514, -400],
     rocketRot: [-0.35, 0.8, 0.1],
     rocketScale: 0.4,
   },
-  // 19: mars-insight (SM-M-006) — Elysium Planitia
+  // 19: mars-insight (SM-M-006) — Elysium Planitia (6 m lander dominates over small SEIS dome + HP3 mole, AG-2b #3)
   {
-    camPos: [23.8, 509.75, -376.2],
-    camLook: [20.35, 508.32, -383.0],
+    camPos: [22.65, 509.42, -377.8],
+    camLook: [20.55, 508.08, -383.0],
     rocketPos: [-16, 518, -404],
     rocketRot: [-0.22, 0.9, 0.06],
     rocketScale: 0.4,
   },
-  // 20: mars-ingenuity (SM-M-007) — Jezero Crater ("Valinor Hills")
+  // 20: mars-ingenuity (SM-M-007) — Jezero Crater ("Valinor Hills", close-up framing of Ingenuity + snapped blade)
   {
-    camPos: [10.8, 516.75, -379.2],
-    camLook: [7.35, 515.32, -386.0],
+    camPos: [9.35, 516.22, -381.4],
+    camLook: [7.55, 515.05, -386.0],
     rocketPos: [-18, 524, -408],
     rocketRot: [-0.28, 1.05, 0.08],
     rocketScale: 0.4,
