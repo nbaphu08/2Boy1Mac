@@ -421,3 +421,6 @@ If anything is not finished by 12:00, hand off what is stable and stop. Do NOT g
   - `SpaceScene.tsx`: removed the Moon transition dark veil (`0`) and kept Mars swap haze shallow (`0.14` max over `±0.032`).
 - **Removed massif ridge dashes (`MoonDioramas.tsx`, `GrailSimulation.tsx`)**:
   - Fixed the `if (d2 > 5.0) return 0` cliff-step discontinuity in `ridgeHill` (`MoonDioramas.tsx`) and `polarRidgeHill` (`GrailSimulation.tsx`)—whose elliptical `0.15..0.86 m` height steps cut across neighboring sunlit massif faces (`northMassif` / `mountHadley` / GRAIL highland) and spiked central-difference vertex normals—by extending smooth Gaussian tails out to `d2 > 14.0` and extending `craterBowl` / `polarCraterBowl` outer tails to `radius * 1.9`.
+
+## Opus review — AG-12c accepted (15/11) · FEATURE FREEZE
+- Continuous ground under every low flight (Moon and Mars), massif dashes gone. Merged; posters re-captured. No more 3D packets: only bug fixes from now on.
