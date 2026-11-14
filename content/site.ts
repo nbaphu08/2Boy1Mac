@@ -2,7 +2,7 @@
 export const site = {
   title: "SpaceMuse — A museum of the machines we left behind",
   description:
-    "An interactive museum of NASA hardware left on the Moon and Mars — from Apollo 11's laser mirror to the Ingenuity helicopter — told with real NASA footage, images and data.",
+    "An interactive museum of NASA hardware left on the Moon and Mars — from Apollo 11's laser mirror to the Ingenuity helicopter — recreated in 3D from NASA imagery and data, with every fact sourced.",
   wordmark: "SPACEMUSE",
   tagline: "A museum of the machines we left behind — on the Moon and Mars.",
   disclaimer:
@@ -25,7 +25,7 @@ export const site = {
     builtFor:
       "NASA Space Apps Challenge 2026 — \"Abandoned but not Forgotten: Storytelling about NASA's Discarded Equipment on the Moon and Mars.\"",
     team: "2Boy1Mac",
-    ai: "SpaceMuse was planned and built with the help of AI assistants (Anthropic's Claude models) for research, writing and code. All facts were checked against the primary sources listed below. No AI-generated images or footage are used; every image is a real NASA or partner image unless labelled \"Artist's concept\".",
+    ai: "SpaceMuse was planned and built with the help of AI assistants (Anthropic Claude models and Google Gemini) for research, writing, code and procedural 3D reconstructions. All facts were checked against the primary sources listed below. Every photograph is a real NASA or partner image; the 3D scenes are illustrative reconstructions built in code from NASA dimensions and imagery; no AI-generated image is presented as real (illustrations are labelled \"Artist's concept\").",
     credits: [
       "NASA Image and Video Library",
       "NASA/GSFC/Arizona State University (LROC)",
