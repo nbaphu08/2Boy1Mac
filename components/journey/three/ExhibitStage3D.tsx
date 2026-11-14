@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
-import { useGLTF, useTexture } from "@react-three/drei";
+import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { beats } from "@/content/beats";
 import { exhibitBySlug } from "@/content/exhibits";
@@ -12,14 +12,17 @@ import { useMuseum } from "@/lib/store";
 import { scrollState, smoothstep } from "@/lib/scroll/progress";
 import { EXHIBIT_PLINTH_ANCHORS } from "./trajectory";
 import { HallOneLunarDiorama } from "./MoonDioramas";
+import { HallTwoMarsDiorama } from "./MarsDioramas";
 
 const PLINTH_SURFACE_Y = 0.22;
 
 function GlbExhibitMesh({
   url,
+  slug,
   isApolloLm,
 }: {
   url: string;
+  slug: string;
   isApolloLm: boolean;
 }) {
   const { scene } = useGLTF(url, false, true);
@@ -32,7 +35,8 @@ function GlbExhibitMesh({
     box.getSize(size);
     box.getCenter(center);
     const maxDim = Math.max(size.x, size.y, size.z, 0.001);
-    const s = (isApolloLm ? 2.8 : 2.15) / maxDim;
+    const targetSize = isApolloLm ? 2.8 : slug === "mars-ingenuity" ? 1.85 : 2.35;
+    const s = targetSize / maxDim;
 
     if (isApolloLm) {
       // In SM-L-001_apollo_lunar_module.web.glb, all Descent Stage meshes sit at y <= 1.85
@@ -45,39 +49,76 @@ function GlbExhibitMesh({
       });
     }
 
+    // Mars exhibit state customizations per REF_MARS.md & AG-2
+    const marsDustFactor =
+      slug === "mars-opportunity"
+        ? 0.78
+        : slug === "mars-insight"
+          ? 0.72
+          : slug === "mars-spirit"
+            ? 0.42
+            : slug === "mars-viking-1"
+              ? 0.24
+              : 0;
+    const dustColor = new THREE.Color(slug === "mars-opportunity" ? "#9C4826" : "#B8663C");
+
+    if (marsDustFactor > 0 || slug === "mars-ingenuity") {
+      copy.traverse((child) => {
+        if (slug === "mars-insight" && child.name === "SEIS") {
+          // SEIS is deployed onto the Martian ground in front of the lander under its dome shield
+          child.visible = false;
+        }
+        if ((child as THREE.Mesh).isMesh) {
+          const mesh = child as THREE.Mesh;
+          if (marsDustFactor > 0) {
+            const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+            const nextMats = mats.map((m) => {
+              const std = m.clone() as THREE.MeshStandardMaterial;
+              if (std.color) {
+                std.color.lerp(dustColor, marsDustFactor);
+              }
+              if (typeof std.roughness === "number") {
+                std.roughness = Math.min(0.96, std.roughness + marsDustFactor * 0.45);
+              }
+              if (typeof std.metalness === "number") {
+                std.metalness = Math.max(0.06, std.metalness * (1 - marsDustFactor * 0.65));
+              }
+              return std;
+            });
+            mesh.material = Array.isArray(mesh.material) ? nextMats : nextMats[0];
+          }
+
+          // Flight 72 damaged rotor blade on Ingenuity (SM-M-007): clip one blade tip cleanly
+          if (slug === "mars-ingenuity" && (child.name === "rotors_01" || mesh.name === "Cylinder.017")) {
+            const geom = mesh.geometry.clone();
+            const posAttr = geom.attributes.position;
+            if (posAttr) {
+              const nextPos = posAttr.clone();
+              for (let i = 0; i < nextPos.count; i++) {
+                const vx = nextPos.getX(i);
+                const vz = nextPos.getZ(i);
+                if (vx > 0.34 && vz > -0.08) {
+                  nextPos.setX(i, 0.34);
+                }
+              }
+              geom.setAttribute("position", nextPos);
+              mesh.geometry = geom;
+            }
+          }
+        }
+      });
+    }
+
     return {
       cloned: copy,
       scale: s,
       offset: [-center.x * s, PLINTH_SURFACE_Y - box.min.y * s, -center.z * s] as [number, number, number],
     };
-  }, [scene, isApolloLm]);
+  }, [scene, slug, isApolloLm]);
 
   return (
     <group>
       <primitive object={cloned} scale={scale} position={offset} />
-    </group>
-  );
-}
-
-function LightboxExhibitMesh({ imageSrc }: { imageSrc: string }) {
-  const tex = useTexture(imageSrc);
-  return (
-    <group position={[0, PLINTH_SURFACE_Y + 1.05, 0]}>
-      {/* Platinum bezel frame */}
-      <mesh>
-        <boxGeometry args={[2.52, 1.72, 0.08]} />
-        <meshStandardMaterial color="#C7CDD8" roughness={0.32} metalness={0.78} />
-      </mesh>
-      {/* Obsidian inner backing */}
-      <mesh position={[0, 0, 0.02]}>
-        <boxGeometry args={[2.36, 1.56, 0.06]} />
-        <meshStandardMaterial color="#0A0E18" roughness={0.6} metalness={0.2} />
-      </mesh>
-      {/* Illuminated NASA archival image */}
-      <mesh position={[0, 0, 0.055]}>
-        <planeGeometry args={[2.24, 1.46]} />
-        <meshBasicMaterial map={tex} toneMapped={false} />
-      </mesh>
     </group>
   );
 }
@@ -110,7 +151,6 @@ function SingleExhibitPlinth({
   const [hovered, setHovered] = useState(false);
 
   const isApolloLm = exhibit.catalogNo === "SM-L-001" || exhibit.catalogNo === "SM-L-004";
-  const lightboxImg = exhibit.media.then.src.replace("-1600.avif", "-800.jpg");
 
   useEffect(() => {
     document.body.style.cursor = hovered ? "pointer" : "";
@@ -121,7 +161,7 @@ function SingleExhibitPlinth({
 
   const isMoon = anchor?.planet === "moon";
 
-  useFrame((state, delta) => {
+  useFrame((state) => {
     const p = scrollState.current;
     const dist = Math.abs(p - beatIndex);
     const vis = 1 - smoothstep(0.42, 0.78, dist);
@@ -132,27 +172,21 @@ function SingleExhibitPlinth({
     rootRef.current.scale.setScalar(0.76 + 0.24 * vis);
 
     if (spinRef.current && !reducedMotion) {
-      if (isMoon) {
-        // Subtle diorama presentation sway so mountain backdrops and laser beams remain oriented toward camera
-        spinRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.28 + beatIndex) * 0.08;
-      } else {
-        spinRef.current.rotation.y += delta * 0.22;
-      }
+      // Subtle diorama presentation sway so mountain/plateau backdrops remain oriented toward camera
+      spinRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.28 + beatIndex) * 0.08;
     }
 
     const boost = activeExhibit === exhibit.slug ? 1.45 : hovered ? 1.22 : 1.0;
     if (spotRef.current) {
-      spotRef.current.intensity = (isMoon ? 58 : 42) * vis * boost;
+      spotRef.current.intensity = (isMoon ? 58 : 54) * vis * boost;
     }
     if (coneRef.current) {
       const mat = coneRef.current.material as THREE.MeshBasicMaterial;
-      mat.opacity = (isMoon ? 0.065 : 0.08) * vis * boost;
+      mat.opacity = (isMoon ? 0.065 : 0.06) * vis * boost;
     }
   });
 
   if (!anchor) return null;
-  const plinthColor = isMoon ? "#3A404D" : "#4E2E24";
-  const accentColor = isMoon ? "#B9BEC8" : "#C8603A";
 
   return (
     <group
@@ -169,68 +203,53 @@ function SingleExhibitPlinth({
       }}
       onPointerOut={() => setHovered(false)}
     >
-      {/* Cold museum spotlight (#DCE6FF) */}
+      {/* Cold museum spotlight (#DCE6FF) kept as the shared museum language across Hall I & Hall II */}
       <spotLight
         ref={spotRef}
-        position={[0, isMoon ? 6.4 : 5.2, isMoon ? 1.35 : 1.1]}
-        angle={isMoon ? 0.56 : 0.42}
+        position={[0, 6.4, 1.35]}
+        angle={0.56}
         penumbra={0.85}
-        intensity={isMoon ? 58 : 42}
-        distance={isMoon ? 18 : 14}
+        intensity={isMoon ? 58 : 54}
+        distance={18}
         color="#DCE6FF"
       />
 
       {/* Volumetric spotlight beam */}
       <mesh
         ref={coneRef}
-        position={[0, isMoon ? 3.2 : 2.65, isMoon ? 0.42 : 0.35]}
+        position={[0, 3.2, 0.42]}
         rotation={[0.15, 0, 0]}
       >
-        <coneGeometry args={[isMoon ? 3.35 : 2.1, isMoon ? 6.2 : 5.2, 28, 1, true]} />
+        <coneGeometry args={[3.35, 6.2, 28, 1, true]} />
         <meshBasicMaterial
           color="#DCE6FF"
           transparent
-          opacity={isMoon ? 0.065 : 0.08}
+          opacity={isMoon ? 0.065 : 0.06}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
           side={THREE.DoubleSide}
         />
       </mesh>
 
-      {isMoon ? (
-        <group ref={spinRef}>
+      <group ref={spinRef}>
+        {isMoon ? (
           <HallOneLunarDiorama slug={exhibit.slug} reducedMotion={reducedMotion}>
             {exhibit.media.model ? (
               <Suspense fallback={<PlinthFallback />}>
-                <GlbExhibitMesh url={exhibit.media.model} isApolloLm={isApolloLm} />
+                <GlbExhibitMesh url={exhibit.media.model} slug={exhibit.slug} isApolloLm={isApolloLm} />
               </Suspense>
             ) : null}
           </HallOneLunarDiorama>
-        </group>
-      ) : (
-        <>
-          {/* Bevelled planetary museum plinth (Hall II Mars until AG-2) */}
-          <mesh position={[0, 0, 0]}>
-            <cylinderGeometry args={[1.55, 1.85, 0.44, 32]} />
-            <meshStandardMaterial color={plinthColor} roughness={0.86} metalness={0.12} />
-          </mesh>
-          <mesh position={[0, 0.21, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <ringGeometry args={[1.48, 1.55, 36]} />
-            <meshBasicMaterial color={accentColor} transparent opacity={0.45} />
-          </mesh>
-
-          {/* Rotating exhibit model or 2.5D platinum lightbox */}
-          <group ref={spinRef}>
-            <Suspense fallback={<PlinthFallback />}>
-              {exhibit.media.model ? (
-                <GlbExhibitMesh url={exhibit.media.model} isApolloLm={isApolloLm} />
-              ) : (
-                <LightboxExhibitMesh imageSrc={lightboxImg} />
-              )}
-            </Suspense>
-          </group>
-        </>
-      )}
+        ) : (
+          <HallTwoMarsDiorama slug={exhibit.slug} reducedMotion={reducedMotion}>
+            {exhibit.media.model ? (
+              <Suspense fallback={<PlinthFallback />}>
+                <GlbExhibitMesh url={exhibit.media.model} slug={exhibit.slug} isApolloLm={false} />
+              </Suspense>
+            ) : null}
+          </HallTwoMarsDiorama>
+        )}
+      </group>
     </group>
   );
 }

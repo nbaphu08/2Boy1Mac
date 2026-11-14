@@ -71,4 +71,35 @@ See `GEMINI.md` §1–2 (architecture). Merged to `main` in commit a5633df.
 **Screenshots:**
 - Sandbox cannot attach to headless Chrome (`127.0.0.1:9222`); ready for Opus re-shoot of `docs/antigravity/shots/AG-1b-<slug>.png`.
 
+## AG-2 (+ AG-3b Mars models) — Hall II Mars Dioramas (beats 14–20) — 14/11 — branch `ag/2-hall-ii`
+**Done:**
+- Built all 7 Hall II Mars dioramas (`SM-M-001`..`SM-M-007`) faithful to `docs/antigravity/REF_MARS.md` under the shared `#DCE6FF` museum spotlight paired with warm Martian butterscotch ambient fill (`#E59866` / `#B84A24`), curved daytime butterscotch/tan horizon haze arc (`MarsButterscotchHazeArc`), recessed `#211512` plinth base (`y = -0.22`), `48×48` displaced rusty regolith terrain (`#A65535` matching `mars_color_4k.jpg`), scattered dark vesicular basalt rocks, and 46 airborne dust particles (`64` on Opportunity storm beat).
+- Smoothly hides the giant orbital Mars globe (`marsRef` in `CelestialWorlds.tsx`) while resting on surface beats 14–20 (`13.68 <= p <= 20.35`) so the globe never photobombs behind surface dioramas.
+- **SM-M-001 (`mars-viking-1`)**: Rock-strewn Chryse plain (28 basalt rocks) + Viking 1 GLB with light dust coat + `Viking1SiteProps` (extended surface sampler arm + collector head + excavated sample trench).
+- **SM-M-002 (`mars-pathfinder`, AG-3b models)**: Sculpted Twin Peaks hills on horizon + procedural **Mars Pathfinder opened tetrahedral lander** (`2.75 m` span across 3 solar-cell petals + central base, `1.5 m` IMP camera mast, HGA/LGA, 22 bunched deflated Vectran airbag lobes, unrolled metallic ramp) + **Sojourner microrover** (`0.65 × 0.48 × 0.30 m` proportions, 6-wheel rocker-bogie, flat solar panel top, APXS nose sensor, whip antenna) beside the **"Yogi" boulder** with wheel tracks from the ramp.
+- **SM-M-003 (`mars-spirit`)**: Layered flat-topped **Home Plate plateau** (`SculptedMarsLandform` with `flatTop`) + bright yellowish-white disturbed sulfate soil (`#DFC492`) around Spirit's **6 wheels sunk up to the hubs** (`y = -0.17`, tilted `-16°` roll) + single-wheel gouged drag furrow + dusty MER GLB.
+- **SM-M-004 (`mars-opportunity`)**: Inclined (`+14°`) slope of **Perseverance Valley at Endeavour Crater rim** + heavy 2018 global storm dust coat (`marsDustFactor = 0.78`) + darker reddish-brown storm haze (`#7A331C`) and denser dust particles.
+- **SM-M-005 (`mars-phoenix`, AG-3b model)**: Polygon-patterned arctic ground (thermal-contraction troughs in texture + vertex heightfield), two excavated sample trenches exposing **bright white subsurface water ice (`#E8F3FA`)**, and procedural **Phoenix lander** (`1.5 m` deck on 3 legs, `5.52 m` decagonal UltraFlex fan solar arrays with **right solar array cracked and collapsed downward** under winter $\text{CO}_2$ ice load, `2.35 m` robotic arm + scoop poised over the ice trench, SSI camera mast, and MET mast).
+- **SM-M-006 (`mars-insight`)**: Smooth flat Elysium plain (only 4 small pebbles), heavily dust-coated InSight GLB (`marsDustFactor = 0.72`, deck-stowed SEIS hidden), and `InSightSurfaceInstruments` on the ground in front (**SEIS under its white/gold dome Wind & Thermal Shield** + **HP³ mole support housing** + flat tethers).
+- **SM-M-007 (`mars-ingenuity`)**: Sculpted eolian sand ripples of **"Valinor Hills"** + Ingenuity GLB with **one carbon-fiber rotor blade tip clipped/snapped off** (Flight 72 damage) + detached blade tip fragment on the sand nearby + separate distant mini-plinth vitrine displaying **Perseverance's shattered conical backshell and orange/white parachute** (`PIA25219`).
+
+**Files changed:**
+- `components/journey/three/MarsModels.tsx` (new — includes AG-3b models)
+- `components/journey/three/MarsDioramas.tsx` (new)
+- `components/journey/three/ExhibitStage3D.tsx`
+
+**New APIs/components:**
+- `HallTwoMarsDiorama({ slug, reducedMotion })` (`MarsDioramas.tsx`)
+- `PathfinderAndSojournerModel`, `PhoenixLanderModel`, `Viking1SiteProps`, `InSightSurfaceInstruments`, `IngenuityAndBackshellProps` (`MarsModels.tsx`)
+
+**Perf measured:**
+- All procedural geometries/textures memoized; zero per-frame allocations. Triangle counts: `PathfinderAndSojournerModel` ~3.8k tris, `PhoenixLanderModel` ~3.1k tris, `createMarsTerrainGeometry` 4.6k tris (well below the 30k limit).
+
+**Screenshots:**
+- Ready for Opus headless capture (`docs/antigravity/shots/AG-2-*.png` and `AG-3b-*.png`).
+
+**Requests for Sonnet:**
+- None required — `openExhibit(slug)` click behavior preserved across all 7 Mars dioramas.
+
+
 
