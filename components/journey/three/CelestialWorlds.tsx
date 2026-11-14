@@ -8,8 +8,7 @@ import { exhibits } from "@/content/exhibits";
 import { scrollState, smoothstep } from "@/lib/scroll/progress";
 import { usePerfBudget } from "./perfTier";
 import { getCloudLayerTexture } from "./rocketTextures";
-import { applyExpeditionCamera } from "./expeditionCamera";
-import { EXHIBIT_PLINTH_ANCHORS, WORLD_ANCHORS, sampleTrajectory } from "./trajectory";
+import { EXHIBIT_PLINTH_ANCHORS, WORLD_ANCHORS } from "./trajectory";
 
 /** Convert planetary lat/lon (deg) to 3D position on a default Three.js SphereGeometry(radius). */
 function latLonToSpherePos(latDeg: number, lonDeg: number, radius: number): [number, number, number] {
@@ -420,10 +419,13 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
   ]);
 
   const earthRef = useRef<THREE.Group>(null);
-  const lunarSkyEarthRef = useRef<THREE.Group>(null);
   const moonRef = useRef<THREE.Group>(null);
+  const moonMatRef = useRef<THREE.MeshStandardMaterial>(null);
   const marsRef = useRef<THREE.Group>(null);
+  const marsMatRef = useRef<THREE.MeshStandardMaterial>(null);
   const finaleRef = useRef<THREE.Group>(null);
+  const finaleDirLightRef = useRef<THREE.DirectionalLight>(null);
+  const finalePointLightRef = useRef<THREE.PointLight>(null);
   const finaleEarthGroupRef = useRef<THREE.Group>(null);
   const finaleMoonGroupRef = useRef<THREE.Group>(null);
   const lunarApproachArcRef = useRef<THREE.Group>(null);
@@ -432,17 +434,6 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
 
   const moonPins = useMemo(() => getExhibitGlobePins("moon", WORLD_ANCHORS.moonRadius), []);
   const marsPins = useMemo(() => getExhibitGlobePins("mars", WORLD_ANCHORS.marsRadius), []);
-
-  const trajTmp = useMemo(
-    () => ({
-      camPos: new THREE.Vector3(),
-      camLook: new THREE.Vector3(),
-      rocketPos: new THREE.Vector3(),
-      rocketRot: new THREE.Euler(),
-      rocketScale: 1,
-    }),
-    [],
-  );
 
   // Trans-Lunar Injection -> Sea of Tranquility approach trajectory (beats 6.4 -> 8.6)
   const lunarApproachPoints = useMemo(() => {
@@ -485,12 +476,12 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
     const spin = reducedMotion ? 0 : delta * 0.014;
 
     if (earthRef.current) {
-      // AG-8b: Keep Earth sphere hidden through ascent-1 (p=3.0) so horizon is flat;
-      // fade curvature in from ascent-2 (p=4.0) through ascent-4 (p=6.0), then recede during TLI (6->7).
+      // AG-8b/AG-13: Keep Earth sphere hidden through ascent-1 (p=3.0), fade curvature in from ascent-2,
+      // then fade completely out by p = 7.45 so Earth never appears on Moon surface beats/flights (7.5 -> 12.6).
       const enterVis = smoothstep(3.35, 4.15, p);
       const ascentLift = smoothstep(3.4, 6.0, p);
-      const tliRecede = smoothstep(6.05, 7.65, p);
-      const fadeOut = 1 - smoothstep(7.45, 7.88, p);
+      const tliRecede = smoothstep(6.05, 7.42, p);
+      const fadeOut = 1 - smoothstep(7.15, 7.46, p);
       const earthVis = enterVis * fadeOut;
       earthRef.current.visible = earthVis > 0.01;
       if (earthRef.current.visible) {
@@ -506,49 +497,52 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
       }
     }
 
-    if (lunarSkyEarthRef.current) {
-      // Near-side lunar sites (beats 8..11) see Earth hanging in upper-right black lunar sky; hidden during polar beat 12 & during low-flight hops
-      const skyVis = smoothstep(7.72, 7.95, p) * (1 - smoothstep(11.15, 11.45, p));
-      lunarSkyEarthRef.current.visible = skyVis > 0.02;
-      if (lunarSkyEarthRef.current.visible) {
-        sampleTrajectory(p, trajTmp);
-        applyExpeditionCamera(p, reducedMotion, trajTmp);
-        lunarSkyEarthRef.current.position.set(
-          trajTmp.camLook.x + 8.6,
-          trajTmp.camLook.y + 3.4,
-          trajTmp.camLook.z - 15.5,
-        );
-        lunarSkyEarthRef.current.scale.setScalar(skyVis);
-        lunarSkyEarthRef.current.rotation.y += spin * 0.4;
-      }
-    }
-
     if (moonRef.current) {
-      // Visible during lunar orbital approach & descent (6.25..7.52) and departure (beat 12.2..13.5)
-      const approachVis = smoothstep(6.25, 6.85, p) * (1 - smoothstep(7.24, 7.5, p));
+      // Continuous space -> Moon landing (6.25..7.55) and Moon -> Mars departure (12.22..13.5)
+      const approachVis = smoothstep(6.25, 6.85, p) * (1 - smoothstep(7.24, 7.56, p));
       const departVis = smoothstep(12.22, 12.6, p) * (1 - smoothstep(13.3, 14.2, p));
       const moonVis = Math.max(approachVis, departVis);
-      moonRef.current.visible = moonVis > 0.02;
+      moonRef.current.visible = moonVis > 0.01;
       if (moonRef.current.visible) {
-        moonRef.current.scale.setScalar(0.38 + 0.62 * moonVis);
-        // Keep sunlit near-side 5 pins facing Orion steadily during orbit (very slow rotation only)
+        // Flattening glide during lunar descent (7.02..7.55): expand curvature and settle below horizon before fading out
+        const landBlend = p < 10 ? smoothstep(7.02, 7.55, p) : 1 - smoothstep(12.22, 12.68, p);
+        const flatRadius = WORLD_ANCHORS.moonRadius * 2.18;
+        moonRef.current.position.set(
+          THREE.MathUtils.lerp(WORLD_ANCHORS.moonCenter[0], 5.5, landBlend),
+          THREE.MathUtils.lerp(WORLD_ANCHORS.moonCenter[1], 334.6 - flatRadius, landBlend),
+          THREE.MathUtils.lerp(WORLD_ANCHORS.moonCenter[2], -176.0, landBlend),
+        );
+        moonRef.current.scale.setScalar(0.38 + 0.62 * Math.max(approachVis, departVis) + landBlend * 1.18);
         moonRef.current.rotation.y += spin * 0.06;
+        if (moonMatRef.current) {
+          moonMatRef.current.opacity = moonVis;
+        }
       }
     }
 
     if (lunarApproachArcRef.current) {
-      lunarApproachArcRef.current.visible = p > 6.2 && p < 7.45;
+      lunarApproachArcRef.current.visible = p > 6.2 && p < 7.36;
     }
 
     if (marsRef.current) {
-      // Visible during Mars orbital arrival (beat 12..13.48) and departure (beat 20.3..22.2)
-      const approachVis = smoothstep(11.6, 12.5, p) * (1 - smoothstep(13.2, 13.48, p));
+      // Continuous Transit -> Mars landing (11.6..13.52) and Mars departure (20.32..22.4)
+      const approachVis = smoothstep(11.6, 12.5, p) * (1 - smoothstep(13.22, 13.54, p));
       const departVis = smoothstep(20.32, 20.72, p) * (1 - smoothstep(21.6, 22.4, p));
       const marsVis = Math.max(approachVis, departVis);
-      marsRef.current.visible = marsVis > 0.02;
+      marsRef.current.visible = marsVis > 0.01;
       if (marsRef.current.visible) {
-        marsRef.current.scale.setScalar(0.38 + 0.62 * marsVis);
+        const landBlend = p < 17 ? smoothstep(13.06, 13.54, p) : 1 - smoothstep(20.32, 20.78, p);
+        const flatRadius = WORLD_ANCHORS.marsRadius * 2.18;
+        marsRef.current.position.set(
+          THREE.MathUtils.lerp(WORLD_ANCHORS.marsCenter[0], 7.0, landBlend),
+          THREE.MathUtils.lerp(WORLD_ANCHORS.marsCenter[1], 472.6 - flatRadius, landBlend),
+          THREE.MathUtils.lerp(WORLD_ANCHORS.marsCenter[2], -376.0, landBlend),
+        );
+        marsRef.current.scale.setScalar(0.38 + 0.62 * Math.max(approachVis, departVis) + landBlend * 1.18);
         marsRef.current.rotation.y += spin * 0.09;
+        if (marsMatRef.current) {
+          marsMatRef.current.opacity = marsVis;
+        }
       }
     }
 
@@ -563,6 +557,12 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
     if (finaleRef.current) {
       const finaleVis = smoothstep(22.15, 22.65, p);
       finaleRef.current.visible = finaleVis > 0.01;
+      if (finaleDirLightRef.current) {
+        finaleDirLightRef.current.intensity = 3.2 * finaleVis;
+      }
+      if (finalePointLightRef.current) {
+        finalePointLightRef.current.intensity = 140 * finaleVis;
+      }
       if (finaleRef.current.visible) {
         const riseT = smoothstep(22.2, 23.0, p);
         if (finaleEarthGroupRef.current) {
@@ -611,32 +611,19 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
         />
       </group>
 
-      {/* ─── DISTANT EARTH IN THE LUNAR SKY (Near-side Hall I sites only: beats 8..11, hidden at polar beat 12) ─── */}
-      <group ref={lunarSkyEarthRef} rotation={[0.2, -2.1, 0.1]} visible={false}>
-        <mesh>
-          <sphereGeometry args={[1.35, 32, 24]} />
-          <meshStandardMaterial
-            map={earthTex}
-            emissiveMap={earthTex}
-            emissive="#7EB0FF"
-            emissiveIntensity={0.62}
-            roughness={0.6}
-            metalness={0.1}
-          />
-        </mesh>
-        <AtmosphereRim radius={1.35 * 1.055} color="#6AA8FF" intensity={0.95} power={2.8} />
-      </group>
-
       {/* ─── 3D MOON (Orbital arrival with 5 glowing site pins + orbit ring — beats 6.5..7.5 & departure) ─── */}
       <group ref={moonRef} position={WORLD_ANCHORS.moonCenter} rotation={[0.24, -1.55, 0]}>
         <mesh>
           <sphereGeometry args={[WORLD_ANCHORS.moonRadius, 72, 56]} />
           <meshStandardMaterial
+            ref={moonMatRef}
             map={moonTex}
             bumpMap={moonBump}
             bumpScale={0.48}
             roughness={0.92}
             metalness={0.04}
+            transparent
+            opacity={1}
           />
         </mesh>
         <AtmosphereRim radius={WORLD_ANCHORS.moonRadius * 1.022} color="#B9BEC8" intensity={0.32} power={4.2} />
@@ -716,7 +703,7 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
       <group ref={marsRef} position={WORLD_ANCHORS.marsCenter} rotation={[0.2, -1.65, 0.05]}>
         <mesh>
           <sphereGeometry args={[WORLD_ANCHORS.marsRadius, 72, 56]} />
-          <meshStandardMaterial map={marsTex} roughness={0.86} metalness={0.05} />
+          <meshStandardMaterial ref={marsMatRef} map={marsTex} roughness={0.86} metalness={0.05} transparent opacity={1} />
         </mesh>
         <AtmosphereRim radius={WORLD_ANCHORS.marsRadius * 1.032} color="#C8603A" intensity={0.68} power={3.8} />
         {/* Faint Mars orbital track */}
@@ -751,11 +738,12 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
         ))}
       </group>
 
+      {/* Grazing solar key light across the lunar horizon limb & rising Earth (always mounted so shader light count stays invariant) */}
+      <directionalLight ref={finaleDirLightRef} position={[-45, 595, -590]} intensity={0} color="#FFF5E4" />
+      <pointLight ref={finalePointLightRef} position={[-18, 575, -610]} intensity={0} distance={160} color="#88B8FF" />
+
       {/* ─── FINALE EARTHRISE (Artemis Era Earthrise: cratered Moon limb + rising blue Earth, beat 23) ─── */}
       <group ref={finaleRef} visible={false}>
-        {/* Grazing solar key light across the lunar horizon limb & rising Earth */}
-        <directionalLight position={[-45, 595, -590]} intensity={3.2} color="#FFF5E4" />
-        <pointLight position={[-18, 575, -610]} intensity={140} distance={160} color="#88B8FF" />
 
         {/* Foreground Lunar Limb sweeping across the lower-right horizon */}
         <group ref={finaleMoonGroupRef} position={[8, 535.5, -566]} rotation={[0.25, -1.55, 0.12]}>

@@ -102,25 +102,9 @@ export function detectInitialPerfTier(gl?: THREE.WebGLRenderer): PerfTier {
   return currentTier;
 }
 
-// First-2-second live FPS monitor to step down tier automatically if frame rate drops
-let sampleElapsed = 0;
-let sampleFrames = 0;
-let monitorDone = false;
-
-export function updatePerfFpsMonitor(delta: number) {
-  if (monitorDone || delta <= 0 || delta > 0.25) return;
-  sampleElapsed += delta;
-  sampleFrames += 1;
-
-  if (sampleElapsed >= 2.0) {
-    monitorDone = true;
-    const avgFps = sampleFrames / sampleElapsed;
-    if (avgFps < 34) {
-      setPerfTier("low");
-    } else if (avgFps < 50 && currentTier === "high") {
-      setPerfTier("medium");
-    }
-  }
+// Lock tier at initial GPU detection to avoid mid-scroll EffectComposer / shader recompiles (AG-13 #1)
+export function updatePerfFpsMonitor(_delta: number) {
+  void _delta;
 }
 
 export function getPerfBudget(): PerfBudget {

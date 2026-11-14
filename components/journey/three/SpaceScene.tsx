@@ -12,18 +12,66 @@ import { ExpeditionEffects } from "./ExpeditionEffects";
 import { LaunchComplex } from "./LaunchComplex";
 import { HallEnvironment, PostEffects } from "./RenderPipeline";
 import { SLSRocket } from "./SLSRocket";
-import { detectInitialPerfTier, updatePerfFpsMonitor, usePerfBudget } from "./perfTier";
+import { detectInitialPerfTier, usePerfBudget } from "./perfTier";
 import { grailSimState } from "./simulationBus";
+import { sharedTerrainUniforms } from "./landscapeMaterials";
 import { applyExpeditionCamera, updateExpeditionState } from "./expeditionCamera";
-import { EXHIBIT_PLINTH_ANCHORS, sampleTrajectory, type SampledTrajectory } from "./trajectory";
+import {
+  EXHIBIT_PLINTH_ANCHORS,
+  sampleCameraBankRoll,
+  sampleTrajectory,
+  type SampledTrajectory,
+} from "./trajectory";
+
+const MOON_SITE_SLUGS = [
+  "moon-apollo-11",
+  "moon-surveyor-3",
+  "moon-lrv",
+  "moon-apollo-17",
+  "moon-grail",
+] as const;
+
+const MARS_SITE_SLUGS = [
+  "mars-viking-1",
+  "mars-pathfinder",
+  "mars-spirit",
+  "mars-opportunity",
+  "mars-phoenix",
+  "mars-insight",
+  "mars-ingenuity",
+] as const;
+
+function sampleInterpolatedSitePos(p: number, outPos: THREE.Vector3) {
+  if (p < 13.0) {
+    const u = THREE.MathUtils.clamp(p - 8, 0, MOON_SITE_SLUGS.length - 1);
+    const i = Math.min(MOON_SITE_SLUGS.length - 2, Math.floor(u));
+    const t = smoothstep(0.25, 0.75, u - i);
+    const a = EXHIBIT_PLINTH_ANCHORS[MOON_SITE_SLUGS[i]].pos;
+    const b = EXHIBIT_PLINTH_ANCHORS[MOON_SITE_SLUGS[i + 1]].pos;
+    outPos.set(
+      THREE.MathUtils.lerp(a[0], b[0], t),
+      THREE.MathUtils.lerp(a[1], b[1], t),
+      THREE.MathUtils.lerp(a[2], b[2], t),
+    );
+    return;
+  }
+  const u = THREE.MathUtils.clamp(p - 14, 0, MARS_SITE_SLUGS.length - 1);
+  const i = Math.min(MARS_SITE_SLUGS.length - 2, Math.floor(u));
+  const t = smoothstep(0.25, 0.75, u - i);
+  const a = EXHIBIT_PLINTH_ANCHORS[MARS_SITE_SLUGS[i]].pos;
+  const b = EXHIBIT_PLINTH_ANCHORS[MARS_SITE_SLUGS[i + 1]].pos;
+  outPos.set(
+    THREE.MathUtils.lerp(a[0], b[0], t),
+    THREE.MathUtils.lerp(a[1], b[1], t),
+    THREE.MathUtils.lerp(a[2], b[2], t),
+  );
+}
 
 function SceneChoreographer({
   rocketRef,
-  veilRef,
   reducedMotion,
 }: {
   rocketRef: React.RefObject<THREE.Group | null>;
-  veilRef: React.RefObject<HTMLDivElement | null>;
   reducedMotion: boolean;
 }) {
   const camera = useThree((s) => s.camera);
@@ -34,26 +82,30 @@ function SceneChoreographer({
   const rimRef = useRef<THREE.DirectionalLight>(null);
   const ambRef = useRef<THREE.AmbientLight>(null);
   const hemiRef = useRef<THREE.HemisphereLight>(null);
+  const marsModelSpotRef = useRef<THREE.SpotLight>(null);
+  const grailImpactLightRef = useRef<THREE.PointLight>(null);
   const elapsedRef = useRef(0);
   const shadowModeRef = useRef<"pad" | "exhibit">("pad");
   const sunTarget = useMemo(() => new THREE.Object3D(), []);
+  const marsSpotTarget = useMemo(() => new THREE.Object3D(), []);
+  const siteFocusPos = useMemo(() => new THREE.Vector3(), []);
   const simCamPos = useMemo(() => new THREE.Vector3(), []);
   const simCamLook = useMemo(() => new THREE.Vector3(), []);
   const duskSunColor = useMemo(() => new THREE.Color("#FF9852"), []);
   const orbitalSunColor = useMemo(() => new THREE.Color("#F5F8FF"), []);
-  const moonSunColor = useMemo(() => new THREE.Color("#FFFDF5"), []);
+  const moonSunColor = useMemo(() => new THREE.Color("#FFFDF7"), []);
   const marsSunColor = useMemo(() => new THREE.Color("#FFD6B0"), []);
   const duskRimColor = useMemo(() => new THREE.Color("#5280EA"), []);
   const orbitalRimColor = useMemo(() => new THREE.Color("#6E96FF"), []);
   const duskHemiSky = useMemo(() => new THREE.Color("#4D75CA"), []);
   const orbitalHemiSky = useMemo(() => new THREE.Color("#ADC8FF"), []);
-  const moonHemiSky = useMemo(() => new THREE.Color("#141210"), []);
+  const moonHemiSky = useMemo(() => new THREE.Color("#11131A"), []);
   const marsHemiSky = useMemo(() => new THREE.Color("#D89362"), []);
   const duskHemiGround = useMemo(() => new THREE.Color("#2A1A14"), []);
   const orbitalHemiGround = useMemo(() => new THREE.Color("#0A0E18"), []);
-  const moonHemiGround = useMemo(() => new THREE.Color("#080706"), []);
+  const moonHemiGround = useMemo(() => new THREE.Color("#07090F"), []);
   const marsHemiGround = useMemo(() => new THREE.Color("#5C2E1B"), []);
-  const moonAmbColor = useMemo(() => new THREE.Color("#0B0A09"), []);
+  const moonAmbColor = useMemo(() => new THREE.Color("#0A0C12"), []);
   const marsAmbColor = useMemo(() => new THREE.Color("#54301E"), []);
   const orbitalAmbColor = useMemo(() => new THREE.Color("#1A2644"), []);
 
@@ -70,7 +122,6 @@ function SceneChoreographer({
 
   useFrame((_, delta) => {
     const dt = Math.min(delta, 0.05);
-    updatePerfFpsMonitor(dt);
 
     const prev = scrollState.current;
     if (reducedMotion || Math.abs(scrollState.target - prev) > 1.5) {
@@ -89,18 +140,18 @@ function SceneChoreographer({
     applyExpeditionCamera(p, reducedMotion, traj);
 
     const t = elapsedRef.current;
-    // Living breathing drift + subtle acoustic rumble at liftoff (beat 2)
+    // Subtle life only (<= 0.15 deg resting drift) + acoustic ignition shake ONLY around ignition/liftoff (beat 2)
     const inTrackingFlight = (p > 7.05 && p < 7.9) || (p > 13.05 && p < 13.9);
-    const breathScale = inTrackingFlight ? 0.3 : 1.0;
-    const breathX = reducedMotion ? 0 : Math.sin(t * 0.42) * 0.1 * breathScale;
-    const breathY = reducedMotion ? 0 : Math.cos(t * 0.31) * 0.075 * breathScale;
+    const breathScale = inTrackingFlight ? 0.12 : 0.18;
+    const breathX = reducedMotion ? 0 : Math.sin(t * 0.42) * 0.024 * breathScale;
+    const breathY = reducedMotion ? 0 : Math.cos(t * 0.31) * 0.018 * breathScale;
     const liftoffRumble = reducedMotion
       ? 0
       : smoothstep(1.82, 1.98, p) * (1 - smoothstep(2.25, 2.52, p));
     const shakeX = liftoffRumble * Math.sin(t * 52) * 0.2;
     const shakeY = liftoffRumble * Math.cos(t * 59) * 0.15;
 
-    // Subtle camera micro-orbit only while genuinely settled near an integer exhibit rest beat
+    // Tiny micro-orbit (<= 0.15 deg = 0.0026 rad) when genuinely settled on an exhibit rest beat
     const inExhibitRange = smoothstep(7.7, 8.0, p) * (1 - smoothstep(20.1, 20.4, p));
     const nearRestBeat = 1 - smoothstep(0.05, 0.12, Math.abs(p - Math.round(p)));
     const isResting = 1 - smoothstep(0.05, 0.3, Math.abs(scrollState.velocity));
@@ -108,12 +159,12 @@ function SceneChoreographer({
 
     const dx = traj.camPos.x - traj.camLook.x;
     const dz = traj.camPos.z - traj.camLook.z;
-    const orbitAngle = Math.sin(t * 0.34) * 0.08 * orbitWeight;
+    const orbitAngle = Math.sin(t * 0.34) * 0.0024 * orbitWeight;
     const cosA = Math.cos(orbitAngle);
     const sinA = Math.sin(orbitAngle);
     const orbitedX = traj.camLook.x + dx * cosA - dz * sinA;
     const orbitedZ = traj.camLook.z + dx * sinA + dz * cosA;
-    const orbitLiftY = Math.cos(t * 0.28) * 0.06 * orbitWeight;
+    const orbitLiftY = Math.cos(t * 0.28) * 0.014 * orbitWeight;
 
     simCamPos.set(
       orbitedX + breathX + shakeX,
@@ -134,42 +185,50 @@ function SceneChoreographer({
 
     camera.position.copy(simCamPos);
     camera.lookAt(simCamLook);
-
-    if (rocketRef.current) {
-      rocketRef.current.position.copy(traj.rocketPos);
-      rocketRef.current.rotation.copy(traj.rocketRot);
-      rocketRef.current.scale.setScalar(traj.rocketScale);
-      rocketRef.current.visible = p < 20.8 || p > 22.7;
+    const bankRoll = sampleCameraBankRoll(p);
+    if (!reducedMotion && Math.abs(bankRoll) > 1e-4) {
+      camera.rotateZ(bankRoll);
     }
 
-    // Dim global background lights by 60% when ExhibitPanel is open (PLAN §4)
-    // AG-9a: Per-hall shadow-casting sun & tightly fitted shadow frustum
+    if (rocketRef.current) {
+      // Keep rocket subtree visible=true always so its 2 engine/pad point lights never trigger shader recompilation
+      rocketRef.current.visible = true;
+      if (p >= 20.8 && p <= 22.7) {
+        rocketRef.current.position.set(0, -5000, 0);
+      } else {
+        rocketRef.current.position.copy(traj.rocketPos);
+      }
+      rocketRef.current.rotation.copy(traj.rocketRot);
+      rocketRef.current.scale.setScalar(traj.rocketScale);
+    }
+
     const dim = activeExhibit ? 0.4 : 1.0;
     const orbitalT = smoothstep(2.05, 3.45, p);
-    const inMoonHall = p >= 7.34 && p <= 12.45;
-    const inMarsHall = p >= 13.34 && p <= 20.45;
+    const inMoonHall = p >= 7.12 && p <= 12.6;
+    const inMarsHall = p >= 13.18 && p <= 20.55;
     const inAnyExhibit = inMoonHall || inMarsHall;
 
-    const nearestIdx = Math.max(0, Math.min(beats.length - 1, Math.round(p)));
-    const nearestSlug = beats[nearestIdx]?.exhibitSlug;
-    const exhibitAnchor = nearestSlug ? EXHIBIT_PLINTH_ANCHORS[nearestSlug] : undefined;
+    sampleInterpolatedSitePos(p, siteFocusPos);
+    if (inMoonHall) {
+      sharedTerrainUniforms.moonFocusXZ.value.set(siteFocusPos.x, siteFocusPos.z);
+    } else if (inMarsHall) {
+      sharedTerrainUniforms.marsFocusXZ.value.set(siteFocusPos.x, siteFocusPos.z);
+    }
+    const stormT = smoothstep(16.6, 16.9, p) * (1 - smoothstep(17.1, 17.4, p));
+    sharedTerrainUniforms.marsStormMix.value = stormT;
 
-    // Keep lunar transitions dark-free and Mars swap mist subtle over textured terrain (AG-12c)
-    if (veilRef.current) {
-      const inMarsSwap = p >= 14.05 && p <= 19.95;
-      if (!reducedMotion && inMarsSwap) {
-        const frac = p - Math.floor(p);
-        const distMid = Math.abs(frac - 0.5);
-        const halfWin = 0.032;
-        const maxAlpha = 0.14;
-        const veilAlpha = distMid < halfWin ? Math.pow(1 - distMid / halfWin, 1.4) * maxAlpha : 0;
-        veilRef.current.style.opacity = veilAlpha.toFixed(3);
-        if (veilAlpha > 0.01) {
-          veilRef.current.style.backgroundColor = "rgb(154, 94, 58)";
-        }
-      } else if (veilRef.current.style.opacity !== "0") {
-        veilRef.current.style.opacity = "0";
-      }
+    if (marsModelSpotRef.current) {
+      const marsSpotVis = smoothstep(13.25, 13.7, p) * (1 - smoothstep(20.1, 20.55, p));
+      marsModelSpotRef.current.position.set(siteFocusPos.x, siteFocusPos.y + 7.2, siteFocusPos.z + 1.5);
+      marsSpotTarget.position.set(siteFocusPos.x, siteFocusPos.y + 0.4, siteFocusPos.z);
+      marsSpotTarget.updateMatrixWorld();
+      marsModelSpotRef.current.intensity = (inMarsHall ? 34 * marsSpotVis : 0) * dim;
+    }
+
+    if (grailImpactLightRef.current) {
+      const grailVis = Math.max(0, 1 - smoothstep(0.18, 0.42, Math.abs(p - 12)));
+      grailImpactLightRef.current.position.copy(grailSimState.impactPos);
+      grailImpactLightRef.current.intensity = grailSimState.impactIntensity * grailVis * dim;
     }
 
     if (sunRef.current) {
@@ -195,24 +254,26 @@ function SceneChoreographer({
         sc.updateProjectionMatrix();
       }
 
-      if (inAnyExhibit && exhibitAnchor) {
-        const [ax, ay, az] = exhibitAnchor.pos;
+      // Keep castShadow constant (never toggle mid-scroll) so WebGL shadow defines never recompile
+      sunRef.current.castShadow = useShadows;
+      if (inAnyExhibit) {
+        const ax = siteFocusPos.x;
+        const ay = siteFocusPos.y;
+        const az = siteFocusPos.z;
         sunTarget.position.set(ax, ay + 0.35, az);
         sunTarget.updateMatrixWorld();
         if (inMoonHall) {
-          // Single hard crisp low white lunar sun from right-front (balanced exposure, zero blown-out wash)
+          // Single hard crisp low white lunar sun from right-front
           sunRef.current.position.set(ax + 9.4, ay + 2.85, az + 4.3);
           sunRef.current.color.copy(moonSunColor);
           sunRef.current.intensity = THREE.MathUtils.damp(sunRef.current.intensity, 3.8 * dim, 8, dt);
         } else {
-          // Warm low Martian sun across all 7 Mars landscapes
-          const stormT = smoothstep(16.3, 16.85, p) * (1 - smoothstep(17.15, 17.7, p));
+          // Warm low Martian sun smoothly modulated across storm site (beat 17)
           sunRef.current.position.set(ax - 8.4, ay + 3.25, az + 5.4);
           sunRef.current.color.copy(marsSunColor);
           const marsIntensity = THREE.MathUtils.lerp(3.85, 2.75, stormT) * dim;
           sunRef.current.intensity = THREE.MathUtils.damp(sunRef.current.intensity, marsIntensity, 8, dt);
         }
-        sunRef.current.castShadow = useShadows;
       } else {
         sunTarget.position.set(0, 4, 0);
         sunTarget.updateMatrixWorld();
@@ -224,7 +285,6 @@ function SceneChoreographer({
         sunRef.current.color.copy(duskSunColor).lerp(orbitalSunColor, orbitalT);
         const targetSun = THREE.MathUtils.lerp(3.65, 3.1, orbitalT) * dim;
         sunRef.current.intensity = THREE.MathUtils.damp(sunRef.current.intensity, targetSun, 6, dt);
-        sunRef.current.castShadow = useShadows && p < 3.0;
       }
     }
     if (rimRef.current) {
@@ -270,6 +330,7 @@ function SceneChoreographer({
   return (
     <>
       <primitive object={sunTarget} />
+      <primitive object={marsSpotTarget} />
       <ambientLight ref={ambRef} color="#1A2644" intensity={0.42} />
       <hemisphereLight ref={hemiRef} args={["#4D75CA", "#2A1A14", 0.58]} />
       <directionalLight
@@ -291,43 +352,212 @@ function SceneChoreographer({
         shadow-normalBias={0.01}
       />
       <directionalLight ref={rimRef} position={[48, 22, -45]} color="#5280EA" intensity={1.05} />
+      {/* Permanent Mars modeling spotlight & GRAIL impact flash light so scene light count never mutates */}
+      <spotLight
+        ref={marsModelSpotRef}
+        target={marsSpotTarget}
+        position={[7, 480, -374.5]}
+        angle={0.62}
+        penumbra={0.92}
+        intensity={0}
+        distance={22}
+        color="#DCE6FF"
+      />
+      <pointLight
+        ref={grailImpactLightRef}
+        position={[405.5, 336, -176]}
+        intensity={0}
+        distance={14}
+        decay={2}
+        color="#FFAE6B"
+      />
     </>
   );
 }
 
+const TEX_SLOTS = [
+  "map",
+  "bumpMap",
+  "normalMap",
+  "roughnessMap",
+  "metalnessMap",
+  "emissiveMap",
+  "aoMap",
+  "alphaMap",
+] as const;
+
+function initSubtreeTextures(
+  gl: THREE.WebGLRenderer,
+  root: THREE.Object3D,
+  warmedTexIds: Set<number>,
+) {
+  root.traverse((node) => {
+    const mesh = node as THREE.Mesh;
+    const matOrArr = mesh.material;
+    if (!matOrArr) return;
+    const mats = Array.isArray(matOrArr) ? matOrArr : [matOrArr];
+    for (const m of mats) {
+      const rec = m as unknown as Record<string, unknown>;
+      for (const slot of TEX_SLOTS) {
+        const tex = rec[slot];
+        if (tex instanceof THREE.Texture && !warmedTexIds.has(tex.id)) {
+          warmedTexIds.add(tex.id);
+          gl.initTexture(tex);
+        }
+      }
+      if (m instanceof THREE.ShaderMaterial && m.uniforms) {
+        for (const u of Object.values(m.uniforms)) {
+          if (u?.value instanceof THREE.Texture && !warmedTexIds.has(u.value.id)) {
+            warmedTexIds.add(u.value.id);
+            gl.initTexture(u.value);
+          }
+        }
+      }
+    }
+  });
+}
+
 /**
- * AG-5: Pre-compiles and warms up all scene materials & shaders once mounted and after
- * lazy GLB preload so fast scrolling across transitions (6->7, 12->13->14, 22->23) has zero stutter.
+ * AG-13 §1: Staggered GPU asset & shader warmup during launch beats (0..6).
+ * Uploads all textures (`gl.initTexture`), runs `compileAsync`, and renders a 16x16 offscreen RT
+ * pass per exhibit plinth before p = 6.5 (Moon) and p = 12.5 (Mars) so surface transitions never hitch.
  */
 function MaterialPrewarmer() {
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
   const camera = useThree((s) => s.camera);
-  const warmedRef = useRef({ moon: false, mars: false });
+  const warmedSubtreesRef = useRef(new Set<string>());
+  const warmedTexIdsRef = useRef(new Set<number>());
+  const inFlightRef = useRef(false);
+  const offCamRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const rtRef = useRef<THREE.WebGLRenderTarget | null>(null);
+  const coreCompiledRef = useRef(false);
 
   useEffect(() => {
-    const t1 = window.setTimeout(() => {
-      gl.compile(scene, camera);
-    }, 350);
-    const t2 = window.setTimeout(() => {
-      gl.compile(scene, camera);
-    }, 1800);
+    const offCam = new THREE.PerspectiveCamera(45, 1, 0.2, 420);
+    const rt = new THREE.WebGLRenderTarget(16, 16, {
+      depthBuffer: true,
+      stencilBuffer: false,
+    });
+    offCamRef.current = offCam;
+    rtRef.current = rt;
+
+    let cancelled = false;
+
+    const collectTargets = (): THREE.Object3D[] => {
+      const targets: THREE.Object3D[] = [];
+      scene.traverse((obj) => {
+        if (obj.userData?.warmup && obj.name && !warmedSubtreesRef.current.has(obj.name)) {
+          targets.push(obj);
+        }
+      });
+      targets.sort((a, b) => (Number(a.userData?.beatIndex ?? 99) - Number(b.userData?.beatIndex ?? 99)));
+      return targets;
+    };
+
+    const warmOne = async (target: THREE.Object3D) => {
+      if (cancelled || !offCamRef.current || !rtRef.current) return;
+      warmedSubtreesRef.current.add(target.name);
+      initSubtreeTextures(gl, target, warmedTexIdsRef.current);
+
+      const prevVis = target.visible;
+      target.visible = true;
+      target.updateMatrixWorld(true);
+
+      const anchor = target.userData?.anchorPos as [number, number, number] | undefined;
+      if (anchor) {
+        offCamRef.current.position.set(anchor[0], anchor[1] + 2.8, anchor[2] + 8.5);
+        offCamRef.current.lookAt(anchor[0], anchor[1] + 0.6, anchor[2]);
+        offCamRef.current.updateMatrixWorld(true);
+      }
+
+      try {
+        await gl.compileAsync(target, offCamRef.current, scene);
+      } catch {
+        gl.compile(scene, offCamRef.current);
+      }
+
+      if (!cancelled && rtRef.current && offCamRef.current) {
+        const prevTarget = gl.getRenderTarget();
+        gl.setRenderTarget(rtRef.current);
+        gl.render(scene, offCamRef.current);
+        gl.setRenderTarget(prevTarget);
+      }
+      target.visible = prevVis;
+    };
+
+    const tick = async () => {
+      if (cancelled || inFlightRef.current) return;
+      inFlightRef.current = true;
+      try {
+        if (!coreCompiledRef.current) {
+          coreCompiledRef.current = true;
+          initSubtreeTextures(gl, scene, warmedTexIdsRef.current);
+          try {
+            await gl.compileAsync(scene, camera, scene);
+          } catch {
+            gl.compile(scene, camera);
+          }
+        }
+        const pending = collectTargets();
+        if (pending.length > 0) {
+          await warmOne(pending[0]);
+        }
+      } finally {
+        inFlightRef.current = false;
+      }
+    };
+
+    const intervalId = window.setInterval(() => {
+      if (!cancelled && warmedSubtreesRef.current.size < 14) {
+        void tick();
+      }
+    }, 140);
+
+    const bootTimer = window.setTimeout(() => {
+      void tick();
+    }, 180);
+
     return () => {
-      window.clearTimeout(t1);
-      window.clearTimeout(t2);
+      cancelled = true;
+      window.clearInterval(intervalId);
+      window.clearTimeout(bootTimer);
+      rt.dispose();
+      rtRef.current = null;
+      offCamRef.current = null;
     };
   }, [gl, scene, camera]);
 
-  // Precompile terrain/exhibit shaders during Moon & Mars orbital approach before descent begins
+  // Safety flush: synchronously warm a hall's remaining targets if user jumps fast before idle queue finishes
   useFrame(() => {
-    const p = scrollState.current;
-    if (!warmedRef.current.moon && p >= 6.4 && p < 7.2) {
-      warmedRef.current.moon = true;
-      gl.compile(scene, camera);
-    } else if (!warmedRef.current.mars && p >= 12.4 && p < 13.2) {
-      warmedRef.current.mars = true;
-      gl.compile(scene, camera);
-    }
+    const p = Math.max(scrollState.current, scrollState.target);
+    const needMoon = p >= 5.5 && p < 7.5;
+    const needMars = p >= 11.6 && p < 13.6;
+    if (!needMoon && !needMars) return;
+    if (!offCamRef.current || !rtRef.current) return;
+
+    scene.traverse((obj) => {
+      if (!obj.userData?.warmup || !obj.name || warmedSubtreesRef.current.has(obj.name)) return;
+      const hall = obj.userData.hall;
+      if ((needMoon && hall === "moon") || (needMars && hall === "mars")) {
+        warmedSubtreesRef.current.add(obj.name);
+        initSubtreeTextures(gl, obj, warmedTexIdsRef.current);
+        const prevVis = obj.visible;
+        obj.visible = true;
+        const anchor = obj.userData?.anchorPos as [number, number, number] | undefined;
+        if (anchor && offCamRef.current && rtRef.current) {
+          offCamRef.current.position.set(anchor[0], anchor[1] + 2.8, anchor[2] + 8.5);
+          offCamRef.current.lookAt(anchor[0], anchor[1] + 0.6, anchor[2]);
+          offCamRef.current.updateMatrixWorld(true);
+          gl.compile(scene, offCamRef.current);
+          const prevRt = gl.getRenderTarget();
+          gl.setRenderTarget(rtRef.current);
+          gl.render(scene, offCamRef.current);
+          gl.setRenderTarget(prevRt);
+        }
+        obj.visible = prevVis;
+      }
+    });
   });
 
   return null;
@@ -337,7 +567,6 @@ export default function SpaceScene() {
   const reducedMotion = useMuseum((s) => s.reducedMotion);
   const budget = usePerfBudget();
   const rocketRef = useRef<THREE.Group | null>(null);
-  const veilRef = useRef<HTMLDivElement | null>(null);
   const [isPageHidden, setIsPageHidden] = useState(false);
 
   // AG-6 S-6 #3: Pause the R3F render loop when document.hidden (0% CPU in background tab)
@@ -388,7 +617,7 @@ export default function SpaceScene() {
         }}
       >
         <color attach="background" args={["#04060B"]} />
-        <SceneChoreographer rocketRef={rocketRef} veilRef={veilRef} reducedMotion={reducedMotion} />
+        <SceneChoreographer rocketRef={rocketRef} reducedMotion={reducedMotion} />
         <Suspense fallback={null}>
           <HallEnvironment />
           <CelestialWorlds reducedMotion={reducedMotion} />
@@ -400,11 +629,6 @@ export default function SpaceScene() {
           <MaterialPrewarmer />
         </Suspense>
       </Canvas>
-      <div
-        ref={veilRef}
-        aria-hidden
-        className="pointer-events-none fixed inset-0 z-10 opacity-0 transition-none"
-      />
     </div>
   );
 }

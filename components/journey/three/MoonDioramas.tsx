@@ -14,19 +14,19 @@ import {
 } from "./MoonModels";
 import {
   applyWorldTerrainShader,
+  blendCorridorHeight,
   type CraterAnchor,
   createNearFieldHorizonGeometry,
   InstancedLandscapeRocks,
 } from "./landscapeMaterials";
+import { EXHIBIT_PLINTH_ANCHORS } from "./trajectory";
 
 export const DIORAMA_SURFACE_Y = 0.22;
 
-const MOON_ANCHOR_XZ: Record<string, [number, number]> = {
-  "moon-apollo-11": [5.5, -172.0],
-  "moon-surveyor-3": [-9.5, -176.0],
-  "moon-apollo-15-lrv": [4.5, -180.0],
-  "moon-apollo-17": [16.5, -184.0],
-};
+function getMoonAnchorXZ(slug: string): [number, number] {
+  const pos = EXHIBIT_PLINTH_ANCHORS[slug]?.pos;
+  return pos ? [pos[0], pos[2]] : [5.5, -176.0];
+}
 
 type CraterDef = CraterAnchor & { d: number };
 
@@ -158,13 +158,16 @@ function createMoonHorizonTerrainGeometry(
   tier: "high" | "medium" | "low",
 ): THREE.BufferGeometry {
   const segs = tier === "high" ? 192 : tier === "medium" ? 136 : 92;
-  return createNearFieldHorizonGeometry(176, segs, (vx, vz) => getMoonTerrainHeight(slug, vx, vz));
+  const [ax, az] = getMoonAnchorXZ(slug);
+  return createNearFieldHorizonGeometry(200, segs, (vx, vz) =>
+    blendCorridorHeight("moon", ax + vx, az + vz, vx, getMoonTerrainHeight(slug, vx, vz)),
+  );
 }
 
 /**
  * Hall I · Moon Exhibition Continuous Horizon Landscapes (Beats 8..11).
  * - Zero cylindrical pedestals, zero spotlight cones, zero dot-grid textures.
- * - Warped 176 m near-field-dense regolith with cauliflower micro-relief & crisp sunlit massifs.
+ * - Warped 200 m near-field-dense regolith overlapping adjacent chunks seamlessly across shared ridges.
  */
 export function HallOneLunarDiorama({
   slug,
@@ -181,10 +184,7 @@ export function HallOneLunarDiorama({
     () => createMoonHorizonTerrainGeometry(slug, budget.tier),
     [slug, budget.tier],
   );
-  const anchorXZ = useMemo<[number, number]>(
-    () => MOON_ANCHOR_XZ[slug] ?? [0, -172.0],
-    [slug],
-  );
+  const anchorXZ = useMemo<[number, number]>(() => getMoonAnchorXZ(slug), [slug]);
   const craters = useMemo(
     () => MOON_CRATERS[slug] ?? MOON_CRATERS["moon-apollo-11"],
     [slug],

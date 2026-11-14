@@ -16,6 +16,7 @@ import { HallTwoMarsDiorama } from "./MarsDioramas";
 import { GrailSimulation } from "./GrailSimulation";
 import { PathfinderLandscape } from "./PathfinderLandscape";
 import { usePerfBudget } from "./perfTier";
+import { getKaptonBumpMap } from "./rocketTextures";
 
 const PLINTH_SURFACE_Y = 0.22;
 
@@ -66,12 +67,15 @@ function GlbExhibitMesh({
   url,
   slug,
   isApolloLm,
+  shadowsEnabled,
 }: {
   url: string;
   slug: string;
   isApolloLm: boolean;
+  shadowsEnabled: boolean;
 }) {
   const { scene } = useGLTF(url, false, true);
+  const kaptonBump = useMemo(() => getKaptonBumpMap(), []);
 
   const { cloned, scale, offset } = useMemo(() => {
     const copy = scene.clone(true);
@@ -131,7 +135,9 @@ function GlbExhibitMesh({
               : 0;
     const dustColor = new THREE.Color(slug === "mars-opportunity" ? "#9C4826" : "#B8663C");
 
-    if (marsDustFactor > 0 || slug === "mars-ingenuity") {
+    // Material micro-detail: Kapton foil crinkle bump on metallic gold/amber foil & machined metal finish (§4)
+    const isMoonGlb = slug.startsWith("moon-");
+    if (marsDustFactor > 0 || slug === "mars-ingenuity" || isMoonGlb) {
       copy.traverse((child) => {
         if (slug === "mars-insight" && child.name === "SEIS") {
           // SEIS is deployed onto the Martian ground in front of the lander under its dome shield
@@ -139,18 +145,35 @@ function GlbExhibitMesh({
         }
         if ((child as THREE.Mesh).isMesh) {
           const mesh = child as THREE.Mesh;
-          if (marsDustFactor > 0) {
+          if (!mesh.userData?.noCastShadow) {
+            mesh.castShadow = shadowsEnabled;
+          }
+          mesh.receiveShadow = shadowsEnabled;
+
+          if (marsDustFactor > 0 || isMoonGlb) {
             const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
             const nextMats = mats.map((m) => {
               const std = m.clone() as THREE.MeshStandardMaterial;
-              if (std.color) {
-                std.color.lerp(dustColor, marsDustFactor);
-              }
-              if (typeof std.roughness === "number") {
-                std.roughness = Math.min(0.96, std.roughness + marsDustFactor * 0.45);
-              }
-              if (typeof std.metalness === "number") {
-                std.metalness = Math.max(0.06, std.metalness * (1 - marsDustFactor * 0.65));
+              if (marsDustFactor > 0) {
+                if (std.color) {
+                  std.color.lerp(dustColor, marsDustFactor);
+                }
+                if (typeof std.roughness === "number") {
+                  std.roughness = Math.min(0.96, std.roughness + marsDustFactor * 0.45);
+                }
+                if (typeof std.metalness === "number") {
+                  std.metalness = Math.max(0.06, std.metalness * (1 - marsDustFactor * 0.65));
+                }
+              } else if (isMoonGlb && std.color) {
+                // Crinkled Kapton gold foil detection vs bare titanium/aluminum struts
+                const isGoldFoil =
+                  std.color.r > 0.38 && std.color.g > 0.24 && std.color.b < std.color.r * 0.55;
+                if (isGoldFoil && !std.bumpMap) {
+                  std.bumpMap = kaptonBump;
+                  std.bumpScale = 0.012;
+                  std.roughness = Math.min(0.42, Math.max(0.24, std.roughness ?? 0.34));
+                  std.metalness = Math.max(0.72, std.metalness ?? 0.78);
+                }
               }
               return std;
             });
@@ -183,7 +206,7 @@ function GlbExhibitMesh({
       scale: s,
       offset: [-center.x * s, PLINTH_SURFACE_Y - box.min.y * s, -center.z * s] as [number, number, number],
     };
-  }, [scene, slug, isApolloLm]);
+  }, [scene, slug, isApolloLm, kaptonBump, shadowsEnabled]);
 
   return (
     <group>
@@ -212,14 +235,10 @@ function SingleExhibitPlinth({
 }) {
   const anchor = EXHIBIT_PLINTH_ANCHORS[exhibit.slug];
   const openExhibit = useMuseum((s) => s.openExhibit);
-  const activeExhibit = useMuseum((s) => s.activeExhibit);
   const budget = usePerfBudget();
   const spinRef = useRef<THREE.Group>(null);
-  const spotRef = useRef<THREE.SpotLight>(null);
   const rootRef = useRef<THREE.Group>(null);
   const [hovered, setHovered] = useState(false);
-  // AG-6: Lazy-load / mount heavy exhibit GLBs only when within ±budget.glbMountWindow beats
-  const [inGlbRange, setInGlbRange] = useState(false);
 
   const isApolloLm = exhibit.catalogNo === "SM-L-001" || exhibit.catalogNo === "SM-L-004";
 
@@ -236,31 +255,16 @@ function SingleExhibitPlinth({
 
   useFrame(() => {
     const p = scrollState.current;
-    const dist = Math.abs(p - beatIndex);
-    const shouldMountGlb = dist <= budget.glbMountWindow + 0.5;
-    if (shouldMountGlb && !inGlbRange) {
-      setInGlbRange(true);
-    } else if (!shouldMountGlb && inGlbRange && budget.tier === "low" && dist > budget.glbMountWindow + 1.0) {
-      setInGlbRange(false);
-    }
-
-    // Show target site slightly earlier for Moon/Mars orbital landings (beats 8 & 14) and use contiguous
-    // half-open [minB, maxB) intervals so exact .5 midpoints (8.5, 9.5, 14.5...) never hide all terrain
+    // Show landing site early for Moon (8) & Mars (14) orbital landings, and keep contiguous
+    // half-open [minB, maxB) intervals so shared-crest midpoints swap identically without black gap.
     if (!rootRef.current) return;
-    const minB = beatIndex === 8 ? 7.34 : beatIndex === 14 ? 13.34 : beatIndex - 0.5;
-    const maxB = beatIndex === 12 ? 12.5 : beatIndex === 20 ? 20.5 : beatIndex + 0.5;
-    const earlyArrival = p >= minB && p < maxB;
-    rootRef.current.visible = earlyArrival;
-    if (!earlyArrival) return;
+    const minB = beatIndex === 8 ? 7.12 : beatIndex === 14 ? 13.18 : beatIndex - 0.5;
+    const maxB = beatIndex === 12 ? 12.6 : beatIndex === 20 ? 20.55 : beatIndex + 0.5;
+    const visibleNow = p >= minB && p < maxB;
+    rootRef.current.visible = visibleNow;
+    if (!visibleNow) return;
 
     rootRef.current.scale.setScalar(1);
-
-    const boost = activeExhibit === exhibit.slug ? 1.35 : hovered ? 1.18 : 1.0;
-    if (spotRef.current) {
-      const fade = 1 - smoothstep(0.35, 0.49, dist);
-      // Hard single sun on Moon (AG-12): zero overhead spotlight fill on Moon surface
-      spotRef.current.intensity = (isMoon ? 0 : 34) * fade * boost;
-    }
   });
 
   if (!anchor) return null;
@@ -268,8 +272,11 @@ function SingleExhibitPlinth({
   return (
     <group
       ref={rootRef}
+      name={`warmup-plinth-${exhibit.slug}`}
+      userData={{ warmup: true, anchorPos: anchor.pos, hall: isMoon ? "moon" : "mars", beatIndex }}
       position={anchor.pos}
       rotation={[0, anchor.rotY, 0]}
+      visible={false}
       onClick={(e) => {
         e.stopPropagation();
         openExhibit(exhibit.slug);
@@ -280,19 +287,6 @@ function SingleExhibitPlinth({
       }}
       onPointerOut={() => setHovered(false)}
     >
-      {/* Overhead warm/cool fill on Mars only; Moon uses single hard sun with deep black shadows (AG-12) */}
-      {!isMoon && (
-        <spotLight
-          ref={spotRef}
-          position={[0, 7.2, 1.5]}
-          angle={0.62}
-          penumbra={0.92}
-          intensity={34}
-          distance={22}
-          color="#DCE6FF"
-        />
-      )}
-
       <group ref={spinRef}>
         {isGrail ? (
           <Suspense fallback={<PlinthFallback />}>
@@ -304,19 +298,27 @@ function SingleExhibitPlinth({
           </Suspense>
         ) : isMoon ? (
           <HallOneLunarDiorama slug={exhibit.slug} reducedMotion={reducedMotion}>
-            {exhibit.media.model && inGlbRange ? (
+            {exhibit.media.model ? (
               <Suspense fallback={<PlinthFallback />}>
-                <GlbExhibitMesh url={exhibit.media.model} slug={exhibit.slug} isApolloLm={isApolloLm} />
-                <ShadowEnabler targetRef={spinRef} enabled={budget.tier !== "low"} />
+                <GlbExhibitMesh
+                  url={exhibit.media.model}
+                  slug={exhibit.slug}
+                  isApolloLm={isApolloLm}
+                  shadowsEnabled={budget.tier !== "low"}
+                />
               </Suspense>
             ) : null}
           </HallOneLunarDiorama>
         ) : (
           <HallTwoMarsDiorama slug={exhibit.slug} reducedMotion={reducedMotion}>
-            {exhibit.media.model && inGlbRange ? (
+            {exhibit.media.model ? (
               <Suspense fallback={<PlinthFallback />}>
-                <GlbExhibitMesh url={exhibit.media.model} slug={exhibit.slug} isApolloLm={false} />
-                <ShadowEnabler targetRef={spinRef} enabled={budget.tier !== "low"} />
+                <GlbExhibitMesh
+                  url={exhibit.media.model}
+                  slug={exhibit.slug}
+                  isApolloLm={false}
+                  shadowsEnabled={budget.tier !== "low"}
+                />
               </Suspense>
             ) : null}
           </HallTwoMarsDiorama>
@@ -623,14 +625,21 @@ function SilhouetteModel({
  */
 function BeyondSilhouettes3D({ reducedMotion }: { reducedMotion: boolean }) {
   const groupRef = useRef<THREE.Group>(null);
+  const spotRef = useRef<THREE.SpotLight>(null);
+  const leftDirRef = useRef<THREE.DirectionalLight>(null);
+  const rightDirRef = useRef<THREE.DirectionalLight>(null);
 
   useFrame(() => {
-    if (!groupRef.current) return;
     const p = scrollState.current;
     // AG-5 (22->23): Smoothly reveal from Hall of Silence and glide/part into Finale Earthrise
     const enterVis = smoothstep(21.15, 21.65, p);
     const exitProgress = smoothstep(22.15, 22.82, p);
     const vis = enterVis * (1 - exitProgress);
+    if (spotRef.current) spotRef.current.intensity = 240 * vis;
+    if (leftDirRef.current) leftDirRef.current.intensity = 2.4 * vis;
+    if (rightDirRef.current) rightDirRef.current.intensity = 2.4 * vis;
+
+    if (!groupRef.current) return;
     groupRef.current.visible = vis > 0.01;
     if (groupRef.current.visible) {
       groupRef.current.position.set(0, 540.1 - exitProgress * 2.8, -522 + exitProgress * 14);
@@ -642,11 +651,26 @@ function BeyondSilhouettes3D({ reducedMotion }: { reducedMotion: boolean }) {
   const offsets = [-5.25, -1.75, 1.75, 5.25];
 
   return (
-    <group ref={groupRef} position={[0, 540.1, -522]} visible={false}>
-      {/* Cold back-rim and key spotlights to carve thin #9DB8FF / #DCE6FF edges around the black silhouettes */}
-      <spotLight position={[0, 6.5, -5.5]} angle={1.05} penumbra={0.85} intensity={240} distance={32} color="#9DB8FF" />
-      <directionalLight position={[-6, 4, -6]} intensity={2.4} color="#DCE6FF" />
-      <directionalLight position={[6, 4, -6]} intensity={2.4} color="#9DB8FF" />
+    <>
+      {/* Cold back-rim and key lights kept permanently visible so Three.js shader light counts never change */}
+      <spotLight
+        ref={spotRef}
+        position={[0, 546.6, -527.5]}
+        angle={1.05}
+        penumbra={0.85}
+        intensity={0}
+        distance={32}
+        color="#9DB8FF"
+      />
+      <directionalLight ref={leftDirRef} position={[-6, 544.1, -528]} intensity={0} color="#DCE6FF" />
+      <directionalLight ref={rightDirRef} position={[6, 544.1, -528]} intensity={0} color="#9DB8FF" />
+      <group
+        ref={groupRef}
+        name="warmup-beyond-silhouettes"
+        userData={{ warmup: true, anchorPos: [0, 540.1, -522], hall: "beyond", beatIndex: 22 }}
+        position={[0, 540.1, -522]}
+        visible={false}
+      >
 
       {/* ─── TALL FROSTED-GLASS MUSEUM DOORWAY (Platinum Frame #C7CDD8) ─── */}
       <group position={[0, -0.35, -1.35]}>
@@ -712,13 +736,15 @@ function BeyondSilhouettes3D({ reducedMotion }: { reducedMotion: boolean }) {
           />
         </Suspense>
       ))}
-    </group>
+      </group>
+    </>
   );
 }
 
 /**
  * Mounts all 12 Moon + Mars exhibit plinths + Hall of Silence + Hall III silhouettes.
- * Individual plinths cull themselves smoothly when out of range, and preloading starts once in space.
+ * Staggers plinth mounting over initial idle ticks during launch beats (0..5) so boot
+ * doesn't hitch and ALL geometries + GLBs are loaded and ready for GPU pre-compilation before p = 6.5.
  */
 export function ExhibitStage3D({ reducedMotion }: { reducedMotion: boolean }) {
   const exhibitBeats = useMemo(
@@ -729,24 +755,57 @@ export function ExhibitStage3D({ reducedMotion }: { reducedMotion: boolean }) {
     [],
   );
 
-  // Lazy-preload GLB models gently after mount so Moon/Mars transitions feel instant
+  const [mountedCount, setMountedCount] = useState(2);
+  const flushedRef = useRef(false);
+
+  // Start preloading ALL GLBs + GRAIL textures immediately at mount
   useEffect(() => {
     const urls = new Set<string>();
     exhibitBeats.forEach((x) => {
       if (x.exhibit.media.model) urls.add(x.exhibit.media.model);
     });
     teaserItems.forEach((t) => urls.add(t.model));
-    const timer = window.setTimeout(() => {
-      urls.forEach((u) => useGLTF.preload(u, false, true));
-      useTexture.preload("/media/three/grail/grail_gravity_2k.webp");
-      useTexture.preload("/media/three/grail/grail_gravity_4k.webp");
-    }, 1200);
-    return () => window.clearTimeout(timer);
+    urls.forEach((u) => useGLTF.preload(u, false, true));
+    useTexture.preload("/media/three/grail/grail_gravity_2k.webp");
+    useTexture.preload("/media/three/grail/grail_gravity_4k.webp");
   }, [exhibitBeats]);
+
+  // Stagger remaining plinth mounts smoothly across initial idle chunks (or flush immediately if user scrolls early)
+  useEffect(() => {
+    if (mountedCount >= exhibitBeats.length) {
+      flushedRef.current = true;
+      return;
+    }
+    const step = () => {
+      if (scrollState.target >= 3.5) {
+        flushedRef.current = true;
+        setMountedCount(exhibitBeats.length);
+      } else {
+        setMountedCount((c) => Math.min(exhibitBeats.length, c + 2));
+      }
+    };
+    const w = window as unknown as {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    if (typeof w.requestIdleCallback === "function") {
+      const id = w.requestIdleCallback(step, { timeout: 140 });
+      return () => w.cancelIdleCallback?.(id);
+    }
+    const timer = window.setTimeout(step, 70);
+    return () => window.clearTimeout(timer);
+  }, [mountedCount, exhibitBeats.length]);
+
+  useFrame(() => {
+    if (!flushedRef.current && mountedCount < exhibitBeats.length && scrollState.target >= 4.2) {
+      flushedRef.current = true;
+      setMountedCount(exhibitBeats.length);
+    }
+  });
 
   return (
     <>
-      {exhibitBeats.map(({ exhibit, index }) => (
+      {exhibitBeats.slice(0, mountedCount).map(({ exhibit, index }) => (
         <SingleExhibitPlinth
           key={exhibit.slug}
           exhibit={exhibit}

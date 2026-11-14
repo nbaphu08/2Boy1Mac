@@ -7,6 +7,56 @@ let cachedNoiseTex: THREE.DataTexture | null = null;
 let cachedMoonFallbackTex: THREE.CanvasTexture | null = null;
 
 /**
+ * Shared live terrain shader uniforms updated every frame in `SpaceScene`:
+ * - `moonFocusXZ` / `marsFocusXZ`: continuous interpolated XZ center across site swaps
+ *   so horizon fade and micro-relief never snap when exchanging terrain chunks at mid-hop.
+ * - `marsStormMix`: continuous dust-storm intensity on beat 17 (`mars-opportunity`) so
+ *   chunks 16, 17, 18 share identical colors at the `16.5` / `17.5` swap crests.
+ */
+export const sharedTerrainUniforms = {
+  moonFocusXZ: { value: new THREE.Vector2(5.5, -176.0) },
+  marsFocusXZ: { value: new THREE.Vector2(7.0, -376.0) },
+  marsStormMix: { value: 0 },
+};
+
+/**
+ * Continuous world-space traverse heightfield for inter-site corridors (`±36..±100 m`),
+ * forming smooth +4.2 m crater-rim/ridge crests centered identically at every inter-site midpoint.
+ */
+export function getSharedTraverseHeight(planet: "moon" | "mars", wx: number, wz: number): number {
+  const baseX = planet === "moon" ? 5.5 : 7.0;
+  const baseZ = planet === "moon" ? -176.0 : -376.0;
+  const period = 100.0;
+  const relX = (((wx - baseX) % period) + period) % period - 50.0;
+  const dz = (wz - baseZ) / 72.0;
+  const ridgeAmp = planet === "moon" ? 4.2 : 3.6;
+  const crest = ridgeAmp * Math.exp(-(relX * relX) / 230.0 - dz * dz);
+  const roll =
+    Math.sin(wx * 0.13 + wz * 0.1) * 0.18 +
+    Math.cos(wx * 0.07 - wz * 0.14) * 0.14 +
+    Math.sin(wx * 0.28 + wz * 0.22) * 0.05;
+  return crest + roll;
+}
+
+/**
+ * Smoothly blends site-local terrain height into the shared traverse heightfield along
+ * outer East/West flight corridors (`|vx| > 22 m`) so neighboring chunks match identically at mid-hop.
+ */
+export function blendCorridorHeight(
+  planet: "moon" | "mars",
+  wx: number,
+  wz: number,
+  vx: number,
+  localHeight: number,
+): number {
+  const absX = Math.abs(vx);
+  if (absX <= 22.0) return localHeight;
+  const tRaw = Math.min(1, Math.max(0, (absX - 22.0) / 14.0));
+  const t = tRaw * tRaw * (3 - 2 * tRaw);
+  return THREE.MathUtils.lerp(localHeight, getSharedTraverseHeight(planet, wx, wz), t);
+}
+
+/**
  * Tileable 256×256 RGBA value-noise texture sampled at rotated, incommensurate
  * world-space frequencies so lunar & Martian soils have zero visible tiling,
  * zero dot grids, and zero repeating stripes out to the horizon.
@@ -133,11 +183,8 @@ export function applyWorldTerrainShader(
   const isMoon = opts.planet === "moon";
   const qLevel = opts.qualityTier === "low" ? 0.0 : opts.qualityTier === "medium" ? 1.0 : 2.0;
 
-  const horizonCol = isMoon
-    ? new THREE.Color("#000000")
-    : opts.marsStorm
-      ? new THREE.Color("#7A331C")
-      : new THREE.Color("#C98659");
+  const horizonCol = isMoon ? new THREE.Color("#000000") : new THREE.Color("#C98659");
+  const stormHorizonCol = new THREE.Color("#7A331C");
 
   const baseDark = opts.baseTint
     ? new THREE.Color(opts.baseTint)
@@ -145,9 +192,7 @@ export function applyWorldTerrainShader(
       ? new THREE.Color("#443F38")
       : opts.arcticPolygons
         ? new THREE.Color("#5E3A2B")
-        : opts.marsStorm
-          ? new THREE.Color("#632E1C")
-          : new THREE.Color("#6F351E");
+        : new THREE.Color("#6F351E");
 
   const baseLight = opts.brightTint
     ? new THREE.Color(opts.brightTint)
@@ -155,22 +200,28 @@ export function applyWorldTerrainShader(
       ? new THREE.Color("#8D867B")
       : opts.arcticPolygons
         ? new THREE.Color("#9B6A4E")
-        : opts.marsStorm
-          ? new THREE.Color("#964C30")
-          : new THREE.Color("#B5623B");
+        : new THREE.Color("#B5623B");
 
+  const stormDark = new THREE.Color("#632E1C");
+  const stormLight = new THREE.Color("#964C30");
   const highlandBright = new THREE.Color(opts.highlandBrightTint ?? "#DDD6CA");
   const sunVec = new THREE.Vector3(...(opts.moonSunDir ?? [9.4, 2.85, 4.3])).normalize();
+  const focusUniform = isMoon ? sharedTerrainUniforms.moonFocusXZ : sharedTerrainUniforms.marsFocusXZ;
 
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uFbmNoise = { value: noiseTex };
     shader.uniforms.uAnchorXZ = { value: new THREE.Vector2(opts.anchorXZ[0], opts.anchorXZ[1]) };
+    shader.uniforms.uFocusXZ = focusUniform;
     shader.uniforms.uBaseDark = { value: baseDark };
     shader.uniforms.uBaseLight = { value: baseLight };
+    shader.uniforms.uStormDark = { value: stormDark };
+    shader.uniforms.uStormLight = { value: stormLight };
     shader.uniforms.uHighlandBright = { value: highlandBright };
     shader.uniforms.uHorizonCol = { value: horizonCol };
-    shader.uniforms.uFadeStart = { value: opts.fadeStart ?? (isMoon ? 72.0 : 28.0) };
-    shader.uniforms.uFadeEnd = { value: opts.fadeEnd ?? (isMoon ? 87.5 : 68.0) };
+    shader.uniforms.uStormHorizonCol = { value: stormHorizonCol };
+    shader.uniforms.uMarsStormMix = sharedTerrainUniforms.marsStormMix;
+    shader.uniforms.uFadeStart = { value: opts.fadeStart ?? (isMoon ? 74.0 : 42.0) };
+    shader.uniforms.uFadeEnd = { value: opts.fadeEnd ?? (isMoon ? 96.0 : 84.0) };
     shader.uniforms.uIsMoon = { value: isMoon ? 1.0 : 0.0 };
     shader.uniforms.uQualityLevel = { value: qLevel };
     shader.uniforms.uMoonSunDir = { value: sunVec };
@@ -191,10 +242,15 @@ export function applyWorldTerrainShader(
         `#include <common>
         uniform sampler2D uFbmNoise;
         uniform vec2 uAnchorXZ;
+        uniform vec2 uFocusXZ;
         uniform vec3 uBaseDark;
         uniform vec3 uBaseLight;
+        uniform vec3 uStormDark;
+        uniform vec3 uStormLight;
         uniform vec3 uHighlandBright;
         uniform vec3 uHorizonCol;
+        uniform vec3 uStormHorizonCol;
+        uniform float uMarsStormMix;
         uniform float uFadeStart;
         uniform float uFadeEnd;
         uniform float uIsMoon;
@@ -333,14 +389,16 @@ export function applyWorldTerrainShader(
         float grain = 0.5;
         vec2 terrainGradXZ = vec2(0.0);
         float fbm = sampleFbm4(vTerrainWorldPos.xz, grain, terrainGradXZ);
-        vec3 soil = mix(uBaseDark, uBaseLight, smoothstep(0.22, 0.78, fbm));
+        vec3 effDark = uIsMoon > 0.5 ? uBaseDark : mix(uBaseDark, uStormDark, uMarsStormMix);
+        vec3 effLight = uIsMoon > 0.5 ? uBaseLight : mix(uBaseLight, uStormLight, uMarsStormMix);
+        vec3 soil = mix(effDark, effLight, smoothstep(0.22, 0.78, fbm));
         soil *= (0.93 + 0.14 * grain);
 
         if (uIsMoon > 0.5) {
           // Fine lumpy powdery regolith grain on mare/valley floor vs silky cream-white massifs
-          float distFromCenter = length(vTerrainWorldPos.xz - uAnchorXZ);
+          float distFromCenter = length(vTerrainWorldPos.xz - uFocusXZ);
           float massifSmooth = smoothstep(0.7, 3.0, vTerrainLocalPos.y);
-          float farSmoothing = 1.0 - smoothstep(9.0, 30.0, distFromCenter);
+          float farSmoothing = 1.0 - smoothstep(14.0, 38.0, distFromCenter);
 
           vec3 clodCoarse = sampleWorleyClod(vTerrainWorldPos.xz * 2.15);
           float clodDome = clodCoarse.x;
@@ -436,8 +494,8 @@ export function applyWorldTerrainShader(
         "#include <normal_fragment_maps>",
         `#include <normal_fragment_maps>
         // Transform analytic world XZ gradient cleanly into view space; stronger in lunar near field
-        float bumpMaxDist = uIsMoon > 0.5 ? 24.0 : 18.0;
-        float bumpFade = 1.0 - smoothstep(4.5, bumpMaxDist, length(vTerrainWorldPos.xz - uAnchorXZ));
+        float bumpMaxDist = uIsMoon > 0.5 ? 28.0 : 22.0;
+        float bumpFade = 1.0 - smoothstep(6.0, bumpMaxDist, length(vTerrainWorldPos.xz - uFocusXZ));
         float bumpAmp = uIsMoon > 0.5 ? 0.34 * (1.0 - smoothstep(0.65, 2.6, vTerrainLocalPos.y)) : 0.16;
         vec3 bumpWorld = vec3(-terrainGradXZ.x, 0.0, -terrainGradXZ.y) * bumpAmp * bumpFade;
         vec3 bumpView = (viewMatrix * vec4(bumpWorld, 0.0)).xyz;
@@ -445,15 +503,17 @@ export function applyWorldTerrainShader(
       )
       .replace(
         "#include <tonemapping_fragment>",
-        `float hDist = length(vTerrainWorldPos.xz - uAnchorXZ);
-        float hFade = smoothstep(uFadeStart, uFadeEnd, hDist);
+        `float hDist = length(vTerrainWorldPos.xz - uFocusXZ);
+        float effFadeStart = uIsMoon > 0.5 ? uFadeStart : mix(uFadeStart, 22.0, uMarsStormMix);
+        float effFadeEnd = uIsMoon > 0.5 ? uFadeEnd : mix(uFadeEnd, 54.0, uMarsStormMix);
+        float hFade = smoothstep(effFadeStart, effFadeEnd, hDist);
         float hMask = uIsMoon > 0.5 ? (1.0 - smoothstep(0.6, 2.4, vTerrainLocalPos.y)) : 1.0;
-        gl_FragColor.rgb = mix(gl_FragColor.rgb, uHorizonCol, hFade * 0.98 * hMask);
+        vec3 effHorizon = uIsMoon > 0.5 ? uHorizonCol : mix(uHorizonCol, uStormHorizonCol, uMarsStormMix);
+        gl_FragColor.rgb = mix(gl_FragColor.rgb, effHorizon, hFade * 0.98 * hMask);
         #include <tonemapping_fragment>`,
       );
   };
-  mat.customProgramCacheKey = () =>
-    `world-terrain-${opts.planet}-${opts.qualityTier ?? "high"}-${opts.arcticPolygons ? 1 : 0}-${opts.marsStorm ? 1 : 0}-${opts.spiritTroyPatch ? 1 : 0}-${opts.sandRipples ? 1 : 0}-${opts.baseTint ?? ""}-${opts.brightTint ?? ""}-${opts.highlandBrightTint ?? ""}`;
+  mat.customProgramCacheKey = () => `world-terrain-${opts.planet}-${opts.qualityTier ?? "high"}`;
 }
 
 /** Smoothly fractured angular basalt geometry (non-blocky, natural rock planes for InstancedMesh). */
@@ -543,6 +603,8 @@ export function InstancedLandscapeRocks({
 }) {
   const refA = useRef<THREE.InstancedMesh>(null);
   const refB = useRef<THREE.InstancedMesh>(null);
+  void anchorXZ;
+  void marsStorm;
 
   const radiusOuter = maxRadius ?? spreadRadius;
   const countA = Math.ceil(count * 0.52);
@@ -557,19 +619,19 @@ export function InstancedLandscapeRocks({
       roughness: planet === "moon" ? 0.97 : 0.93,
       metalness: planet === "moon" ? 0.0 : 0.03,
     });
-    const horizonCol =
-      planet === "moon"
-        ? new THREE.Color("#000000")
-        : marsStorm
-          ? new THREE.Color("#7A331C")
-          : new THREE.Color("#C98659");
+    const horizonCol = planet === "moon" ? new THREE.Color("#000000") : new THREE.Color("#C98659");
+    const stormHorizonCol = new THREE.Color("#7A331C");
+    const focusUniform =
+      planet === "moon" ? sharedTerrainUniforms.moonFocusXZ : sharedTerrainUniforms.marsFocusXZ;
 
     m.onBeforeCompile = (shader) => {
-      shader.uniforms.uAnchorXZ = { value: new THREE.Vector2(anchorXZ[0], anchorXZ[1]) };
+      shader.uniforms.uFocusXZ = focusUniform;
       shader.uniforms.uHorizonCol = { value: horizonCol };
+      shader.uniforms.uStormHorizonCol = { value: stormHorizonCol };
+      shader.uniforms.uMarsStormMix = sharedTerrainUniforms.marsStormMix;
       shader.uniforms.uIsMars = { value: planet === "mars" ? 1.0 : 0.0 };
-      shader.uniforms.uFadeStart = { value: planet === "moon" ? 72.0 : 24.0 };
-      shader.uniforms.uFadeEnd = { value: planet === "moon" ? 87.0 : 58.0 };
+      shader.uniforms.uFadeStart = { value: planet === "moon" ? 74.0 : 38.0 };
+      shader.uniforms.uFadeEnd = { value: planet === "moon" ? 95.0 : 78.0 };
 
       shader.vertexShader = shader.vertexShader
         .replace(
@@ -591,8 +653,10 @@ export function InstancedLandscapeRocks({
         .replace(
           "#include <common>",
           `#include <common>
-          uniform vec2 uAnchorXZ;
+          uniform vec2 uFocusXZ;
           uniform vec3 uHorizonCol;
+          uniform vec3 uStormHorizonCol;
+          uniform float uMarsStormMix;
           uniform float uIsMars;
           uniform float uFadeStart;
           uniform float uFadeEnd;
@@ -609,15 +673,16 @@ export function InstancedLandscapeRocks({
         )
         .replace(
           "#include <tonemapping_fragment>",
-          `float rDist = length(vRockPosW.xz - uAnchorXZ);
+          `float rDist = length(vRockPosW.xz - uFocusXZ);
           float rFade = smoothstep(uFadeStart, uFadeEnd, rDist);
-          gl_FragColor.rgb = mix(gl_FragColor.rgb, uHorizonCol, rFade * 0.96);
+          vec3 effRockHoriz = uIsMars > 0.5 ? mix(uHorizonCol, uStormHorizonCol, uMarsStormMix) : uHorizonCol;
+          gl_FragColor.rgb = mix(gl_FragColor.rgb, effRockHoriz, rFade * 0.96);
           #include <tonemapping_fragment>`,
         );
     };
-    m.customProgramCacheKey = () => `inst-rocks-${planet}-${marsStorm ? 1 : 0}`;
+    m.customProgramCacheKey = () => "landscape-rock-v1";
     return m;
-  }, [planet, anchorXZ, marsStorm]);
+  }, [planet]);
 
   useEffect(() => {
     const sampleH = heightFn ?? getHeight;

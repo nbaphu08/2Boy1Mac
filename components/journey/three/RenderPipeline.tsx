@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Environment, Lightformer } from "@react-three/drei";
 import {
@@ -10,6 +10,7 @@ import {
   N8AO,
   SMAA,
   ToneMapping,
+  Vignette,
 } from "@react-three/postprocessing";
 import { type BloomEffect, type DepthOfFieldEffect, ToneMappingMode } from "postprocessing";
 import * as THREE from "three";
@@ -28,163 +29,71 @@ export function resolveHallEnv(p: number): HallEnv {
 }
 
 /**
- * Per-hall HDR Image-Based Lighting built solely from drei <Lightformer>s (zero external HDRI).
- * Re-bakes once at 128px resolution only when crossing a hall threshold.
+ * Single invariant 128px PMREM Environment baked ONCE at load (never unmounted or key-swapped
+ * mid-scroll, preventing full-scene shader recompiles), with `scene.environmentIntensity`
+ * smoothly attenuated per hall in `useFrame` (e.g. crisp ~0.09 airless dark fill on Moon).
  */
 export function HallEnvironment() {
-  const [hall, setHall] = useState<HallEnv>(() => resolveHallEnv(scrollState.current));
-  const hallRef = useRef<HallEnv>(hall);
+  const envIntensityRef = useRef(0.92);
 
-  useFrame(() => {
-    const next = resolveHallEnv(scrollState.current);
-    if (next !== hallRef.current) {
-      hallRef.current = next;
-      setHall(next);
+  useFrame((state, delta) => {
+    const p = scrollState.current;
+    const moonMask =
+      smoothstep(7.2, 7.6, p) * (1 - smoothstep(12.2, 12.6, p)) +
+      smoothstep(22.15, 22.65, p);
+    const marsMask = smoothstep(13.2, 13.55, p) * (1 - smoothstep(20.1, 20.5, p));
+    const clampedMoon = Math.min(1, moonMask);
+    const targetIntensity = THREE.MathUtils.lerp(
+      THREE.MathUtils.lerp(0.92, 0.82, marsMask),
+      0.09,
+      clampedMoon,
+    );
+    envIntensityRef.current = THREE.MathUtils.damp(
+      envIntensityRef.current,
+      targetIntensity,
+      8,
+      Math.min(delta, 0.05),
+    );
+    const activeScene = state.scene;
+    if (activeScene.environmentIntensity !== envIntensityRef.current) {
+      activeScene.environmentIntensity = envIntensityRef.current;
     }
   });
 
-  if (hall === "moon") {
-    // Hard single white solar key + pitch-black lunar sky + minimal regolith underside bounce
-    return (
-      <Environment key="moon" resolution={128} frames={1} environmentIntensity={0.09}>
-        <color attach="background" args={["#000000"]} />
-        <Lightformer
-          form="circle"
-          intensity={6.5}
-          color="#FFFDF5"
-          position={[18, 6, 8]}
-          scale={[4.0, 4.0, 1]}
-          target={[0, 0, 0]}
-        />
-        <Lightformer
-          form="rect"
-          intensity={0.08}
-          color="#7A746C"
-          position={[0, -12, 0]}
-          rotation={[-Math.PI / 2, 0, 0]}
-          scale={[30, 30, 1]}
-        />
-      </Environment>
-    );
-  }
-
-  if (hall === "mars") {
-    // Warm dusty butterscotch sky hemisphere + low warm sun + warm ochre soil bounce
-    return (
-      <Environment key="mars" resolution={128} frames={1} environmentIntensity={0.86}>
-        <color attach="background" args={["#4A2616"]} />
-        <Lightformer
-          form="circle"
-          intensity={5.4}
-          color="#FFD6AC"
-          position={[-16, 10, 14]}
-          scale={[9, 9, 1]}
-          target={[0, 0, 0]}
-        />
-        <Lightformer
-          form="ring"
-          intensity={2.2}
-          color="#C98354"
-          position={[0, 14, 0]}
-          rotation={[Math.PI / 2, 0, 0]}
-          scale={[26, 26, 1]}
-        />
-        <Lightformer
-          form="rect"
-          intensity={1.55}
-          color="#9A4E2D"
-          position={[0, -12, 0]}
-          rotation={[-Math.PI / 2, 0, 0]}
-          scale={[34, 34, 1]}
-        />
-        <Lightformer
-          form="rect"
-          intensity={1.2}
-          color="#D4956A"
-          position={[16, 5, -14]}
-          scale={[18, 10, 1]}
-          target={[0, 0, 0]}
-        />
-      </Environment>
-    );
-  }
-
-  if (hall === "launch") {
-    // 6:35 p.m. EDT KSC sunset glow from west + deep twilight sky + Atlantic/pad reflection
-    return (
-      <Environment key="launch" resolution={128} frames={1} environmentIntensity={0.95}>
-        <color attach="background" args={["#0A152C"]} />
-        <Lightformer
-          form="circle"
-          intensity={6.2}
-          color="#FF9E58"
-          position={[-20, 5, -8]}
-          scale={[14, 10, 1]}
-          target={[0, 0, 0]}
-        />
-        <Lightformer
-          form="rect"
-          intensity={2.1}
-          color="#4672CC"
-          position={[0, 18, 0]}
-          rotation={[Math.PI / 2, 0, 0]}
-          scale={[34, 34, 1]}
-        />
-        <Lightformer
-          form="rect"
-          intensity={2.4}
-          color="#DCE6FF"
-          position={[14, 6, 16]}
-          scale={[12, 8, 1]}
-          target={[0, 0, 0]}
-        />
-        <Lightformer
-          form="rect"
-          intensity={1.35}
-          color="#D8763C"
-          position={[0, -12, 0]}
-          rotation={[-Math.PI / 2, 0, 0]}
-          scale={[28, 28, 1]}
-        />
-      </Environment>
-    );
-  }
-
-  // Deep space / orbital ascent / Hall of Silence / Beyond
   return (
-    <Environment key="deep" resolution={128} frames={1} environmentIntensity={0.92}>
-      <color attach="background" args={["#040710"]} />
+    <Environment resolution={128} frames={1} environmentIntensity={0.92}>
+      <color attach="background" args={["#060B18"]} />
       <Lightformer
         form="circle"
-        intensity={6.8}
-        color="#FFFFFF"
-        position={[18, 18, 16]}
-        scale={[8, 8, 1]}
+        intensity={6.6}
+        color="#FFF9EC"
+        position={[18, 12, 14]}
+        scale={[10, 10, 1]}
         target={[0, 0, 0]}
       />
       <Lightformer
         form="rect"
         intensity={2.2}
         color="#5B88E8"
-        position={[-18, 6, -16]}
+        position={[-18, 7, -14]}
         scale={[24, 16, 1]}
         target={[0, 0, 0]}
       />
       <Lightformer
         form="rect"
-        intensity={1.8}
+        intensity={1.75}
         color="#A8C4FF"
         position={[0, 22, 0]}
         rotation={[Math.PI / 2, 0, 0]}
-        scale={[26, 8, 1]}
+        scale={[28, 12, 1]}
       />
       <Lightformer
         form="rect"
-        intensity={0.9}
-        color="#2E5698"
-        position={[0, -16, 6]}
+        intensity={1.15}
+        color="#8F5838"
+        position={[0, -14, 4]}
         rotation={[-Math.PI / 2, 0, 0]}
-        scale={[24, 24, 1]}
+        scale={[30, 30, 1]}
       />
     </Environment>
   );
@@ -266,6 +175,7 @@ export function PostEffects() {
           radius={0.62}
         />
         <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
+        <Vignette offset={0.34} darkness={0.28} />
         <SMAA />
       </EffectComposer>
     );
@@ -299,6 +209,7 @@ export function PostEffects() {
         radius={0.65}
       />
       <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
+      <Vignette offset={0.34} darkness={0.28} />
       <SMAA />
     </EffectComposer>
   );

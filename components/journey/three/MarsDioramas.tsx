@@ -7,8 +7,11 @@ import { DIORAMA_SURFACE_Y } from "./MoonDioramas";
 import { usePerfBudget } from "./perfTier";
 import {
   applyWorldTerrainShader,
+  blendCorridorHeight,
+  createNearFieldHorizonGeometry,
   InstancedLandscapeRocks,
 } from "./landscapeMaterials";
+import { EXHIBIT_PLINTH_ANCHORS } from "./trajectory";
 import {
   getMarsRoverTrackTexture,
   IngenuityAndBackshellProps,
@@ -17,14 +20,10 @@ import {
   Viking1SiteProps,
 } from "./MarsModels";
 
-const MARS_ANCHOR_XZ: Record<string, [number, number]> = {
-  "mars-viking-1": [7.0, -368.0],
-  "mars-spirit": [-18.0, -374.0],
-  "mars-opportunity": [-3.0, -377.0],
-  "mars-phoenix": [10.0, -380.0],
-  "mars-insight": [21.0, -383.0],
-  "mars-ingenuity": [8.0, -386.0],
-};
+function getMarsAnchorXZ(slug: string): [number, number] {
+  const pos = EXHIBIT_PLINTH_ANCHORS[slug]?.pos;
+  return pos ? [pos[0], pos[2]] : [7.0, -376.0];
+}
 
 function smoothHill(
   vx: number,
@@ -38,7 +37,7 @@ function smoothHill(
   const dx = (vx - cx) / rx;
   const dz = (vz - cz) / rz;
   const d2 = dx * dx + dz * dz;
-  if (d2 > 4.5) return 0;
+  if (d2 > 14.0) return 0;
   const base = Math.exp(-d2 * 0.92);
   const strata = 0.88 + 0.12 * Math.cos(vx * 0.32 + vz * 0.25);
   return h * Math.pow(base, 0.85) * strata;
@@ -68,7 +67,7 @@ export function getMarsTerrainHeight(slug: string, vx: number, vz: number): numb
     const hpDistX = Math.max(0, Math.abs(vx + 2.2) - 4.8);
     const hpDistZ = Math.max(0, Math.abs(vz + 12.5) - 2.6);
     const hpEdge = Math.hypot(hpDistX / 3.8, hpDistZ / 3.2);
-    const homePlate = hpEdge < 2.2 ? 1.95 * Math.exp(-hpEdge * hpEdge * 1.15) : 0;
+    const homePlate = hpEdge < 3.6 ? 1.95 * Math.exp(-hpEdge * hpEdge * 1.15) : 0;
     const columbiaHills = smoothHill(vx, vz, 14, -38, 16, 10, 5.4);
     return troyDip + swale + homePlate + columbiaHills + farPeri * 0.8;
   }
@@ -105,21 +104,15 @@ export function getMarsTerrainHeight(slug: string, vx: number, vz: number): numb
   return ripples + swale + jezeroScarpL + jezeroScarpR + farPeri * 0.75;
 }
 
-function createMarsHorizonTerrainGeometry(slug: string): THREE.BufferGeometry {
-  const size = 148;
-  const segs = 136;
-  const geo = new THREE.PlaneGeometry(size, size, segs, segs);
-  geo.rotateX(-Math.PI / 2);
-  const pos = geo.attributes.position as THREE.BufferAttribute;
-
-  for (let i = 0; i < pos.count; i++) {
-    const vx = pos.getX(i);
-    const vz = pos.getZ(i);
-    pos.setY(i, getMarsTerrainHeight(slug, vx, vz));
-  }
-
-  geo.computeVertexNormals();
-  return geo;
+function createMarsHorizonTerrainGeometry(
+  slug: string,
+  tier: "high" | "medium" | "low",
+): THREE.BufferGeometry {
+  const segs = tier === "high" ? 136 : tier === "medium" ? 104 : 76;
+  const [ax, az] = getMarsAnchorXZ(slug);
+  return createNearFieldHorizonGeometry(188, segs, (vx, vz) =>
+    blendCorridorHeight("mars", ax + vx, az + vz, vx, getMarsTerrainHeight(slug, vx, vz)),
+  );
 }
 
 function MarsDustParticles({ isStorm, particleCount }: { isStorm: boolean; particleCount: number }) {
@@ -182,11 +175,11 @@ export function HallTwoMarsDiorama({
 }) {
   const budget = usePerfBudget();
   const isStorm = slug === "mars-opportunity";
-  const terrainGeo = useMemo(() => createMarsHorizonTerrainGeometry(slug), [slug]);
-  const anchorXZ = useMemo<[number, number]>(
-    () => MARS_ANCHOR_XZ[slug] ?? [0, -368.0],
-    [slug],
+  const terrainGeo = useMemo(
+    () => createMarsHorizonTerrainGeometry(slug, budget.tier),
+    [slug, budget.tier],
   );
+  const anchorXZ = useMemo<[number, number]>(() => getMarsAnchorXZ(slug), [slug]);
   const trackTex = useMemo(() => getMarsRoverTrackTexture(), []);
 
   const terrainMat = useMemo(() => {
@@ -199,14 +192,15 @@ export function HallTwoMarsDiorama({
       planet: "mars",
       anchorXZ,
       arcticPolygons: slug === "mars-phoenix",
-      marsStorm: slug === "mars-opportunity",
+      marsStorm: isStorm,
       spiritTroyPatch: slug === "mars-spirit",
       sandRipples: slug === "mars-ingenuity",
-      fadeStart: isStorm ? 20 : 28,
-      fadeEnd: isStorm ? 48 : 68,
+      qualityTier: budget.tier,
+      fadeStart: 42,
+      fadeEnd: 84,
     });
     return mat;
-  }, [slug, anchorXZ, isStorm]);
+  }, [slug, anchorXZ, isStorm, budget.tier]);
 
   const rockCount =
     slug === "mars-insight"

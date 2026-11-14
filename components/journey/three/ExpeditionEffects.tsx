@@ -6,8 +6,8 @@ import * as THREE from "three";
 import { scrollState, smoothstep, clamp01 } from "@/lib/scroll/progress";
 import { usePerfBudget } from "./perfTier";
 
-const MOON_TOUCHDOWN_ORIGIN: [number, number, number] = [5.5, 334.82, -158.0];
-const MARS_TOUCHDOWN_ORIGIN: [number, number, number] = [7.0, 472.82, -349.5];
+const MOON_TOUCHDOWN_ORIGIN: [number, number, number] = [9.8, 334.82, -159.5];
+const MARS_TOUCHDOWN_ORIGIN: [number, number, number] = [9.2, 472.82, -363.5];
 
 /** Deterministic radial ballistic vacuum grains for Moon touchdown (no air plumes). */
 function buildRadialDustData(count: number, maxSpeed: number) {
