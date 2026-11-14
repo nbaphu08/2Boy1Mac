@@ -662,10 +662,10 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
 
   const craterARef = useRef<THREE.Mesh>(null);
   const craterBRef = useRef<THREE.Mesh>(null);
+  const surfaceGroupRef = useRef<THREE.Group>(null);
   const flashARef = useRef<THREE.Sprite>(null);
   const flashBRef = useRef<THREE.Sprite>(null);
   const ejectaPointsRef = useRef<THREE.Points>(null);
-  const restGhostsRef = useRef<THREE.Group>(null);
 
   // Playback scheduler refs
   const simStateRef = useRef({
@@ -714,14 +714,17 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
       grailSimState.active = false;
       grailSimState.camBlend = 0;
       grailSimState.phase = "rest";
+      if (surfaceGroupRef.current) surfaceGroupRef.current.visible = true;
       if (globeGroupRef.current) globeGroupRef.current.visible = false;
+      if (orbiterEbbRef.current) orbiterEbbRef.current.visible = false;
+      if (orbiterFlowRef.current) orbiterFlowRef.current.visible = false;
+      if (rangingBeamRef.current) rangingBeamRef.current.visible = false;
       if (craterARef.current) craterARef.current.visible = true;
       if (craterBRef.current) craterBRef.current.visible = true;
       if (ejectaPointsRef.current) ejectaPointsRef.current.visible = false;
       if (flashARef.current) flashARef.current.visible = false;
       if (flashBRef.current) flashBRef.current.visible = false;
       grailSimState.impactIntensity = 0;
-      if (restGhostsRef.current) restGhostsRef.current.visible = true;
       return;
     }
 
@@ -733,6 +736,11 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
         st.playing = false;
         st.elapsed = 0;
       }
+      if (surfaceGroupRef.current) surfaceGroupRef.current.visible = true;
+      if (globeGroupRef.current) globeGroupRef.current.visible = false;
+      if (orbiterEbbRef.current) orbiterEbbRef.current.visible = false;
+      if (orbiterFlowRef.current) orbiterFlowRef.current.visible = false;
+      if (rangingBeamRef.current) rangingBeamRef.current.visible = false;
       grailSimState.active = false;
       grailSimState.camBlend = 0;
       grailSimState.phase = "idle";
@@ -771,17 +779,22 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
         t < 6.0 ? "mapping" : t < 11.0 ? "descent" : t < 13.0 ? "impact" : "rest";
     }
 
-    // ─── 1. MAPPING PHASE (0–6 s): Moon globe turning under polar-orbiting Ebb & Flow ───
-    const showGlobe = st.playing && t < 7.15;
+    // ─── 1. MAPPING PHASE (0–5.9 s): Moon globe turning under polar-orbiting Ebb & Flow ───
+    // Keep local lunar terrain slab hidden cleanly while orbital Moon globe is shown (t < 5.9 s)
+    if (surfaceGroupRef.current) {
+      surfaceGroupRef.current.visible = !(st.playing && t < 5.9);
+    }
+
+    const showGlobe = st.playing && t < 6.5;
     if (globeGroupRef.current && globeMatRef.current) {
       globeGroupRef.current.visible = showGlobe;
       if (showGlobe) {
         const orbitIn = smoothstep(0.0, 0.45, t);
-        const orbitOut = 1 - smoothstep(5.95, 7.05, t);
-        globeGroupRef.current.scale.setScalar((0.88 + 0.12 * orbitIn) * Math.max(0.05, orbitOut));
+        const orbitOut = 1 - smoothstep(5.75, 6.48, t);
+        globeGroupRef.current.scale.setScalar((0.88 + 0.12 * orbitIn) * Math.max(0.04, orbitOut));
 
         // Time-compressed lunar rotation under the sunlit polar orbital plane
-        const sweepT = clamp01((t - 0.15) / 4.65);
+        const sweepT = clamp01((t - 0.15) / 4.45);
         const rotAngle = sweepT * Math.PI * 1.65;
         if (globeMeshRef.current) {
           globeMeshRef.current.rotation.y = -Math.PI * 0.48 + rotAngle;
@@ -794,16 +807,16 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
         uniforms.uTime.value = t;
 
         const gravIn = smoothstep(0.08, 0.42, t);
-        const gravOut = 1 - smoothstep(5.9, 6.9, t);
+        const gravOut = 1 - smoothstep(5.7, 6.45, t);
         uniforms.uGravityMix.value = gravIn * gravOut;
       }
     }
 
     if (orbitRingRef.current) {
-      orbitRingRef.current.visible = st.playing && t < 6.35;
+      orbitRingRef.current.visible = st.playing && t < 6.1;
       if (orbitRingRef.current.visible) {
         const ringMat = orbitRingRef.current.material as THREE.MeshBasicMaterial;
-        ringMat.opacity = 0.22 * (1 - smoothstep(5.6, 6.35, t));
+        ringMat.opacity = 0.22 * (1 - smoothstep(5.5, 6.1, t));
       }
     }
 
@@ -815,10 +828,10 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
       orbiterFlowRef.current.visible = showPair;
 
       if (showPair) {
-        if (t < 6.1) {
+        if (t < 6.0) {
           // Near-polar sunlit circular orbit sweeping visibly across front-upper Moon limb (PIA13966 / PIA12009)
           const thetaFlow = 0.12 + t * 0.19;
-          const thetaEbb = thetaFlow + 0.42;
+          const thetaEbb = thetaFlow + 0.36;
 
           tmpEbbPos
             .copy(orbitBasis.right)
@@ -864,12 +877,12 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
           );
         } else {
           // Grazing polar descent down north-polar Goldschmidt mountain slope toward craters A and B
-          const ebbU = clamp01((t - 6.1) / 5.1);
-          const flowU = clamp01((t - 6.75) / 5.1);
+          const ebbU = clamp01((t - 6.0) / 5.2);
+          const flowU = clamp01((t - 6.65) / 5.2);
 
-          const startEbbX = -4.2;
-          const startEbbY = 5.4;
-          const startEbbZ = -19.5;
+          const startEbbX = -2.2;
+          const startEbbY = 12.6;
+          const startEbbZ = -21.5;
           const endAY = SURFACE_Y + IMPACT_A_LOCAL[1];
 
           tmpEbbPos.set(
@@ -878,9 +891,9 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
             THREE.MathUtils.lerp(startEbbZ, IMPACT_A_LOCAL[2], ebbU),
           );
 
-          const startFlowX = -1.6;
-          const startFlowY = 6.2;
-          const startFlowZ = -22.2;
+          const startFlowX = 0.4;
+          const startFlowY = 14.2;
+          const startFlowZ = -24.5;
           const endBY = SURFACE_Y + IMPACT_B_LOCAL[1];
 
           tmpFlowPos.set(
@@ -924,7 +937,7 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
           tmpDir.divideScalar(rawLen);
           const hornOffset = 0.54 * activeScale;
           tmpHornA.copy(tmpFlowPos).addScaledVector(tmpDir, hornOffset);
-          tmpHornB.copy(tmpEbbPos).addScaledVector(tmpDir, t < 6.1 ? -hornOffset : -0.35 * activeScale);
+          tmpHornB.copy(tmpEbbPos).addScaledVector(tmpDir, t < 6.0 ? -hornOffset : -0.35 * activeScale);
           tmpMid.copy(tmpHornA).add(tmpHornB).multiplyScalar(0.5);
           const sep = Math.max(0.1, tmpHornA.distanceTo(tmpHornB));
           tmpQuat.setFromUnitVectors(tmpUp, tmpDir);
@@ -1028,16 +1041,6 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
       }
     }
 
-    // Rest state faint ghost silhouettes (hidden during live flight, fade in cleanly on rest)
-    if (restGhostsRef.current) {
-      if (!st.playing) {
-        restGhostsRef.current.visible = true;
-      } else {
-        const ghostIn = smoothstep(12.85, 13.85, t);
-        restGhostsRef.current.visible = ghostIn > 0.02;
-      }
-    }
-
     // ─── 4. SIMULATION CAMERA CHOREOGRAPHY (blends seamlessly with SpaceScene) ───
     if (st.playing) {
       // Smooth blend in at start (0 -> 0.55s) and smooth blend back to resting framing (12.75 -> 13.95s)
@@ -1045,17 +1048,18 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
       const blendOut = 1 - smoothstep(12.75, 13.95, t);
       grailSimState.camBlend = blendIn * blendOut;
 
-      // Exact pullback overview local target (shared continuously between 4.55..6.0s and 6.0..7.6s)
+      // Sunlit pullback overview local target (shared continuously between 4.45..6.0s and 6.0..7.6s)
+      // -orbitBasis.normal sits on the sunlit hemisphere so the painted gravity globe is brightly illuminated
       tmpPullLook.set(GLOBE_LOCAL_POS[0], GLOBE_LOCAL_POS[1], GLOBE_LOCAL_POS[2]);
       tmpPullCam
         .copy(tmpPullLook)
-        .addScaledVector(orbitBasis.normal, 25.5)
-        .addScaledVector(orbitBasis.right, 13.5)
-        .addScaledVector(orbitBasis.up, 5.2);
+        .addScaledVector(orbitBasis.normal, -22.0)
+        .addScaledVector(orbitBasis.right, 17.0)
+        .addScaledVector(orbitBasis.up, -5.0);
 
       if (t < 6.0) {
-        // Phase 1 (0..4.6s): behind & slightly above Flow looking along Ka-band beam at Ebb + curved Moon (PIA13966)
-        // Phase 2 (4.6..6.0s): pull back smoothly to frame the entire painted gravity globe + glowing red mascons
+        // Phase 1 (0..4.45s): pulled slightly wider behind Flow so BOTH Ebb and Flow fit comfortably inside frame
+        // Phase 2 (4.45..6.0s): pull back smoothly to frame the entire painted gravity globe + glowing red mascons
         const thetaFlow = 0.12 + t * 0.19;
         tmpFlowTan
           .copy(orbitBasis.right)
@@ -1065,16 +1069,16 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
 
         tmpCamWorld
           .copy(tmpFlowPos)
-          .addScaledVector(tmpFlowTan, -4.25)
-          .addScaledVector(tmpFlowRad, 1.05)
-          .addScaledVector(orbitBasis.normal, 1.55);
+          .addScaledVector(tmpFlowTan, -6.4)
+          .addScaledVector(tmpFlowRad, 1.65)
+          .addScaledVector(orbitBasis.normal, -2.65);
 
         tmpLookWorld
           .copy(tmpFlowPos)
-          .lerp(tmpEbbPos, 0.44)
-          .addScaledVector(tmpFlowRad, -0.55);
+          .lerp(tmpEbbPos, 0.48)
+          .addScaledVector(tmpFlowRad, -0.45);
 
-        const pullU = smoothstep(4.55, 5.15, t);
+        const pullU = smoothstep(4.45, 5.05, t);
         if (pullU > 0.001) {
           tmpCamWorld.lerp(tmpPullCam, pullU);
           tmpLookWorld.lerp(tmpPullLook, pullU);
@@ -1082,43 +1086,44 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
         tmpCamWorld.add(ANCHOR_WORLD);
         tmpLookWorld.add(ANCHOR_WORLD);
       } else if (t < 7.6) {
-        // Slew continuously from orbital globe pullback down behind Ebb & Flow descending over the polar ridge
+        // Slew smoothly from orbital globe pullback to an elevated over-shoulder view above the polar ridge
+        // keeping the black sky horizon and descending twins centered and never buried in grey surface
         const u = smoothstep(6.0, 7.6, t);
         tmpCamWorld.set(
-          ANCHOR_WORLD.x + THREE.MathUtils.lerp(tmpPullCam.x, -1.8, u),
-          ANCHOR_WORLD.y + THREE.MathUtils.lerp(tmpPullCam.y, 5.6, u),
-          ANCHOR_WORLD.z + THREE.MathUtils.lerp(tmpPullCam.z, -10.5, u),
+          ANCHOR_WORLD.x + THREE.MathUtils.lerp(tmpPullCam.x, 4.8, u),
+          ANCHOR_WORLD.y + THREE.MathUtils.lerp(tmpPullCam.y, 7.6, u),
+          ANCHOR_WORLD.z + THREE.MathUtils.lerp(tmpPullCam.z, -2.5, u),
         );
         tmpLookWorld.set(
-          ANCHOR_WORLD.x + THREE.MathUtils.lerp(tmpPullLook.x, -1.5, u),
-          ANCHOR_WORLD.y + THREE.MathUtils.lerp(tmpPullLook.y, 2.8, u),
-          ANCHOR_WORLD.z + THREE.MathUtils.lerp(tmpPullLook.z, -9.2, u),
+          ANCHOR_WORLD.x + THREE.MathUtils.lerp(tmpPullLook.x, -0.5, u),
+          ANCHOR_WORLD.y + THREE.MathUtils.lerp(tmpPullLook.y, 5.2, u),
+          ANCHOR_WORLD.z + THREE.MathUtils.lerp(tmpPullLook.z, -11.5, u),
         );
       } else if (t < 11.4) {
-        // Low grazing chase camera swooping along north-polar Goldschmidt slope toward Ebb & Flow impacts
+        // Follow descending pair over the illuminated Goldschmidt slope toward the impact craters
         const u = smoothstep(7.6, 11.4, t);
         tmpCamWorld.set(
-          ANCHOR_WORLD.x + THREE.MathUtils.lerp(-1.8, 2.85, u),
-          ANCHOR_WORLD.y + THREE.MathUtils.lerp(5.6, 2.45, u),
-          ANCHOR_WORLD.z + THREE.MathUtils.lerp(-10.5, 5.4, u),
+          ANCHOR_WORLD.x + THREE.MathUtils.lerp(4.8, 2.85, u),
+          ANCHOR_WORLD.y + THREE.MathUtils.lerp(7.6, 2.55, u),
+          ANCHOR_WORLD.z + THREE.MathUtils.lerp(-2.5, 5.4, u),
         );
         tmpLookWorld.set(
-          ANCHOR_WORLD.x + THREE.MathUtils.lerp(-1.5, -0.1, u),
-          ANCHOR_WORLD.y + THREE.MathUtils.lerp(2.8, 0.55, u),
-          ANCHOR_WORLD.z + THREE.MathUtils.lerp(-9.2, 0.15, u),
+          ANCHOR_WORLD.x + THREE.MathUtils.lerp(-0.5, -0.1, u),
+          ANCHOR_WORLD.y + THREE.MathUtils.lerp(5.2, 0.85, u),
+          ANCHOR_WORLD.z + THREE.MathUtils.lerp(-11.5, 0.15, u),
         );
       } else {
         // Pull smoothly into final rest crater slope framing
         const u = smoothstep(11.4, 13.9, t);
         tmpCamWorld.set(
           THREE.MathUtils.lerp(ANCHOR_WORLD.x + 2.85, REST_CAM_WORLD.x, u),
-          THREE.MathUtils.lerp(ANCHOR_WORLD.y + 2.45, REST_CAM_WORLD.y, u),
+          THREE.MathUtils.lerp(ANCHOR_WORLD.y + 2.55, REST_CAM_WORLD.y, u),
           THREE.MathUtils.lerp(ANCHOR_WORLD.z + 5.4, REST_CAM_WORLD.z, u),
         );
         tmpLookWorld.set(
           THREE.MathUtils.lerp(ANCHOR_WORLD.x - 0.1, REST_LOOK_WORLD.x, u),
-          ANCHOR_WORLD.y + THREE.MathUtils.lerp(0.55, REST_LOOK_WORLD.y - ANCHOR_WORLD.y, u),
-          THREE.MathUtils.lerp(ANCHOR_WORLD.z + 0.15, REST_LOOK_WORLD.z, u),
+          ANCHOR_WORLD.y + THREE.MathUtils.lerp(0.85, REST_LOOK_WORLD.y - ANCHOR_WORLD.y, u),
+          ANCHOR_WORLD.z + THREE.MathUtils.lerp(0.15, REST_LOOK_WORLD.z, u),
         );
       }
 
@@ -1129,83 +1134,85 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
 
   return (
     <group>
-      {/* ─── NORTH-POLAR GOLDSCHMIDT MOUNTAIN SLOPE TO HORIZON (NO PLINTH, ZERO DOT GRID) ─── */}
-      <mesh
-        name="diorama-terrain"
-        geometry={terrainGeo}
-        material={terrainMat}
-        position={[0, SURFACE_Y, 0]}
-        receiveShadow
-      />
-
-      {/* Instanced dense deeply-seated soil-toned pebbles + boulders (strictly ZERO tracks/bootprints) */}
-      <InstancedLandscapeRocks
-        planet="moon"
-        anchorXZ={[ANCHOR_WORLD.x, ANCHOR_WORLD.z]}
-        count={budget.tier === "high" ? 520 : budget.tier === "medium" ? 280 : 120}
-        seed={1219}
-        maxRadius={15}
-        clearRadius={2.6}
-        scaleRange={[0.026, 0.1]}
-        scalePower={1.75}
-        embedOffset={-0.18}
-        moonCraters={GRAIL_CRATERS}
-        maxLocalHeight={1.65}
-        castShadows={false}
-        surfaceY={SURFACE_Y}
-        heightFn={getPolarFullHeight}
-      />
-      <InstancedLandscapeRocks
-        planet="moon"
-        anchorXZ={[ANCHOR_WORLD.x, ANCHOR_WORLD.z]}
-        count={budget.tier === "high" ? 110 : budget.tier === "medium" ? 65 : 30}
-        seed={1203}
-        maxRadius={25}
-        clearRadius={2.8}
-        scaleRange={[0.14, 0.42]}
-        scalePower={2.35}
-        embedOffset={-0.12}
-        moonCraters={GRAIL_CRATERS}
-        maxLocalHeight={1.8}
-        surfaceY={SURFACE_Y}
-        heightFn={getPolarFullHeight}
-      />
-
-      {/* Impact Crater A (Ebb / GRAIL-A) sharp radial dark basaltic ejecta rays */}
-      <mesh
-        ref={craterARef}
-        name="grail-ejecta-a"
-        position={[IMPACT_A_LOCAL[0], SURFACE_Y + IMPACT_A_LOCAL[1] - 0.02, IMPACT_A_LOCAL[2]]}
-        rotation={[-Math.PI / 2 + 0.16, 0, 0.25]}
-      >
-        <planeGeometry args={[2.95, 2.95]} />
-        <meshBasicMaterial
-          map={ejectaTex}
-          transparent
-          opacity={0.9}
-          depthWrite={false}
-          polygonOffset
-          polygonOffsetFactor={-1}
+      {/* ─── NORTH-POLAR GOLDSCHMIDT MOUNTAIN SLOPE TO HORIZON (hidden during orbital globe phase) ─── */}
+      <group ref={surfaceGroupRef}>
+        <mesh
+          name="diorama-terrain"
+          geometry={terrainGeo}
+          material={terrainMat}
+          position={[0, SURFACE_Y, 0]}
+          receiveShadow
         />
-      </mesh>
 
-      {/* Impact Crater B (Flow / GRAIL-B) sharp radial dark basaltic ejecta rays */}
-      <mesh
-        ref={craterBRef}
-        name="grail-ejecta-b"
-        position={[IMPACT_B_LOCAL[0], SURFACE_Y + IMPACT_B_LOCAL[1] - 0.02, IMPACT_B_LOCAL[2]]}
-        rotation={[-Math.PI / 2 + 0.16, 0, -0.35]}
-      >
-        <planeGeometry args={[2.95, 2.95]} />
-        <meshBasicMaterial
-          map={ejectaTex}
-          transparent
-          opacity={0.9}
-          depthWrite={false}
-          polygonOffset
-          polygonOffsetFactor={-1}
+        {/* Instanced dense deeply-seated soil-toned pebbles + boulders (strictly ZERO tracks/bootprints) */}
+        <InstancedLandscapeRocks
+          planet="moon"
+          anchorXZ={[ANCHOR_WORLD.x, ANCHOR_WORLD.z]}
+          count={budget.tier === "high" ? 520 : budget.tier === "medium" ? 280 : 120}
+          seed={1219}
+          maxRadius={15}
+          clearRadius={2.6}
+          scaleRange={[0.026, 0.1]}
+          scalePower={1.75}
+          embedOffset={-0.18}
+          moonCraters={GRAIL_CRATERS}
+          maxLocalHeight={1.65}
+          castShadows={false}
+          surfaceY={SURFACE_Y}
+          heightFn={getPolarFullHeight}
         />
-      </mesh>
+        <InstancedLandscapeRocks
+          planet="moon"
+          anchorXZ={[ANCHOR_WORLD.x, ANCHOR_WORLD.z]}
+          count={budget.tier === "high" ? 110 : budget.tier === "medium" ? 65 : 30}
+          seed={1203}
+          maxRadius={25}
+          clearRadius={2.8}
+          scaleRange={[0.14, 0.42]}
+          scalePower={2.35}
+          embedOffset={-0.12}
+          moonCraters={GRAIL_CRATERS}
+          maxLocalHeight={1.8}
+          surfaceY={SURFACE_Y}
+          heightFn={getPolarFullHeight}
+        />
+
+        {/* Impact Crater A (Ebb / GRAIL-A) sharp radial dark basaltic ejecta rays */}
+        <mesh
+          ref={craterARef}
+          name="grail-ejecta-a"
+          position={[IMPACT_A_LOCAL[0], SURFACE_Y + IMPACT_A_LOCAL[1] - 0.02, IMPACT_A_LOCAL[2]]}
+          rotation={[-Math.PI / 2 + 0.16, 0, 0.25]}
+        >
+          <planeGeometry args={[2.95, 2.95]} />
+          <meshBasicMaterial
+            map={ejectaTex}
+            transparent
+            opacity={0.9}
+            depthWrite={false}
+            polygonOffset
+            polygonOffsetFactor={-1}
+          />
+        </mesh>
+
+        {/* Impact Crater B (Flow / GRAIL-B) sharp radial dark basaltic ejecta rays */}
+        <mesh
+          ref={craterBRef}
+          name="grail-ejecta-b"
+          position={[IMPACT_B_LOCAL[0], SURFACE_Y + IMPACT_B_LOCAL[1] - 0.02, IMPACT_B_LOCAL[2]]}
+          rotation={[-Math.PI / 2 + 0.16, 0, -0.35]}
+        >
+          <planeGeometry args={[2.95, 2.95]} />
+          <meshBasicMaterial
+            map={ejectaTex}
+            transparent
+            opacity={0.9}
+            depthWrite={false}
+            polygonOffset
+            polygonOffsetFactor={-1}
+          />
+        </mesh>
+      </group>
 
       {/* Brief soft additive hypervelocity impact flash sprites (no opaque ball) */}
       <sprite
@@ -1253,51 +1260,6 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
         />
       </points>
 
-      {/* Faint non-shadow-casting holographic wireframes indicating Ebb & Flow's final descent trajectories */}
-      <group ref={restGhostsRef}>
-        {[-1, 1].map((side) => {
-          const base = side < 0 ? IMPACT_A_LOCAL : IMPACT_B_LOCAL;
-          return (
-            <group
-              key={side}
-              position={[base[0] - 0.32, SURFACE_Y + base[1] + 1.25, base[2] - 0.65]}
-              rotation={[0.28, 0.2, -0.08]}
-              scale={0.56}
-            >
-              <mesh name="grail-ghost-bus" castShadow={false} receiveShadow={false}>
-                <boxGeometry args={[0.95, 1.09, 0.76]} />
-                <meshBasicMaterial
-                  color="#9DB8FF"
-                  wireframe
-                  transparent
-                  opacity={0.13}
-                  depthWrite={false}
-                />
-              </mesh>
-              <mesh name="grail-ghost-wing-top" position={[0, 1.07, -0.04]} castShadow={false} receiveShadow={false}>
-                <boxGeometry args={[1.04, 0.88, 0.03]} />
-                <meshBasicMaterial
-                  color="#9DB8FF"
-                  wireframe
-                  transparent
-                  opacity={0.11}
-                  depthWrite={false}
-                />
-              </mesh>
-              <mesh name="grail-ghost-wing-bot" position={[0, -1.07, -0.04]} castShadow={false} receiveShadow={false}>
-                <boxGeometry args={[1.04, 0.88, 0.03]} />
-                <meshBasicMaterial
-                  color="#9DB8FF"
-                  wireframe
-                  transparent
-                  opacity={0.11}
-                  depthWrite={false}
-                />
-              </mesh>
-            </group>
-          );
-        })}
-      </group>
 
       {/* ─── ORBITAL MAPPING STAGE: MOON GLOBE + SWATH-BY-SWATH GRAVITY SHADER + MASCON GLOW ─── */}
       <group ref={globeGroupRef} position={GLOBE_LOCAL_POS} visible={false}>

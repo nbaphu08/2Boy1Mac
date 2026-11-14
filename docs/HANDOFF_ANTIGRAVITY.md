@@ -471,3 +471,13 @@ Merged; 0 console errors; full-journey max frame 100 ms. Grid `docs/antigravity/
 3. **Globe phase (t ≈ 1–3 s):** the GRAIL site's white surface slab pokes out behind/below the globe — hide the local terrain while the globe is shown.
 4. **t ≈ 1 s:** the leading twin is half cut off at the right edge — frame both twins fully.
 Do NOT generate posters.
+
+## AG-14b (`ag/14b-grail-fixes`, 4 review fixes in `GrailSimulation.tsx`)
+
+1. **`t ≈ 5 s` globe-to-descent transition & lighting**: Moved orbital pullback camera (`tmpPullCam`) onto the sunlit hemisphere (`-orbitBasis.normal * 22.0 + orbitBasis.right * 17.0 - orbitBasis.up * 5.0`), extended orbital twin tracking cleanly to `t < 6.0 s`, and elevated the descent slew (`[4.8, 7.6, -2.5]` looking toward `[-0.5, 5.2, -11.5]`) with raised descent start points (`startEbb`, `startFlow`) so the black sky horizon and descending twins stay cleanly centered above the ridge.
+2. **Removed rest wireframe ghosts**: Deleted `<group ref={restGhostsRef}>` and its ref/logic so only the Goldschmidt crater slope and the two radial dark-ejecta craters remain at rest.
+3. **Hid local terrain during orbital globe phase (`0–5.9 s`)**: Wrapped `diorama-terrain`, both `<InstancedLandscapeRocks>`, `craterARef`, and `craterBRef` inside `<group ref={surfaceGroupRef}>` and set `visible = !(st.playing && t < 5.9)` so zero white horizon/terrain slab pokes out behind the gravity globe.
+4. **Full framing of both twins (`t ≈ 1 s`)**: Pulled the orbital chase camera wider (`-6.4 * tmpFlowTan + 1.65 * tmpFlowRad - 2.65 * orbitBasis.normal`) and centered `tmpLookWorld` between `Flow` and `Ebb` (`0.48`) so both spacecraft stay completely inside the viewport.
+5. **Verification**: `npx tsc --noEmit`, `npx eslint components/journey/three` (0 errors, 0 warnings), and `npx next build --webpack` (`36/36` routes) all exited `0`; zero posters generated or modified.
+
+**Files changed:** `components/journey/three/GrailSimulation.tsx`, `docs/HANDOFF_ANTIGRAVITY.md`.
