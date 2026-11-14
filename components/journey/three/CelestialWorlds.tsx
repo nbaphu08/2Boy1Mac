@@ -500,12 +500,12 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
     if (moonRef.current) {
       // Continuous space -> Moon landing (6.25..7.55) and Moon -> Mars departure (12.22..13.5)
       const approachVis = smoothstep(6.25, 6.85, p) * (1 - smoothstep(7.24, 7.56, p));
-      const departVis = smoothstep(12.22, 12.6, p) * (1 - smoothstep(13.3, 14.2, p));
+      const departVis = smoothstep(12.6, 12.85, p) * (1 - smoothstep(13.3, 14.2, p)); // Opus: only after the lunar surface is gone (no double Moon)
       const moonVis = Math.max(approachVis, departVis);
       moonRef.current.visible = moonVis > 0.01;
       if (moonRef.current.visible) {
         // Flattening glide during lunar descent (7.02..7.55): expand curvature and settle below horizon before fading out
-        const landBlend = p < 10 ? smoothstep(7.02, 7.55, p) : 1 - smoothstep(12.22, 12.68, p);
+        const landBlend = p < 10 ? smoothstep(7.02, 7.55, p) : 1 - smoothstep(12.6, 12.85, p);
         const flatRadius = WORLD_ANCHORS.moonRadius * 2.18;
         moonRef.current.position.set(
           THREE.MathUtils.lerp(WORLD_ANCHORS.moonCenter[0], 5.5, landBlend),

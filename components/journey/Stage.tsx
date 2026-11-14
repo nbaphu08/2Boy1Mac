@@ -289,7 +289,7 @@ export default function Stage() {
         if (off > 0.015 && off < 0.5) {
           lenis.scrollTo((nearest - MIN_BEAT) * Math.max(window.innerHeight, 1), { duration: 0.9 });
         }
-      }, 220);
+      }, 650);
     };
     lenis?.on("scroll", onLenisSettle);
 
