@@ -218,3 +218,26 @@ See `GEMINI.md` §1–2 (architecture). Merged to `main` in commit a5633df.
   1. **Moon spotlight cones** now read as a milky grey glass dome over every Moon diorama (brighter after tonemapping/bloom) — they are removed in 9b anyway; make sure none remain.
   2. **ESM engine plume at `deep-space`** is a huge bright blue cone dominating the frame. A vacuum plume from Orion's service-module engine is nearly invisible: make it a short, faint, mostly transparent glow (no long cone).
   3. Posters will be re-captured by Opus after 9b, not now.
+
+## AG-10 — GRAIL Ebb & Flow Simulation + Mars Pathfinder Rebuild — branch `ag/10-grail-pathfinder`
+**Done (also serves as AG-9b continuous horizon landscape pilot — no plinth, no spotlight cone):**
+1. **AG-9a Review Fixes (`ExhibitStage3D.tsx`, `SLSRocket.tsx`)**:
+   - Removed volumetric spotlight cones (`coneRef`) from all Moon dioramas (`!isMoon`) and from both AG-9b pilot beats (`!isPilot`).
+   - Replaced the large bright blue `vacuumPlumeRef` cones on Orion's ESM (`deep-space`) with a short, faint, mostly transparent nozzle-lip throat glow + minimal expansion bell.
+2. **Part 1 · GRAIL 14 s Simulation (`GrailSimulation.tsx`, `simulationBus.ts`, `MoonDioramas.tsx`, `SpaceScene.tsx`, `RenderPipeline.tsx`)**:
+   - Added NASA SVS 4014 free-air gravity map (`public/media/three/grail/grail_gravity_4k.webp` for `high`, `grail_gravity_2k.webp` for `medium`/`low`; credit: **NASA/ARC-MIT/JPL-Caltech/GSFC**, public domain).
+   - Auto-plays when settled on beat 12 (`|p - 12| < 0.05` for `0.4 s`), cleanly interrupted & reset on scroll away; `reducedMotion` shows static final rest craters.
+   - Sequence: **0–6 s Mapping** (orbital Moon globe + polar-orbiting PIA13965 Ebb & Flow with `#9DB8FF` Ka-band ranging beam painting the gravity map swath-by-swath + soft HDR mascon glow; `low` tier skips swath stripes and fades in) → **6–11 s Descent** (grazing low polar approach over the ~2.5 km north-polar Goldschmidt mountain slope) → **11–13 s Impacts** (Ebb then Flow hit with HDR flashes & clean conic vacuum ballistic ejecta falling back onto the regolith) → **13 s → Rest** (slope to the horizon with both ~5 m dark-ejecta craters & faint wireframe ghosts).
+   - **Replay API for Sonnet (`components/journey/three/simulationBus.ts`)**: `replayGrailSim(): void` and `subscribeGrailReplay(listener: () => void): () => void` (plus live state `grailSimState`).
+3. **Part 2 · Mars Pathfinder + Sojourner Rebuild (`PathfinderLandscape.tsx`, `MarsDioramas.tsx`, `trajectory.ts`)**:
+   - Continuous 148×148 m Ares Vallis flood plain extending to a butterscotch haze horizon + distant **Twin Peaks** hills (`PIA00632`) with procedural fine soil (zero dot grid) and instanced fractured angular basalt rocks coated with rusty dust on upward-facing normals.
+   - Rebuilt **Pathfinder lander** (~2.75 m open span): 3 flat triangular petals covered in glossy dark blue-black GaAs solar cells with silver grid lines, **crumpled matte off-white/tan deflated Vectran airbags** tucked low against/underneath the petal edges (`PIA00614`), ~1.5 m IMP stereo camera mast, ASI/MET weather mast with 3 tiny windsocks, HGA/LGA antennas, and 2 unrolled corrugated rover ramps.
+   - Rebuilt **Sojourner** (`65 × 48 × 30 cm`, 6 cleated aluminum wheels on rocker-bogie struts, gold Kapton WEB, top solar panel, APXS head touching **Yogi** rock preserving AG-2c scale/position, plus curved wheel tracks from ramp to Yogi) lit by a low warm Martian sun casting long shadows.
+4. **Guards & verification**: Zero changes to `MarsModels.tsx` or `public/media/three/posters/`. `npx tsc --noEmit`, `npx eslint components/journey/three`, and `npx next build --webpack` pass. **WebGL screenshot capture did not run in headless sandbox — Opus can verify beats 7, 8–12, and 15 before merging.**
+
+**Files changed:**
+- `public/media/three/grail/grail_gravity_{2k,4k}.webp` (new)
+- `components/journey/three/simulationBus.ts`, `GrailSimulation.tsx`, `PathfinderLandscape.tsx` (new)
+- `components/journey/three/ExhibitStage3D.tsx`, `SLSRocket.tsx`, `MoonDioramas.tsx`, `MarsDioramas.tsx`, `SpaceScene.tsx`, `RenderPipeline.tsx`, `trajectory.ts`
+- `docs/HANDOFF_ANTIGRAVITY.md`
+

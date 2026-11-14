@@ -150,10 +150,10 @@ export const BEAT_POSES: BeatPose[] = [
     rocketRot: [-0.2, 0.7, 0.12],
     rocketScale: 0.42,
   },
-  // 15: mars-pathfinder (SM-M-002) — Ares Vallis (tetrahedral lander + Sojourner + craggy Yogi rock)
+  // 15: mars-pathfinder (SM-M-002) — Ares Vallis flood plain (opened 2.75 m lander + deflated airbags + Sojourner/Yogi + Twin Peaks horizon)
   {
-    camPos: [-6.35, 481.35, -366.1],
-    camLook: [-8.35, 480.08, -371.0],
+    camPos: [-6.15, 481.12, -366.2],
+    camLook: [-8.28, 480.28, -371.1],
     rocketPos: [-24, 500, -388],
     rocketRot: [-0.25, 0.85, 0.1],
     rocketScale: 0.4,

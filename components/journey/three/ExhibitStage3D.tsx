@@ -230,6 +230,7 @@ function SingleExhibitPlinth({
   }, [hovered]);
 
   const isMoon = anchor?.planet === "moon";
+  const isPilot = exhibit.slug === "moon-grail" || exhibit.slug === "mars-pathfinder";
 
   useFrame((_, delta) => {
     const p = scrollState.current;
@@ -246,9 +247,9 @@ function SingleExhibitPlinth({
     rootRef.current.visible = vis > 0.01;
     if (!rootRef.current.visible) return;
 
-    rootRef.current.scale.setScalar(0.76 + 0.24 * vis);
+    rootRef.current.scale.setScalar(isPilot ? 1 : 0.76 + 0.24 * vis);
 
-    if (spinRef.current && !reducedMotion) {
+    if (spinRef.current && !reducedMotion && !isPilot) {
       elapsedRef.current += Math.min(delta, 0.05);
       // Subtle diorama presentation sway so mountain/plateau backdrops remain oriented toward camera
       spinRef.current.rotation.y = Math.sin(elapsedRef.current * 0.28 + beatIndex) * 0.08;
@@ -260,7 +261,7 @@ function SingleExhibitPlinth({
     }
     if (coneRef.current) {
       const mat = coneRef.current.material as THREE.MeshBasicMaterial;
-      mat.opacity = (isMoon ? 0.065 : 0.028) * vis * boost;
+      mat.opacity = 0.028 * vis * boost;
     }
   });
 
@@ -281,33 +282,37 @@ function SingleExhibitPlinth({
       }}
       onPointerOut={() => setHovered(false)}
     >
-      {/* Cold museum spotlight (#DCE6FF) kept as the shared museum language across Hall I & Hall II */}
-      <spotLight
-        ref={spotRef}
-        position={[0, 6.4, 1.35]}
-        angle={0.56}
-        penumbra={0.85}
-        intensity={isMoon ? 58 : 54}
-        distance={18}
-        color="#DCE6FF"
-      />
-
-      {/* Volumetric spotlight beam */}
-      <mesh
-        ref={coneRef}
-        position={[0, 3.2, 0.42]}
-        rotation={[0.15, 0, 0]}
-      >
-        <coneGeometry args={[3.35, 6.2, 28, 1, true]} />
-        <meshBasicMaterial
+      {/* Cold museum spotlight (#DCE6FF) — omitted on Moon/AG-9b pilot landscapes to prevent milky dome artifacts */}
+      {!isPilot ? (
+        <spotLight
+          ref={spotRef}
+          position={[0, 6.4, 1.35]}
+          angle={0.56}
+          penumbra={0.85}
+          intensity={isMoon ? 42 : 54}
+          distance={18}
           color="#DCE6FF"
-          transparent
-          opacity={isMoon ? 0.065 : 0.06}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          side={THREE.DoubleSide}
         />
-      </mesh>
+      ) : null}
+
+      {/* Volumetric spotlight cone removed on Moon dioramas (AG-9a review) and AG-9b landscape pilots */}
+      {!isMoon && !isPilot ? (
+        <mesh
+          ref={coneRef}
+          position={[0, 3.2, 0.42]}
+          rotation={[0.15, 0, 0]}
+        >
+          <coneGeometry args={[3.35, 6.2, 28, 1, true]} />
+          <meshBasicMaterial
+            color="#DCE6FF"
+            transparent
+            opacity={0.028}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      ) : null}
 
       <group ref={spinRef}>
         {isMoon ? (

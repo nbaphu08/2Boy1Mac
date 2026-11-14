@@ -927,26 +927,31 @@ export function SLSRocket({
             );
           })}
 
-          {/* Translucent Blue-White ESM Main Engine Vacuum Plume (TLI & Lunar/Mars Insertion) */}
+          {/* Short, faint, mostly transparent ESM vacuum glow (AJ10-190 nozzle in vacuum) */}
           <group ref={vacuumPlumeRef} position={[0, -0.8, 0]} visible={false}>
-            <SoftPlumeCone
-              radius={0.48}
-              height={2.6}
-              segments={20}
-              position={[0, -1.3, 0]}
-              color="#7FA8FF"
-              opacity={0.85}
-              timeRef={elapsedRef}
-            />
-            <SoftPlumeCone
-              radius={0.22}
-              height={1.4}
-              segments={16}
-              position={[0, -0.7, 0]}
-              color="#FFFFFF"
-              opacity={0.96}
-              timeRef={elapsedRef}
-            />
+            {/* Subtle warm-lavender throat glow right at the nozzle lip */}
+            <mesh position={[0, -0.06, 0]}>
+              <sphereGeometry args={[0.11, 14, 12]} />
+              <meshBasicMaterial
+                color="#B8D0FF"
+                transparent
+                opacity={0.28}
+                depthWrite={false}
+                blending={THREE.AdditiveBlending}
+              />
+            </mesh>
+            {/* Short very faint diffused expansion bell (no dominant cone) */}
+            <mesh position={[0, -0.28, 0]} rotation={[Math.PI, 0, 0]}>
+              <coneGeometry args={[0.2, 0.48, 16, 1, true]} />
+              <meshBasicMaterial
+                color="#8EB2FF"
+                transparent
+                opacity={0.1}
+                depthWrite={false}
+                blending={THREE.AdditiveBlending}
+                side={THREE.DoubleSide}
+              />
+            </mesh>
           </group>
 
           {/* RCS Attitude Control Nitrogen/Hydrazine Puffs during Lunar Orbit Insertion */}

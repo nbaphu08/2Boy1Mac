@@ -8,13 +8,12 @@ import {
   Apollo11SiteProps,
   ClippedLmTopCap,
   DistantApolloLmSilhouette,
-  GrailTwinHolograms,
   LunarRovingVehicleModel,
   Surveyor3Model,
   getBootprintTrailTexture,
-  getDarkEjectaTexture,
   getRoverTrackTexture,
 } from "./MoonModels";
+import { GrailSimulation } from "./GrailSimulation";
 
 export const DIORAMA_SURFACE_Y = 0.22;
 
@@ -371,8 +370,12 @@ export function HallOneLunarDiorama({
   const { map: regolithMap, bumpMap: regolithBump } = useMemo(() => getLunarRegolithTextures(), []);
   const bootprintTex = useMemo(() => getBootprintTrailTexture(), []);
   const roverTrackTex = useMemo(() => getRoverTrackTexture(), []);
-  const ejectaTex = useMemo(() => getDarkEjectaTexture(), []);
   const terrainGeo = useMemo(() => createLunarTerrainGeometry(slug), [slug]);
+
+  // AG-10 / AG-9b pilot: moon-grail renders its own continuous horizon polar mountain slope + 14 s simulation (no plinth)
+  if (slug === "moon-grail") {
+    return <GrailSimulation reducedMotion={reducedMotion} />;
+  }
 
   return (
     <group>
@@ -576,43 +579,6 @@ export function HallOneLunarDiorama({
           <group position={[1.28, DIORAMA_SURFACE_Y, 0.82]} rotation={[0, -0.78, 0]}>
             <LunarRovingVehicleModel scale={0.56} />
           </group>
-        </group>
-      ) : null}
-
-      {/* ─── SITE 5: SM-L-005 · GRAIL EBB & FLOW (Mountain slope, two ~5 m craters + dark ejecta, twin ghost holograms) ─── */}
-      {slug === "moon-grail" ? (
-        <group>
-          {/* Sculpted ~2.5 km polar mountain massif crest at top of southern slope (AG-1b #7) */}
-          <SculptedLunarMassif
-            position={[0, DIORAMA_SURFACE_Y + 0.18, -2.05]}
-            rotation={[0, 0.08, 0]}
-            width={4.6}
-            depth={1.85}
-            height={1.42}
-            seed={53}
-            color="#524E49"
-          />
-
-          {/* Crater A (Ebb / GRAIL-A) ~5 m impact crater + faint dark ejecta rays */}
-          <mesh
-            position={[-0.95, DIORAMA_SURFACE_Y + 0.16, 0.35]}
-            rotation={[-Math.PI / 2 + 0.18, 0, 0.2]}
-          >
-            <planeGeometry args={[1.75, 1.75]} />
-            <meshBasicMaterial map={ejectaTex} transparent opacity={0.88} depthWrite={false} />
-          </mesh>
-
-          {/* Crater B (Flow / GRAIL-B) ~5 m impact crater + faint dark ejecta rays */}
-          <mesh
-            position={[1.05, DIORAMA_SURFACE_Y + 0.28, -0.32]}
-            rotation={[-Math.PI / 2 + 0.18, 0, -0.4]}
-          >
-            <planeGeometry args={[1.75, 1.75]} />
-            <meshBasicMaterial map={ejectaTex} transparent opacity={0.88} depthWrite={false} />
-          </mesh>
-
-          {/* Translucent "Ghost" Holograms of Twin Spacecraft Ebb & Flow above the impact craters */}
-          <GrailTwinHolograms reducedMotion={reducedMotion} />
         </group>
       ) : null}
     </group>
