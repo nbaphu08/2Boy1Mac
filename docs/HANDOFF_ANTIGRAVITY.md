@@ -185,3 +185,6 @@ See `GEMINI.md` §1–2 (architecture). Merged to `main` in commit a5633df.
 
 **Files changed:**
 - `components/journey/three/trajectory.ts`, `LaunchComplex.tsx`, `CelestialWorlds.tsx`, `SLSRocket.tsx`, `docs/HANDOFF_ANTIGRAVITY.md`
+
+## Opus review — AG-8b accepted (15/11)
+- ascent-1 horizon and deep-space Orion + ESM verified in real WebGL. Opus added one fix: launch complex hidden from p 3.6 (VAB still stood on the cloud deck at ascent-2). Posters for enter…deep-space re-captured. Poster mode now lives at `/journey?poster=<id>` (landing/journey split).
