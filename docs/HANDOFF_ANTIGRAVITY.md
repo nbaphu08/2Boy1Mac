@@ -463,3 +463,11 @@ If anything is not finished by 12:00, hand off what is stable and stop. Do NOT g
 3. **Verification**: Verified `npx tsc --noEmit`, `npx eslint components/journey/three` (0 errors, 0 warnings), and `npx next build --webpack` (`36/36` routes) pass cleanly; zero posters generated or modified.
 
 **Files changed:** `components/journey/three/GrailSimulation.tsx`, `components/journey/three/RenderPipeline.tsx`, `docs/HANDOFF_ANTIGRAVITY.md`.
+
+## Opus review — AG-14 accepted, AG-14b small fixes (15/11)
+Merged; 0 console errors; full-journey max frame 100 ms. Grid `docs/antigravity/shots/review-AG14-grail.jpg` (t = 1, 3, 5, 6.5, 8.5, 10.5, 11.4, 12.2, 15 s after settling on beat 12). The twins now read like PIA12009 and the painted gravity globe is great. **AG-14b (branch `ag/14b-grail-fixes`, ≤ 45 min):**
+1. **t ≈ 5 s:** the camera is buried/too close to the ground — the whole frame is flat grey texture. Keep the horizon and the twins in frame during the transition from globe to descent.
+2. **Rest ghosts:** the wireframe "ghosts" read as stacked glitch boxes — remove them (the two craters are the subject).
+3. **Globe phase (t ≈ 1–3 s):** the GRAIL site's white surface slab pokes out behind/below the globe — hide the local terrain while the globe is shown.
+4. **t ≈ 1 s:** the leading twin is half cut off at the right edge — frame both twins fully.
+Do NOT generate posters.
