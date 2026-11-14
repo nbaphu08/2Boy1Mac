@@ -406,3 +406,9 @@ Do NOT generate posters.
 6. **Verification**: Verified `npx tsc --noEmit`, `npx eslint components/journey/three`, and `npx next build --webpack` pass cleanly; zero posters generated or modified.
 
 **Files changed:** `GrailSimulation.tsx`, `MoonDioramas.tsx`, `RenderPipeline.tsx`, `SpaceScene.tsx`, `landscapeMaterials.tsx`, `trajectory.ts`, `docs/HANDOFF_ANTIGRAVITY.md`.
+
+## Opus review — AG-12b merged, AG-12c last fixes (15/11)
+Grid: `docs/antigravity/shots/review-AG12b-grid.jpg`. Fixed: grain-first regolith (much closer to AS15-86-11603), no Surveyor haze, GRAIL pebbles. **Still open — AG-12c (branch `ag/12c-final`, ≤ 60 min, hard stop 12:00 = feature freeze):**
+1. **Mid-flight black screen (not the veil):** at p ≈ 8.5 (and between the other Moon sites) the frame is almost entirely black with only Earth visible — there is **no ground under the camera between sites** (terrain only exists around each exhibit, or the camera pitches up into the sky). Keep a continuous ground under the camera for the whole low flight (shared Moon terrain, or keep both neighbouring site terrains mounted and cross-fade), camera pitched slightly down at the horizon. Check p = 8.25, 8.5, 8.75, 9.5, 10.5, 11.5 and the Mars equivalents (14.5…19.5).
+2. **Dashes on the massifs** are still there: rows of white (Apollo 15) / dark (Apollo 17) rectangular marks marching up the hill — track/footprint decals or instances projected onto the hill. Remove them from slopes (decals only on flat ground near the hardware).
+If anything is not finished by 12:00, hand off what is stable and stop. Do NOT generate posters.
