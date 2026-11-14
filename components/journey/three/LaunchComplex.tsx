@@ -125,9 +125,9 @@ export function LaunchComplex() {
   useFrame((_, delta) => {
     const p = scrollState.current;
     if (groupRef.current) {
-      groupRef.current.visible = p < 4.4;
+      groupRef.current.visible = p < 3.6; // Opus: hide pad + VAB once climbing (ascent-2 sits on the cloud deck)
     }
-    if (p >= 4.4) return;
+    if (p >= 3.6) return;
     elapsedRef.current += Math.min(delta, 0.05);
 
     // Swing arms retract smoothly before T-0 (progress 1.4 -> 1.92)
@@ -151,15 +151,15 @@ export function LaunchComplex() {
     <group ref={groupRef}>
       {/* ─── LC-39B PAD APRON, COASTLINE, CRAWLERWAY & FLAME TRENCH ─── */}
       <group position={WORLD_ANCHORS.pad}>
-        {/* Atlantic Ocean horizon & Space Coast dune berm behind/east of Pad LC-39B */}
-        <mesh position={[12, -1.78, -28]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow={useShadows}>
-          <circleGeometry args={[360, 48]} />
-          <meshStandardMaterial color="#0A1E36" roughness={0.28} metalness={0.38} />
+        {/* Vast flat Atlantic Ocean stretching to a normal coastal horizon */}
+        <mesh position={[450, -1.85, -150]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow={useShadows}>
+          <planeGeometry args={[4600, 4600]} />
+          <meshStandardMaterial color="#0A2042" roughness={0.32} metalness={0.34} />
         </mesh>
-        {/* Coastal dune scrubland ring around the pad gravel berm */}
-        <mesh position={[-4, -1.52, -4]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow={useShadows}>
-          <ringGeometry args={[48, 86, 48]} />
-          <meshStandardMaterial color="#1A261E" roughness={0.94} metalness={0.04} />
+        {/* Florida Space Coast mainland scrub terrain on the inland/VAB side */}
+        <mesh position={[-380, -1.56, -240]} rotation={[-Math.PI / 2, 0, 0.52]} receiveShadow={useShadows}>
+          <planeGeometry args={[920, 1800]} />
+          <meshStandardMaterial color="#18241C" roughness={0.94} metalness={0.04} />
         </mesh>
 
         {/* Octagonal concrete pad perimeter apron */}
@@ -174,10 +174,19 @@ export function LaunchComplex() {
           />
         </mesh>
 
-        {/* Dual Crawlerway crushed river-rock tracks leading toward VAB */}
+        {/* Crawlerway crushed river-rock causeway leading inland toward VAB */}
+        <mesh position={[-34, -0.92, -59]} rotation={[0, 0.52, 0]} receiveShadow={useShadows}>
+          <boxGeometry args={[8.4, 1.15, 118]} />
+          <meshStandardMaterial color="#25282C" roughness={0.95} metalness={0.04} />
+        </mesh>
         {[-2.4, 2.4].map((tx) => (
-          <mesh key={tx} position={[tx - 8, -0.28, -22]} rotation={[0, 0.52, 0]} receiveShadow={useShadows}>
-            <boxGeometry args={[2.6, 0.08, 42]} />
+          <mesh
+            key={tx}
+            position={[tx * 0.87 - 34, -0.28, -tx * 0.5 - 59]}
+            rotation={[0, 0.52, 0]}
+            receiveShadow={useShadows}
+          >
+            <boxGeometry args={[2.6, 0.08, 118]} />
             <meshStandardMaterial
               map={gravelTex.map}
               bumpMap={gravelTex.bumpMap}
@@ -640,9 +649,9 @@ export function LaunchComplex() {
           </mesh>
         ))}
 
-        {/* KSC Campus Approach Roadway & Dawn Light Poles leading from VAB toward LC-39B */}
-        {[16, 24, 32, 40].map((rz, ri) => (
-          <group key={ri} position={[12 + ri * 1.8, 0, rz]}>
+        {/* KSC Campus Approach Roadway & Dawn Light Poles aligned along Crawlerway toward LC-39B */}
+        {[16, 26, 36, 46].map((rz, ri) => (
+          <group key={ri} position={[12 + ri * 4.5, -1.4, rz * 1.4]}>
             <mesh position={[0, 2.2, 0]}>
               <cylinderGeometry args={[0.05, 0.08, 4.4, 8]} />
               <meshStandardMaterial color="#2A3346" roughness={0.5} metalness={0.7} />

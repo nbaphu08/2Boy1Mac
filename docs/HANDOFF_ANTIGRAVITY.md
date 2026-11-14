@@ -176,3 +176,12 @@ See `GEMINI.md` §1–2 (architecture). Merged to `main` in commit a5633df.
 **Files changed:**
 - `components/journey/three/rocketTextures.ts`, `CelestialWorlds.tsx`, `LaunchComplex.tsx`, `SLSRocket.tsx`, `SpaceScene.tsx`, `trajectory.ts`
 - `docs/HANDOFF_ANTIGRAVITY.md`
+
+## AG-8b — Two Fixes (`ascent-1` & `deep-space`) — branch `ag/8b-fixes`
+**Done:**
+1. **`ascent-1` (beat 3) Launch Complex, Horizon & Cloud Timing (`LaunchComplex.tsx`, `CelestialWorlds.tsx`, `trajectory.ts`)**: Moved `WORLD_ANCHORS.vab` inland along the Crawlerway to `[-72, 0, -125]`, replaced the small `620 m` circular ocean disc with a seamless `4600×4600` flat Atlantic plane + coastal mainland shelf and Crawlerway causeway so the horizon at `ascent-1` is flat and normal, gated `AscentCoastAndCloudDeck` and `earthRef` curvature strictly to `ascent-2` onward (`p >= 3.15` / `3.35`), and framed `BEAT_POSES[3]` just above the 13.7 m ML-1 tower so pad, tower, coast, and flat ocean appear below/behind with zero cloud deck under the VAB.
+2. **`deep-space` (beat 7) Orion + ESM Only (`SLSRocket.tsx`, `trajectory.ts`)**: Kept Core Stage burning through `ascent-4` (`p = 6.0`), then completed MECO (`6.15 -> 6.45`), Core Stage + ICPS separation (`6.22 -> 6.88`, hidden by `p >= 6.92`), and 4-wing X-wing solar deployment (`6.18 -> 6.85`) before beat 7. Identified the small craft over the Moon in `review-AG8-grid.jpg` as Orion + ESM separated `+10.65` units ahead of the lingering Core Stage; added `orionGroupRef` to recenter Orion + ESM cleanly to `[0, 0, 0]` (`6.28 -> 6.92`), upgraded `vacuumPlumeRef` to `SoftPlumeCone`, and framed `BEAT_POSES[7]` (`rocketScale: 1.85`) on Orion + ESM + deployed solar wings + glowing main engine heading to the Moon.
+3. **Guards & verification**: Zero edits to `MarsModels.tsx` or `public/media/three/posters/`. `npx tsc --noEmit`, `npx eslint components/journey/three`, and `npx next build --webpack` pass. **WebGL screenshot capture did not run in sandbox — Opus may re-capture `?poster=ascent-1|deep-space`.**
+
+**Files changed:**
+- `components/journey/three/trajectory.ts`, `LaunchComplex.tsx`, `CelestialWorlds.tsx`, `SLSRocket.tsx`, `docs/HANDOFF_ANTIGRAVITY.md`

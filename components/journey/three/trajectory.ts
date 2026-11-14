@@ -14,7 +14,7 @@ export type BeatPose = {
 
 export const WORLD_ANCHORS = {
   pad: [0, 0, 0] as Vec3,
-  vab: [-28, 0, -48] as Vec3,
+  vab: [-72, 0, -125] as Vec3,
   earthCenter: [0, -140, -10] as Vec3,
   earthRadius: 155,
   moonCenter: [0, 340, -215] as Vec3,
@@ -54,12 +54,12 @@ export const BEAT_POSES: BeatPose[] = [
     rocketRot: [0, 0.08, -0.02],
     rocketScale: 1,
   },
-  // 3: ascent-1 — Clear the tower, Space Coast shoreline & cumulus deck dropping below
+  // 3: ascent-1 — Just cleared ML-1 tower: pad/tower/coastal horizon visible below & behind, normal flat ocean horizon
   {
-    camPos: [14, 59, 22],
-    camLook: [1.5, 49, -4],
-    rocketPos: [1.5, 52, -3],
-    rocketRot: [-0.08, 0.1, -0.14],
+    camPos: [23, 19.5, 37],
+    camLook: [-1.5, 16.5, -5.0],
+    rocketPos: [0.8, 18.5, -1.2],
+    rocketRot: [-0.04, 0.08, -0.06],
     rocketScale: 1,
   },
   // 4: ascent-2 — Max-Q supersonic pitch-over with vapor collar & ocean clouds receding below
@@ -86,13 +86,13 @@ export const BEAT_POSES: BeatPose[] = [
     rocketRot: [-0.65, 0.15, -0.82],
     rocketScale: 0.92,
   },
-  // 7: deep-space — Core separation, Orion solar wings deploy, TLI burn toward Moon
+  // 7: deep-space — Core stage separated; Orion + ESM with 4 solar arrays deployed & main engine glow heading to Moon
   {
-    camPos: [9, 294, -112],
-    camLook: [2, 318, -178],
-    rocketPos: [6, 298, -124],
-    rocketRot: [-0.88, 0.05, -0.25],
-    rocketScale: 0.72,
+    camPos: [9.5, 303, -113.5],
+    camLook: [2.5, 314, -158],
+    rocketPos: [7.6, 305.2, -124],
+    rocketRot: [-0.86, 0.22, -0.32],
+    rocketScale: 1.85,
   },
   // 8: moon-apollo-11 (SM-L-001) — Descending to Sea of Tranquility diorama (Eagle descent stage only, EASEP, LRRR + green laser)
   {
