@@ -22,6 +22,7 @@ Rules as before: edit only `components/journey/three/**` + `public/media/three/*
 - Lazy-load exhibit GLBs only when within ±2 beats; dispose far ones on low tier.
 - `reducedMotion`: no camera micro-orbit, no particles, minimal motion (camera still follows scroll).
 - Targets: ≥ 55 fps M1 @1440×900, ≥ 30 fps iPhone 12-class. Report measured numbers.
+- **From Sonnet's S-6 baseline (must fix):** replace deprecated `THREE.Clock` (warning on every load); find and remove the `readPixels` GPU readback ("GPU stall due to ReadPixels"); pause the R3F loop when `document.hidden` (`frameloop="never"` or `setFrameloop`), since gsap sleep does not stop R3F; under `reducedMotion` snap `scrollState.current` to `target` (no damping drift), no plume/particle/camera micro-motion.
 
 ## AG-7 — Poster renders · target Sun 15:30
 - Render a clean still (no DOM UI) for **each of the 24 beats** and **each of the 12 exhibits** at **1920×1080** and **1080×1350**, AVIF + JPG, into `public/media/three/posters/<beatId|slug>-<w>x<h>.{avif,jpg}`.
