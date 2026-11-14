@@ -176,13 +176,11 @@ function AscentSkyDome() {
 }
 
 /**
- * Ascent visual context (beats 2..5): Florida Space Coast shoreline + two parallax cloud decks
- * dropping away below the vehicle before giving way to space black & curved Earth in beat 6.
+ * Ascent cloud decks (beats 4..5, ascent-2 onward): two parallax cloud layers
+ * fading in cleanly above the launchpad only after ascent-1 (p >= 3.15).
  */
 function AscentCoastAndCloudDeck() {
   const groupRef = useRef<THREE.Group>(null);
-  const coastMatRef = useRef<THREE.MeshBasicMaterial>(null);
-  const oceanMatRef = useRef<THREE.MeshStandardMaterial>(null);
   const cloudLowMatRef = useRef<THREE.MeshBasicMaterial>(null);
   const cloudHighMatRef = useRef<THREE.MeshBasicMaterial>(null);
   const cloudTex = useMemo(() => getCloudLayerTexture(), []);
@@ -190,59 +188,26 @@ function AscentCoastAndCloudDeck() {
   useFrame(() => {
     const p = scrollState.current;
     if (!groupRef.current) return;
-    const active = p >= 1.5 && p <= 6.2;
+    const active = p >= 3.15 && p <= 6.2;
     groupRef.current.visible = active;
     if (!active) return;
 
-    // Fade in once camera pitches up around liftoff / ascent-1, fade out before Earth limb beat 6
-    const fadeIn = smoothstep(1.75, 2.55, p);
-    const fadeOut = 1 - smoothstep(4.85, 6.0, p);
-    const vis = fadeIn * fadeOut;
-
-    const duskTint = 1 - smoothstep(2.1, 3.6, p);
-    if (coastMatRef.current) {
-      coastMatRef.current.opacity = vis * 0.9;
-    }
-    if (oceanMatRef.current) {
-      oceanMatRef.current.opacity = vis * 0.94;
-    }
+    const fadeIn = smoothstep(3.2, 3.85, p);
     if (cloudLowMatRef.current) {
-      const cFade = fadeIn * (1 - smoothstep(4.1, 5.2, p));
+      const cFade = fadeIn * (1 - smoothstep(4.35, 5.3, p));
       cloudLowMatRef.current.opacity = cFade * 0.85;
-      cloudLowMatRef.current.color.setRGB(
-        0.92 + duskTint * 0.08,
-        0.93 - duskTint * 0.14,
-        0.98 - duskTint * 0.25,
-      );
     }
     if (cloudHighMatRef.current) {
-      const c2Fade = smoothstep(2.5, 3.3, p) * (1 - smoothstep(4.9, 5.95, p));
+      const c2Fade = smoothstep(3.35, 3.95, p) * (1 - smoothstep(4.95, 5.95, p));
       cloudHighMatRef.current.opacity = c2Fade * 0.72;
     }
   });
 
   return (
     <group ref={groupRef} visible={false}>
-      {/* Atlantic ocean expanse far below the ascent corridor */}
-      <mesh position={[12, -24, -40]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={-6}>
-        <circleGeometry args={[620, 48]} />
-        <meshStandardMaterial
-          ref={oceanMatRef}
-          color="#0F2A54"
-          roughness={0.34}
-          metalness={0.22}
-          transparent
-          opacity={0.9}
-        />
-      </mesh>
-      {/* Florida Space Coast & Banana River coastal shelf silhouette */}
-      <mesh position={[-42, -23.4, -36]} rotation={[-Math.PI / 2, 0, -0.32]} renderOrder={-5}>
-        <circleGeometry args={[145, 36]} />
-        <meshBasicMaterial ref={coastMatRef} color="#17242A" transparent opacity={0.9} />
-      </mesh>
-      {/* Lower cumulus deck (~y=28): drops away quickly during ascent-1 */}
-      <mesh position={[2, 28, -14]} rotation={[-Math.PI / 2, 0, 0.24]} renderOrder={-3}>
-        <planeGeometry args={[280, 280]} />
+      {/* Lower cumulus deck (~y=44): emerges smoothly during ascent-2 */}
+      <mesh position={[4, 44, -14]} rotation={[-Math.PI / 2, 0, 0.24]} renderOrder={-3}>
+        <planeGeometry args={[320, 320]} />
         <meshBasicMaterial
           ref={cloudLowMatRef}
           map={cloudTex}
@@ -252,9 +217,9 @@ function AscentCoastAndCloudDeck() {
           side={THREE.DoubleSide}
         />
       </mesh>
-      {/* High cirrus / anvil deck (~y=78): drops away during ascent-2 & ascent-3 */}
-      <mesh position={[8, 78, -28]} rotation={[-Math.PI / 2, 0, -0.58]} renderOrder={-3}>
-        <planeGeometry args={[360, 360]} />
+      {/* High cirrus / anvil deck (~y=82): drops away during ascent-2 & ascent-3 */}
+      <mesh position={[8, 82, -28]} rotation={[-Math.PI / 2, 0, -0.58]} renderOrder={-3}>
+        <planeGeometry args={[380, 380]} />
         <meshBasicMaterial
           ref={cloudHighMatRef}
           map={cloudTex}
@@ -478,9 +443,9 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
     const spin = reducedMotion ? 0 : delta * 0.014;
 
     if (earthRef.current) {
-      // AG-8 / AG-5: Bring curved blue Earth limb smoothly into view in upper ascent (beat 6),
-      // then shrink and recede behind Orion during Trans-Lunar Injection (beats 6->7).
-      const enterVis = smoothstep(3.3, 4.35, p);
+      // AG-8b: Keep Earth sphere hidden through ascent-1 (p=3.0) so horizon is flat;
+      // fade curvature in from ascent-2 (p=4.0) through ascent-4 (p=6.0), then recede during TLI (6->7).
+      const enterVis = smoothstep(3.35, 4.15, p);
       const ascentLift = smoothstep(3.4, 6.0, p);
       const tliRecede = smoothstep(6.05, 7.65, p);
       const fadeOut = 1 - smoothstep(7.45, 7.88, p);

@@ -123,6 +123,7 @@ export function SLSRocket({
   reducedMotion: boolean;
 }) {
   const coreStageRef = useRef<THREE.Group>(null);
+  const orionGroupRef = useRef<THREE.Group>(null);
   const leftSrbRef = useRef<THREE.Group>(null);
   const rightSrbRef = useRef<THREE.Group>(null);
   const lasRef = useRef<THREE.Group>(null);
@@ -219,7 +220,8 @@ export function SLSRocket({
     // 1. Pre-ignition ROFI sparks start at p=1.35, full liftoff thrust builds at p=1.78..2.04
     const rofiActive = smoothstep(1.32, 1.65, p) * (1 - smoothstep(3.1, 3.6, p));
     const ignitionBuild = smoothstep(1.75, 2.02, p);
-    const coreCutoff = 1 - smoothstep(6.75, 7.12, p);
+    // Keep core stage burning through ascent-4 (p=6.0), MECO right after ascent-4 before deep-space (beat 7)
+    const coreCutoff = 1 - smoothstep(6.15, 6.45, p);
     const srbBurnFade = 1 - smoothstep(4.52, 5.1, p);
 
     const flicker = reducedMotion
@@ -312,27 +314,33 @@ export function SLSRocket({
       panel.scale.setScalar(Math.max(0.001, 1 - smoothstep(6.0, 6.4, p)));
     });
 
-    // 5. Core stage + ICPS separation (beat 7: deep-space, progress 6.72 -> 7.45)
+    // 5. Core stage + ICPS separation (completes before beat 7 deep-space so only Orion + ESM fly to Moon)
     if (coreStageRef.current) {
-      const coreSep = remapClamp(p, 6.72, 7.45);
-      coreStageRef.current.visible = p < 7.5;
-      coreStageRef.current.position.set(0, -coreSep * 16.5, -coreSep * 4.2);
+      const coreSep = remapClamp(p, 6.22, 6.88);
+      coreStageRef.current.visible = p < 6.92;
+      coreStageRef.current.position.set(0, -coreSep * 18.0, -coreSep * 4.5);
       coreStageRef.current.rotation.set(coreSep * 0.3, 0, coreSep * 0.15);
-      coreStageRef.current.scale.setScalar(Math.max(0.001, 1 - smoothstep(7.15, 7.5, p)));
+      coreStageRef.current.scale.setScalar(Math.max(0.001, 1 - smoothstep(6.62, 6.92, p)));
     }
 
-    // 6. Orion 4-wing Solar Array deployment (progress 6.82 -> 7.55)
-    const wingDeploy = smoothstep(6.82, 7.55, p);
+    // Recenter Orion + ESM cleanly to local origin once Core Stage separates (beats 7..23)
+    if (orionGroupRef.current) {
+      const centerT = smoothstep(6.28, 6.92, p);
+      orionGroupRef.current.position.set(0, THREE.MathUtils.lerp(10.65, 0, centerT), 0);
+    }
+
+    // 6. Orion 4-wing Solar Array deployment (complete before deep-space beat 7)
+    const wingDeploy = smoothstep(6.18, 6.85, p);
     solarWingRefs.current.forEach((wing) => {
       if (!wing) return;
       wing.visible = p > 5.65;
-      wing.rotation.x = THREE.MathUtils.lerp(Math.PI * 0.48, 0.1, wingDeploy);
+      wing.rotation.x = THREE.MathUtils.lerp(Math.PI * 0.48, -0.22, wingDeploy);
       wing.scale.setScalar(clamp01((p - 5.65) / 0.25));
     });
 
-    // 7. Orion OMS-E Vacuum Plume + Lunar Orbit Insertion RCS Jets (beats 7..8.4 & 13)
+    // 7. Orion ESM Main Engine Vacuum Plume + Lunar Orbit Insertion RCS Jets (beats 7..8.4 & 13)
     if (vacuumPlumeRef.current) {
-      const tli = smoothstep(6.85, 7.15, p) * (1 - smoothstep(8.15, 8.65, p));
+      const tli = smoothstep(6.48, 6.85, p) * (1 - smoothstep(8.15, 8.65, p));
       const marsBurn = smoothstep(12.55, 12.95, p) * (1 - smoothstep(13.6, 14.0, p));
       const vacThrust = Math.max(tli, marsBurn);
       vacuumPlumeRef.current.visible = vacThrust > 0.02;
@@ -859,7 +867,7 @@ export function SLSRocket({
         ))}
 
         {/* ═══════════════════ ORION CREW & EUROPEAN SERVICE MODULE ═══════════════════ */}
-        <group position={[0, 10.65, 0]}>
+        <group ref={orionGroupRef} position={[0, 10.65, 0]}>
           {/* European Service Module (ESM) cylindrical bus with radiator panels */}
           <mesh position={[0, 0, 0]}>
             <cylinderGeometry args={[0.46, 0.46, 0.92, 32]} />
@@ -910,30 +918,26 @@ export function SLSRocket({
             );
           })}
 
-          {/* Translucent Blue-White Vacuum Thruster Plume (TLI & Lunar/Mars Insertion) */}
+          {/* Translucent Blue-White ESM Main Engine Vacuum Plume (TLI & Lunar/Mars Insertion) */}
           <group ref={vacuumPlumeRef} position={[0, -0.8, 0]} visible={false}>
-            <mesh position={[0, -1.1, 0]} rotation={[Math.PI, 0, 0]}>
-              <coneGeometry args={[0.44, 2.2, 20, 1, true]} />
-              <meshBasicMaterial
-                color="#9DB8FF"
-                transparent
-                opacity={0.75}
-                blending={THREE.AdditiveBlending}
-                depthWrite={false}
-                side={THREE.DoubleSide}
-              />
-            </mesh>
-            <mesh position={[0, -0.6, 0]} rotation={[Math.PI, 0, 0]}>
-              <coneGeometry args={[0.2, 1.2, 16, 1, true]} />
-              <meshBasicMaterial
-                color="#FFFFFF"
-                transparent
-                opacity={0.95}
-                blending={THREE.AdditiveBlending}
-                depthWrite={false}
-                side={THREE.DoubleSide}
-              />
-            </mesh>
+            <SoftPlumeCone
+              radius={0.48}
+              height={2.6}
+              segments={20}
+              position={[0, -1.3, 0]}
+              color="#7FA8FF"
+              opacity={0.85}
+              timeRef={elapsedRef}
+            />
+            <SoftPlumeCone
+              radius={0.22}
+              height={1.4}
+              segments={16}
+              position={[0, -0.7, 0]}
+              color="#FFFFFF"
+              opacity={0.96}
+              timeRef={elapsedRef}
+            />
           </group>
 
           {/* RCS Attitude Control Nitrogen/Hydrazine Puffs during Lunar Orbit Insertion */}
