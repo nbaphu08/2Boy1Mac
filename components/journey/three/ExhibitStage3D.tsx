@@ -11,7 +11,8 @@ import type { Exhibit } from "@/content/types";
 import { useMuseum } from "@/lib/store";
 import { scrollState, smoothstep } from "@/lib/scroll/progress";
 import { EXHIBIT_PLINTH_ANCHORS } from "./trajectory";
-import { HallOneLunarDiorama } from "./MoonDioramas";
+import { getMoonTerrainHeight, HallOneLunarDiorama } from "./MoonDioramas";
+import { ApolloLmDescentStage } from "./models/ApolloLmDescentStage";
 import { HallTwoMarsDiorama } from "./MarsDioramas";
 import { GrailSimulation } from "./GrailSimulation";
 import { PathfinderLandscape } from "./PathfinderLandscape";
@@ -66,12 +67,10 @@ function ShadowEnabler({
 function GlbExhibitMesh({
   url,
   slug,
-  isApolloLm,
   shadowsEnabled,
 }: {
   url: string;
   slug: string;
-  isApolloLm: boolean;
   shadowsEnabled: boolean;
 }) {
   const { scene } = useGLTF(url, false, true);
@@ -85,9 +84,7 @@ function GlbExhibitMesh({
     box.getSize(size);
     box.getCenter(center);
     const maxDim = Math.max(size.x, size.y, size.z, 0.001);
-    const targetSize = isApolloLm
-      ? 9.2
-      : slug === "mars-insight"
+    const targetSize = slug === "mars-insight"
         ? 6.0
         : slug === "mars-viking-1"
           ? 2.95
@@ -97,30 +94,6 @@ function GlbExhibitMesh({
               ? 1.21
               : 2.4;
     const s = targetSize / maxDim;
-
-    if (isApolloLm) {
-      // Check bounding box in root space after updateMatrixWorld so multi-primitive Ascent Stage
-      // groups (where GLTFLoader puts translation on the parent Group and mesh.position.y === 0)
-      // are 100% hidden, leaving only the gold octagonal Descent Stage (AG-2b #1).
-      copy.updateMatrixWorld(true);
-      const meshBox = new THREE.Box3();
-      const meshCenter = new THREE.Vector3();
-      const cutY = box.min.y + (box.max.y - box.min.y) * 0.37;
-      copy.traverse((child) => {
-        if ((child as THREE.Mesh).isMesh) {
-          meshBox.setFromObject(child);
-          meshBox.getCenter(meshCenter);
-          if (
-            meshCenter.y > cutY ||
-            meshBox.max.y > cutY + 0.14 ||
-            child.position.y > 1.85 ||
-            (child.parent && child.parent.position.y > 1.85)
-          ) {
-            child.visible = false;
-          }
-        }
-      });
-    }
 
     // Mars exhibit state customizations per REF_MARS.md & AG-2
     const marsDustFactor =
@@ -206,7 +179,7 @@ function GlbExhibitMesh({
       scale: s,
       offset: [-center.x * s, PLINTH_SURFACE_Y - box.min.y * s, -center.z * s] as [number, number, number],
     };
-  }, [scene, slug, isApolloLm, kaptonBump, shadowsEnabled]);
+  }, [scene, slug, kaptonBump, shadowsEnabled]);
 
   return (
     <group>
@@ -298,12 +271,19 @@ function SingleExhibitPlinth({
           </Suspense>
         ) : isMoon ? (
           <HallOneLunarDiorama slug={exhibit.slug} reducedMotion={reducedMotion}>
-            {exhibit.media.model ? (
+            {isApolloLm ? (
+              <Suspense fallback={<PlinthFallback />}>
+                <ApolloLmDescentStage
+                  groundY={PLINTH_SURFACE_Y}
+                  heightFn={(x, z) => getMoonTerrainHeight(exhibit.slug, x, z)}
+                  shadows={budget.tier !== "low"}
+                />
+              </Suspense>
+            ) : exhibit.media.model ? (
               <Suspense fallback={<PlinthFallback />}>
                 <GlbExhibitMesh
                   url={exhibit.media.model}
                   slug={exhibit.slug}
-                  isApolloLm={isApolloLm}
                   shadowsEnabled={budget.tier !== "low"}
                 />
               </Suspense>
@@ -316,7 +296,6 @@ function SingleExhibitPlinth({
                 <GlbExhibitMesh
                   url={exhibit.media.model}
                   slug={exhibit.slug}
-                  isApolloLm={false}
                   shadowsEnabled={budget.tier !== "low"}
                 />
               </Suspense>

@@ -5,7 +5,6 @@ import * as THREE from "three";
 import { usePerfBudget } from "./perfTier";
 import {
   Apollo11SiteProps,
-  ClippedLmTopCap,
   DistantApolloLmSilhouette,
   getBootprintTrailTexture,
   getRoverTrackTexture,
@@ -267,6 +266,22 @@ export function HallOneLunarDiorama({
     [slug],
   );
 
+  // Apollo 17 rover parked clear of Challenger's footpads, seated on the valley floor (Opus M2)
+  const apollo17LrvY = useMemo(
+    () =>
+      slug === "moon-apollo-17"
+        ? DIORAMA_SURFACE_Y + getMoonTerrainHeight("moon-apollo-17", 6.9, 0.3) - 0.02
+        : 0,
+    [slug],
+  );
+  const apollo17TrackY = useMemo(
+    () =>
+      slug === "moon-apollo-17"
+        ? DIORAMA_SURFACE_Y + getMoonTerrainHeight("moon-apollo-17", 5.1, -1.13) + 0.03
+        : 0,
+    [slug],
+  );
+
   return (
     <group>
       {/* Continuous Moon regolith terrain stretching to black horizon */}
@@ -317,7 +332,7 @@ export function HallOneLunarDiorama({
       {/* ─── Beat 8: Apollo 11 · Sea of Tranquility (Eagle 9.2 m leg span + Top Cap + EASEP + LRRR + Bootprints) ─── */}
       {slug === "moon-apollo-11" && (
         <group>
-          <Apollo11SiteProps baseY={DIORAMA_SURFACE_Y} lmScale={9.2 / 2.8} />
+          <Apollo11SiteProps baseY={DIORAMA_SURFACE_Y} />
           <mesh
             position={[0.65, DIORAMA_SURFACE_Y + 0.014, 3.35]}
             rotation={[-Math.PI / 2, 0, -0.35]}
@@ -422,13 +437,12 @@ export function HallOneLunarDiorama({
       {/* ─── Beat 11: Apollo 17 · Taurus–Littrow Valley Floor + Challenger Top Cap + Parked LRV (3.1 m) + Tracks ─── */}
       {slug === "moon-apollo-17" && (
         <group>
-          <ClippedLmTopCap baseY={DIORAMA_SURFACE_Y} scale={9.2 / 2.8} />
-          <group position={[4.15, DIORAMA_SURFACE_Y, -0.85]} rotation={[0, 0.65, 0]}>
+          <group position={[6.9, apollo17LrvY, 0.3]} rotation={[0, 0.9, 0]}>
             <LunarRovingVehicleModel scale={1.0} />
           </group>
           <mesh
-            position={[1.95, DIORAMA_SURFACE_Y + 0.014, 2.35]}
-            rotation={[-Math.PI / 2, 0, -0.42]}
+            position={[5.1, apollo17TrackY, -1.13]}
+            rotation={[-Math.PI / 2, 0, -0.67]}
             receiveShadow
           >
             <planeGeometry args={[4.4, 1.15]} />
