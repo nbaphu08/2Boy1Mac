@@ -12,6 +12,8 @@ export type GrailSimRuntime = {
   phase: GrailSimPhase;
   camPos: THREE.Vector3;
   camLook: THREE.Vector3;
+  impactIntensity: number;
+  impactPos: THREE.Vector3;
 };
 
 export const grailSimState: GrailSimRuntime = {
@@ -19,8 +21,10 @@ export const grailSimState: GrailSimRuntime = {
   elapsed: 0,
   camBlend: 0,
   phase: "idle",
-  camPos: new THREE.Vector3(2.95, 372.6, -181.1),
-  camLook: new THREE.Vector3(0.85, 371.5, -188.25),
+  camPos: new THREE.Vector3(407.95, 336.6, -169.1),
+  camLook: new THREE.Vector3(405.85, 335.5, -176.25),
+  impactIntensity: 0,
+  impactPos: new THREE.Vector3(405.5, 335.0, -176.0),
 };
 
 const replayListeners = new Set<() => void>();

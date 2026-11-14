@@ -9,10 +9,12 @@ import { usePerfBudget } from "./perfTier";
 import { getKaptonBumpMap } from "./rocketTextures";
 import {
   applyWorldTerrainShader,
+  blendCorridorHeight,
   type CraterAnchor,
   createNearFieldHorizonGeometry,
   InstancedLandscapeRocks,
 } from "./landscapeMaterials";
+import { BEAT_POSES, EXHIBIT_PLINTH_ANCHORS } from "./trajectory";
 import { grailSimState, subscribeGrailReplay } from "./simulationBus";
 
 const GRAIL_BEAT = 12;
@@ -66,10 +68,9 @@ const IMPACT_B_LOCAL: [number, number, number] = [
   -0.85,
 ];
 
-// World anchor of moon-grail from trajectory.ts: [0.5, 370.6, -188.0]
-const ANCHOR_WORLD = new THREE.Vector3(0.5, 370.6, -188.0);
-const REST_CAM_WORLD = new THREE.Vector3(2.95, 372.6, -181.1);
-const REST_LOOK_WORLD = new THREE.Vector3(0.85, 371.5, -188.25);
+const ANCHOR_WORLD = new THREE.Vector3(...EXHIBIT_PLINTH_ANCHORS["moon-grail"].pos);
+const REST_CAM_WORLD = new THREE.Vector3(...BEAT_POSES[12].camPos);
+const REST_LOOK_WORLD = new THREE.Vector3(...BEAT_POSES[12].camLook);
 
 let cachedFlashTex: THREE.CanvasTexture | null = null;
 function getSoftImpactFlashTexture(): THREE.CanvasTexture {
@@ -257,13 +258,13 @@ function getPolarFullHeight(vx: number, vz: number): number {
   // Two crisp ~5 m fresh impact craters on the southern slope (Ebb at A, Flow at B)
   craters += polarCraterBowl(vx - IMPACT_A_LOCAL[0], vz - IMPACT_A_LOCAL[2], 1.22, 0.4, 0.13);
   craters += polarCraterBowl(vx - IMPACT_B_LOCAL[0], vz - IMPACT_B_LOCAL[2], 1.22, 0.4, 0.13);
-  return baseSlope + craters;
+  return blendCorridorHeight("moon", ANCHOR_WORLD.x + vx, ANCHOR_WORLD.z + vz, vx, baseSlope + craters);
 }
 
 /** Smooth continuous north-polar Goldschmidt mountain slope extending to the horizon (near-field tessellated, zero tracks/boots). */
 function createPolarLandscapeGeometry(tier: "high" | "medium" | "low"): THREE.BufferGeometry {
   const segs = tier === "high" ? 192 : tier === "medium" ? 136 : 92;
-  return createNearFieldHorizonGeometry(176, segs, getPolarFullHeight);
+  return createNearFieldHorizonGeometry(200, segs, getPolarFullHeight);
 }
 
 /** Deterministic ballistic vacuum ejecta particle vectors for two hypervelocity impacts. */
@@ -322,8 +323,8 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
       baseTint: "#48423B",
       brightTint: "#8C8579",
       highlandBrightTint: "#C8C1B4",
-      fadeStart: 72,
-      fadeEnd: 87.5,
+      fadeStart: 74,
+      fadeEnd: 96,
       qualityTier: budget.tier,
       moonSunDir: [9.4, 2.85, 4.3],
     });
@@ -366,7 +367,6 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
   const craterBRef = useRef<THREE.Mesh>(null);
   const flashARef = useRef<THREE.Sprite>(null);
   const flashBRef = useRef<THREE.Sprite>(null);
-  const impactLightRef = useRef<THREE.PointLight>(null);
   const ejectaPointsRef = useRef<THREE.Points>(null);
   const restGhostsRef = useRef<THREE.Group>(null);
 
@@ -415,7 +415,7 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
       if (ejectaPointsRef.current) ejectaPointsRef.current.visible = false;
       if (flashARef.current) flashARef.current.visible = false;
       if (flashBRef.current) flashBRef.current.visible = false;
-      if (impactLightRef.current) impactLightRef.current.intensity = 0;
+      grailSimState.impactIntensity = 0;
       if (restGhostsRef.current) restGhostsRef.current.visible = true;
       return;
     }
@@ -645,14 +645,20 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
       flashBRef.current.scale.set(sc, sc, 1);
       (flashBRef.current.material as THREE.SpriteMaterial).opacity = flashB * 0.92;
     }
-    if (impactLightRef.current) {
-      const peak = Math.max(flashA, flashB);
-      impactLightRef.current.intensity = peak * 26;
-      if (flashB > flashA) {
-        impactLightRef.current.position.set(IMPACT_B_LOCAL[0], SURFACE_Y + IMPACT_B_LOCAL[1] + 0.35, IMPACT_B_LOCAL[2]);
-      } else {
-        impactLightRef.current.position.set(IMPACT_A_LOCAL[0], SURFACE_Y + IMPACT_A_LOCAL[1] + 0.35, IMPACT_A_LOCAL[2]);
-      }
+    const peak = Math.max(flashA, flashB);
+    grailSimState.impactIntensity = peak * 26;
+    if (flashB > flashA) {
+      grailSimState.impactPos.set(
+        ANCHOR_WORLD.x + IMPACT_B_LOCAL[0],
+        ANCHOR_WORLD.y + SURFACE_Y + IMPACT_B_LOCAL[1] + 0.35,
+        ANCHOR_WORLD.z + IMPACT_B_LOCAL[2],
+      );
+    } else {
+      grailSimState.impactPos.set(
+        ANCHOR_WORLD.x + IMPACT_A_LOCAL[0],
+        ANCHOR_WORLD.y + SURFACE_Y + IMPACT_A_LOCAL[1] + 0.35,
+        ANCHOR_WORLD.z + IMPACT_A_LOCAL[2],
+      );
     }
 
     // Ballistic vacuum ejecta arcs (y = v0*t - 0.5*g*t^2, clamped to surface)
@@ -872,7 +878,6 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
           depthWrite={false}
         />
       </sprite>
-      <pointLight ref={impactLightRef} intensity={0} distance={14} color="#FFD39B" />
 
       {/* Vacuum Ballistic Ejecta Particles (clean conic trajectories, zero billowing smoke) */}
       <points ref={ejectaPointsRef} visible={false}>

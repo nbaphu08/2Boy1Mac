@@ -5,7 +5,13 @@ import * as THREE from "three";
 import { usePerfBudget } from "./perfTier";
 import { getKaptonBumpMap } from "./rocketTextures";
 import { getMarsRoverTrackTexture } from "./MarsModels";
-import { applyWorldTerrainShader, createFracturedBasaltGeometry } from "./landscapeMaterials";
+import {
+  applyWorldTerrainShader,
+  blendCorridorHeight,
+  createFracturedBasaltGeometry,
+  createNearFieldHorizonGeometry,
+} from "./landscapeMaterials";
+import { EXHIBIT_PLINTH_ANCHORS } from "./trajectory";
 
 const SURFACE_Y = 0.22;
 
@@ -181,30 +187,22 @@ function createDeflatedClothGeometry(seed: number, length: number, width: number
   return geo;
 }
 
-/** Continuous Ares Vallis flood plain + distant Twin Peaks hills on the -Z horizon (PIA00632). */
+/** Continuous Ares Vallis flood plain + distant Twin Peaks hills + shared bridge corridor (PIA00632). */
 function createAresVallisLandscapeGeometry(): THREE.BufferGeometry {
-  const size = 148;
-  const segs = 136;
-  const geo = new THREE.PlaneGeometry(size, size, segs, segs);
-  geo.rotateX(-Math.PI / 2);
-  const pos = geo.attributes.position as THREE.BufferAttribute;
+  const anchor = EXHIBIT_PLINTH_ANCHORS["mars-pathfinder"].pos;
 
   const hill = (vx: number, vz: number, cx: number, cz: number, rx: number, rz: number, h: number) => {
     const dx = (vx - cx) / rx;
     const dz = (vz - cz) / rz;
     const d2 = dx * dx + dz * dz;
-    if (d2 > 4.5) return 0;
+    if (d2 > 14.0) return 0;
     const base = Math.exp(-d2 * 0.95);
     const facet = 0.86 + 0.14 * Math.cos(vx * 0.45 + vz * 0.35);
     return h * Math.pow(base, 0.85) * facet;
   };
 
-  for (let i = 0; i < pos.count; i++) {
-    const vx = pos.getX(i);
-    const vz = pos.getZ(i);
+  return createNearFieldHorizonGeometry(188, 136, (vx, vz) => {
     const r = Math.hypot(vx, vz);
-
-    // Flat landing plain near the lander/rover (r < 4 m), then natural Ares Vallis flood swales & ridges
     const mask = Math.min(1, Math.max(0, (r - 2.6) / 6.5));
     const swale =
       mask *
@@ -212,21 +210,22 @@ function createAresVallisLandscapeGeometry(): THREE.BufferGeometry {
         Math.cos(vx * 0.08 - vz * 0.17) * 0.18 +
         Math.sin(vx * 0.55 + vz * 0.45) * 0.045);
 
-    // Distant Twin Peaks on the horizon aligned behind Pathfinder along the -X/-Z sightline (PIA00632)
     const northPeak = hill(vx, vz, -18.5, -38.5, 9.5, 6.2, 3.65);
     const southPeak = hill(vx, vz, -5.2, -41.5, 7.8, 5.8, 2.85);
-    // Low distant crater-rim ridges wrapping far perimeter so skyline feels genuinely natural
     const farPerimeter =
       r > 28
         ? Math.min(1, (r - 28) / 22) *
           (0.45 + 0.4 * Math.sin(vx * 0.07 + 1.1) + 0.32 * Math.cos(vz * 0.08 - 0.5))
         : 0;
 
-    pos.setY(i, swale + northPeak + southPeak + farPerimeter);
-  }
-
-  geo.computeVertexNormals();
-  return geo;
+    return blendCorridorHeight(
+      "mars",
+      anchor[0] + vx,
+      anchor[2] + vz,
+      vx,
+      swale + northPeak + southPeak + farPerimeter,
+    );
+  });
 }
 
 /**
@@ -247,6 +246,7 @@ export function PathfinderLandscape({ reducedMotion: _reducedMotion }: { reduced
   const trackTex = useMemo(() => getMarsRoverTrackTexture(), []);
 
   const terrainMat = useMemo(() => {
+    const anchor = EXHIBIT_PLINTH_ANCHORS["mars-pathfinder"].pos;
     const mat = new THREE.MeshStandardMaterial({
       color: "#FFFFFF",
       roughness: 0.95,
@@ -254,12 +254,13 @@ export function PathfinderLandscape({ reducedMotion: _reducedMotion }: { reduced
     });
     applyWorldTerrainShader(mat, {
       planet: "mars",
-      anchorXZ: [-8.0, -371.0],
-      fadeStart: 28,
-      fadeEnd: 68,
+      anchorXZ: [anchor[0], anchor[2]],
+      qualityTier: budget.tier,
+      fadeStart: 42,
+      fadeEnd: 84,
     });
     return mat;
-  }, []);
+  }, [budget.tier]);
 
   const terrainGeo = useMemo(() => createAresVallisLandscapeGeometry(), []);
   const rockGeoA = useMemo(() => createFracturedBasaltGeometry(1), []);

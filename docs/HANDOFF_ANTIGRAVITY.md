@@ -424,3 +424,23 @@ If anything is not finished by 12:00, hand off what is stable and stop. Do NOT g
 
 ## Opus review — AG-12c accepted (15/11) · FEATURE FREEZE
 - Continuous ground under every low flight (Moon and Mars), massif dashes gone. Merged; posters re-captured. No more 3D packets: only bug fixes from now on.
+
+---
+
+## AG-13 (`ag/13-transitions`, seamless transitions & hitch elimination — Priority 1 → 4)
+
+1. **Priority 1 — Zero Mid-Scroll Hitches & Invariant GPU Pipeline (`SpaceScene.tsx`, `RenderPipeline.tsx`, `ExhibitStage3D.tsx`, `CelestialWorlds.tsx`, `GrailSimulation.tsx`, `landscapeMaterials.tsx`, `perfTier.ts`)**:
+   - **Invariant lights & shadow defines**: Kept `sunRef.current.castShadow = useShadows` constant across all beats; kept `SLSRocket` permanently `visible={true}` (translating to `[0, -5000, 0]` when parked during `p = 20.8..22.7`); moved per-plinth Mars `<spotLight>`, `GrailSimulation` impact `<pointLight>`, `BeyondSilhouettes3D` (`spotLight` + `2× directionalLight`), and `CelestialWorlds` Finale lights (`directionalLight` + `pointLight`) into permanent always-visible light slots whose `.intensity` smoothly scales in `useFrame`.
+   - **Single baked Environment & locked perf tier**: Replaced `<Environment key={hall}>` remounts in `RenderPipeline.tsx` with ONE 128px `<Environment frames={1}>` attenuated in `useFrame` via `state.scene.environmentIntensity`; locked `perfTier.ts` to initial GPU detection (`updatePerfFpsMonitor` made a no-op) so EffectComposer & terrain subdivisions never rebuild mid-scroll; unified `customProgramCacheKey` and shared shader uniforms (`sharedTerrainUniforms` for `moonFocusXZ`, `marsFocusXZ`, `marsStormMix`).
+   - **Immediate preload, staggered mount & offscreen RT GPU warmup**: Triggered `useGLTF.preload` & GRAIL texture preloads at `0 ms`, removed `inGlbRange` lazy GLB mounting in `SingleExhibitPlinth`, staggered exhibit plinth mounts over initial idle ticks during launch (`0..5`, flushing early if scrolled past `4.2`), and upgraded `MaterialPrewarmer` to run `gl.initTexture`, `gl.compileAsync`, and a `16×16` offscreen `WebGLRenderTarget` shadow/VBO warmup pass per `userData.warmup` subtree before `p = 6.5` (Moon) and `12.5` (Mars).
+2. **Priority 2 — Continuous C1 Camera & Seamless Corridor Site Swaps (`trajectory.ts`, `expeditionCamera.ts`, `CelestialWorlds.tsx`, `MoonDioramas.tsx`, `MarsDioramas.tsx`, `PathfinderLandscape.tsx`, `GrailSimulation.tsx`, `ExpeditionEffects.tsx`)**:
+   - Unified the camera path into one continuous centripetal `CatmullRomCurve3` (`CAMERA_SPLINE_NODES`, `easeBeatProgress` `smootherstep` rest-beat velocity easing, subtle banked turns `sampleCameraBankRoll ≤ 2.75°`, rest drift `≤ 0.15°`, ignition shake only at liftoff).
+   - Flattened Earth→Moon (`7.02..7.55`) and Transit→Mars (`13.06..13.54`) globe landings continuously into Tranquility & Chryse Planitia (`transparent` fixed at load on `moonRef`/`marsRef`, radius scale/shift & opacity crossfade); removed the screen dim/mist `veilRef`.
+   - Aligned Hall I (`x = 5.5 + k×100, y = 334.6, z = -176.0`) and Hall II (`x = 7.0 + k×100, y = 472.6, z = -376.0`) anchors with continuous shared midpoint ridges (`blendCorridorHeight` / `getSharedTraverseHeight`) + smooth `siteFocusPos` / `sunTarget` / `marsStormMix` interpolation across `[i + 0.25 .. i + 0.75]` so `.50` mid-hop swaps match terrain & horizon fog identically on both sides.
+3. **Priority 3 — Earth Hidden on Lunar Surface (`CelestialWorlds.tsx`)**:
+   - Removed `lunarSkyEarthRef` completely and faded `earthRef` cleanly out by `p = 7.46`, keeping Earth absent across Moon surface beats & flights (`7.5 → 12.6`) while retaining `deep-space` (`3.35..7.45`) and Finale `earthrise` (`22.15..23`).
+4. **Priority 4 — Material Micro-Detail & Subtle Grade (`ExhibitStage3D.tsx`, `RenderPipeline.tsx`, `SpaceScene.tsx`)**:
+   - Applied `getKaptonBumpMap()` crinkled foil bump + metalness/roughness tuning onto Moon GLB gold Kapton materials, subtle cool Moon ambient/hemi shadow tint (`#0A0C12` / `#07090F`), and subtle `<Vignette offset={0.34} darkness={0.28} />` in `PostEffects`.
+5. **Verification**: `npx tsc --noEmit`, `npx eslint components/journey/three` (0 errors, 0 warnings), and `npx next build --webpack` all pass cleanly; zero posters generated or modified.
+
+**Files changed:** `CelestialWorlds.tsx`, `ExhibitStage3D.tsx`, `ExpeditionEffects.tsx`, `GrailSimulation.tsx`, `MarsDioramas.tsx`, `MoonDioramas.tsx`, `PathfinderLandscape.tsx`, `RenderPipeline.tsx`, `SpaceScene.tsx`, `expeditionCamera.ts`, `landscapeMaterials.tsx`, `perfTier.ts`, `simulationBus.ts`, `trajectory.ts`, `docs/HANDOFF_ANTIGRAVITY.md`.
