@@ -76,6 +76,12 @@ export const journey = {
 
 // O-2 narration layer (Opus). One "audio-guide" line per beat, shown when the camera settles.
 // Every factual claim is sourced in docs/STORY.md (S# → docs/COPY.md Sources).
+// GRAIL beat: DOM button + label for the AG-10 simulation (illustrative, time-compressed).
+export const grailSim = {
+  replay: "Replay simulation",
+  note: "Simulation · time compressed · gravity map: NASA/ARC-MIT/JPL-Caltech/GSFC",
+};
+
 export const narration: Record<string, string> = {
   hero: "Every machine in this museum began as a promise made on this coast.",
   enter: "Inside, a rocket taller than most buildings waits for the people it will carry.",
