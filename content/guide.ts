@@ -13,6 +13,8 @@ export const expedition = {
     honesty:
       "This voyage is imagined. Artemis II flew around the Moon in April 2026 without landing, and no person has yet been to Mars. Every machine you will find is real, and so is every fact.",
     source: "NASA History Program Office, Catalogue of Manmade Material on the Moon (2012)",
+    read: "Read briefing",
+    hide: "Hide briefing",
   },
 
   // Field log (replaces "passport" wording in the HUD).

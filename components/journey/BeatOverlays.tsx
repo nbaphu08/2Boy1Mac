@@ -132,7 +132,7 @@ function Briefing() {
         aria-expanded={open}
         className="font-hud mt-2 cursor-pointer text-[10px] text-platinum hover:text-text sm:hidden"
       >
-        {open ? "Hide briefing" : "Read briefing"}
+        {open ? expedition.briefing.hide : expedition.briefing.read}
       </button>
       <div className={`${open ? "block" : "hidden"} sm:block`}>
         {b.body.map((p, i) => (

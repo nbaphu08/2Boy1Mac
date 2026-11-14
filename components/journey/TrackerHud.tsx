@@ -67,7 +67,7 @@ export function TrackerHud() {
     >
       <p className="font-hud hidden text-[9px] text-mute sm:block">{expedition.tracker.label}</p>
       <p className="font-display truncate text-xs text-text sm:mt-0.5 sm:text-sm">{ex?.name ?? ""}</p>
-      <p className="font-hud text-[9px] text-platinum sm:text-[10px]">{coords ?? ""}</p>
+      <p className="font-hud text-[9px] text-platinum sm:text-[10px]">{coords ?? ex?.location.site ?? ""}</p>
       <div className="mt-1.5 h-0.5 w-full overflow-hidden rounded bg-line/60">
         <div ref={barRef} className="h-full origin-left bg-starlight" style={{ transform: "scaleX(0)" }} />
       </div>
