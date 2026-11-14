@@ -446,9 +446,10 @@ export function Apollo11SiteProps({ baseY }: { baseY: number }) {
         <mesh ref={laserRef} position={[0, 2.85, 1.38]} rotation={[0.45, 0, 0]}>
           <cylinderGeometry args={[0.008, 0.016, 6.2, 8, 1, true]} />
           <meshBasicMaterial
-            color="#4ADE80"
+            color={[0.55, 2.5, 1.05]}
+            toneMapped={false}
             transparent
-            opacity={0.26}
+            opacity={0.28}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
           />
@@ -457,9 +458,10 @@ export function Apollo11SiteProps({ baseY }: { baseY: number }) {
         <mesh position={[0, 0.13, 0.02]}>
           <sphereGeometry args={[0.024, 8, 8]} />
           <meshBasicMaterial
-            color="#6EE7B7"
+            color={[0.75, 2.8, 1.35]}
+            toneMapped={false}
             transparent
-            opacity={0.75}
+            opacity={0.85}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
           />

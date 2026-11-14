@@ -9,85 +9,10 @@ import { scrollState, smoothstep } from "@/lib/scroll/progress";
 import { CelestialWorlds } from "./CelestialWorlds";
 import { ExhibitStage3D } from "./ExhibitStage3D";
 import { LaunchComplex } from "./LaunchComplex";
+import { HallEnvironment, PostEffects } from "./RenderPipeline";
 import { SLSRocket } from "./SLSRocket";
 import { detectInitialPerfTier, updatePerfFpsMonitor, usePerfBudget } from "./perfTier";
-import { sampleTrajectory, type SampledTrajectory } from "./trajectory";
-
-/**
- * Build a true HDR studio + orbital sky environment map for realistic metallic & Kapton reflections.
- * Deferred until the WebGL drawingBuffer has non-zero dimensions so no incomplete-framebuffer or
- * glReadPixels GPU readback error ever fires during initial canvas layout (AG-6 S-6 #2).
- */
-function configureAerospaceEnvironment(gl: THREE.WebGLRenderer, scene: THREE.Scene) {
-  gl.localClippingEnabled = true;
-
-  const applyEnv = () => {
-    const ctx = gl.getContext();
-    if (ctx.drawingBufferWidth <= 0 || ctx.drawingBufferHeight <= 0) {
-      window.requestAnimationFrame(applyEnv);
-      return;
-    }
-
-    const pmrem = new THREE.PMREMGenerator(gl);
-    pmrem.compileEquirectangularShader();
-
-    const envScene = new THREE.Scene();
-    envScene.background = new THREE.Color("#060A14");
-
-    // Upper orbital sky hemisphere
-    const skyGeo = new THREE.SphereGeometry(50, 24, 16);
-    const skyMat = new THREE.MeshBasicMaterial({ color: "#112042", side: THREE.BackSide });
-    envScene.add(new THREE.Mesh(skyGeo, skyMat));
-
-    // HDR Solar Key Reflector (float RGB > 1 for crisp metallic specular glints)
-    const sunGeo = new THREE.PlaneGeometry(26, 26);
-    const sunMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(5.2, 5.5, 6.2), side: THREE.DoubleSide });
-    const sunCard = new THREE.Mesh(sunGeo, sunMat);
-    sunCard.position.set(24, 28, 26);
-    sunCard.lookAt(0, 0, 0);
-    envScene.add(sunCard);
-
-    // Cool Earthshine / Starlight Rim Reflector
-    const rimGeo = new THREE.PlaneGeometry(36, 22);
-    const rimMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.4, 2.1, 3.8), side: THREE.DoubleSide });
-    const rimCard = new THREE.Mesh(rimGeo, rimMat);
-    rimCard.position.set(-28, 10, -20);
-    rimCard.lookAt(0, 0, 0);
-    envScene.add(rimCard);
-
-    // Secondary Zenith Specular Strip
-    const topGeo = new THREE.PlaneGeometry(40, 8);
-    const topMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.6, 3.0, 4.0), side: THREE.DoubleSide });
-    const topStrip = new THREE.Mesh(topGeo, topMat);
-    topStrip.position.set(0, 38, 0);
-    topStrip.lookAt(0, 0, 0);
-    envScene.add(topStrip);
-
-    // Warm Ignition / Pad Horizon Bounce
-    const padGeo = new THREE.PlaneGeometry(32, 32);
-    const padMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.8, 0.95, 0.5), side: THREE.DoubleSide });
-    const padBounce = new THREE.Mesh(padGeo, padMat);
-    padBounce.position.set(0, -32, 10);
-    padBounce.lookAt(0, 0, 0);
-    envScene.add(padBounce);
-
-    const envTarget = pmrem.fromScene(envScene, 0.035);
-    scene.environment = envTarget.texture;
-    pmrem.dispose();
-    skyGeo.dispose();
-    skyMat.dispose();
-    sunGeo.dispose();
-    sunMat.dispose();
-    rimGeo.dispose();
-    rimMat.dispose();
-    topGeo.dispose();
-    topMat.dispose();
-    padGeo.dispose();
-    padMat.dispose();
-  };
-
-  applyEnv();
-}
+import { EXHIBIT_PLINTH_ANCHORS, sampleTrajectory, type SampledTrajectory } from "./trajectory";
 
 function SceneChoreographer({
   rocketRef,
@@ -105,14 +30,25 @@ function SceneChoreographer({
   const ambRef = useRef<THREE.AmbientLight>(null);
   const hemiRef = useRef<THREE.HemisphereLight>(null);
   const elapsedRef = useRef(0);
+  const shadowModeRef = useRef<"pad" | "exhibit">("pad");
+  const sunTarget = useMemo(() => new THREE.Object3D(), []);
   const duskSunColor = useMemo(() => new THREE.Color("#FF9852"), []);
   const orbitalSunColor = useMemo(() => new THREE.Color("#F5F8FF"), []);
+  const moonSunColor = useMemo(() => new THREE.Color("#FFFDF5"), []);
+  const marsSunColor = useMemo(() => new THREE.Color("#FFD6B0"), []);
   const duskRimColor = useMemo(() => new THREE.Color("#5280EA"), []);
   const orbitalRimColor = useMemo(() => new THREE.Color("#6E96FF"), []);
   const duskHemiSky = useMemo(() => new THREE.Color("#4D75CA"), []);
   const orbitalHemiSky = useMemo(() => new THREE.Color("#ADC8FF"), []);
+  const moonHemiSky = useMemo(() => new THREE.Color("#1E2434"), []);
+  const marsHemiSky = useMemo(() => new THREE.Color("#D89362"), []);
   const duskHemiGround = useMemo(() => new THREE.Color("#2A1A14"), []);
   const orbitalHemiGround = useMemo(() => new THREE.Color("#0A0E18"), []);
+  const moonHemiGround = useMemo(() => new THREE.Color("#181614"), []);
+  const marsHemiGround = useMemo(() => new THREE.Color("#5C2E1B"), []);
+  const moonAmbColor = useMemo(() => new THREE.Color("#0D121D"), []);
+  const marsAmbColor = useMemo(() => new THREE.Color("#54301E"), []);
+  const orbitalAmbColor = useMemo(() => new THREE.Color("#1A2644"), []);
 
   const traj = useMemo<SampledTrajectory>(
     () => ({
@@ -181,55 +117,134 @@ function SceneChoreographer({
     }
 
     // Dim global background lights by 60% when ExhibitPanel is open (PLAN §4)
-    // Also transition smoothly from 6:35 p.m. EDT western sunset (beats 0..2.2) to orbital daylight (3.4+)
+    // AG-9a: Per-hall shadow-casting sun & tightly fitted shadow frustum
     const dim = activeExhibit ? 0.4 : 1.0;
     const orbitalT = smoothstep(2.05, 3.45, p);
+    const inMoonHall = p >= 7.45 && p <= 12.6;
+    const inMarsHall = p >= 13.45 && p <= 20.55;
+    const inAnyExhibit = inMoonHall || inMarsHall;
+
+    const nearestIdx = Math.max(0, Math.min(beats.length - 1, Math.round(p)));
+    const nearestSlug = beats[nearestIdx]?.exhibitSlug;
+    const exhibitAnchor = nearestSlug ? EXHIBIT_PLINTH_ANCHORS[nearestSlug] : undefined;
 
     if (sunRef.current) {
-      sunRef.current.position.set(
-        THREE.MathUtils.lerp(-58, 65, orbitalT),
-        THREE.MathUtils.lerp(15, 95, orbitalT),
-        THREE.MathUtils.lerp(-22, 85, orbitalT),
-      );
-      sunRef.current.color.copy(duskSunColor).lerp(orbitalSunColor, orbitalT);
-      const targetSun = THREE.MathUtils.lerp(3.65, 3.1, orbitalT) * dim;
-      sunRef.current.intensity = THREE.MathUtils.damp(sunRef.current.intensity, targetSun, 6, dt);
-      sunRef.current.castShadow = useShadows && p < 3.0;
+      const targetMode: "pad" | "exhibit" = inAnyExhibit ? "exhibit" : "pad";
+      if (shadowModeRef.current !== targetMode) {
+        shadowModeRef.current = targetMode;
+        const sc = sunRef.current.shadow.camera;
+        if (targetMode === "exhibit") {
+          sc.left = -5.2;
+          sc.right = 5.2;
+          sc.top = 5.2;
+          sc.bottom = -5.2;
+          sc.near = 1;
+          sc.far = 28;
+        } else {
+          sc.left = -24;
+          sc.right = 26;
+          sc.top = 24;
+          sc.bottom = -14;
+          sc.near = 10;
+          sc.far = 165;
+        }
+        sc.updateProjectionMatrix();
+      }
+
+      if (inAnyExhibit && exhibitAnchor) {
+        const [ax, ay, az] = exhibitAnchor.pos;
+        sunTarget.position.set(ax, ay + 0.35, az);
+        sunTarget.updateMatrixWorld();
+        if (inMoonHall) {
+          // One hard crisp low white lunar sun -> long sharp Apollo shadows
+          sunRef.current.position.set(ax - 8.4, ay + 3.6, az + 5.2);
+          sunRef.current.color.copy(moonSunColor);
+          sunRef.current.intensity = THREE.MathUtils.damp(sunRef.current.intensity, 4.6 * dim, 8, dt);
+        } else {
+          // Warm low Martian sun (softened during Opportunity storm ~beat 17)
+          const stormT = smoothstep(16.3, 16.85, p) * (1 - smoothstep(17.15, 17.7, p));
+          sunRef.current.position.set(ax - 7.4, ay + 4.5, az + 5.6);
+          sunRef.current.color.copy(marsSunColor);
+          const marsIntensity = THREE.MathUtils.lerp(3.75, 2.75, stormT) * dim;
+          sunRef.current.intensity = THREE.MathUtils.damp(sunRef.current.intensity, marsIntensity, 8, dt);
+        }
+        sunRef.current.castShadow = useShadows;
+      } else {
+        sunTarget.position.set(0, 4, 0);
+        sunTarget.updateMatrixWorld();
+        sunRef.current.position.set(
+          THREE.MathUtils.lerp(-58, 65, orbitalT),
+          THREE.MathUtils.lerp(15, 95, orbitalT),
+          THREE.MathUtils.lerp(-22, 85, orbitalT),
+        );
+        sunRef.current.color.copy(duskSunColor).lerp(orbitalSunColor, orbitalT);
+        const targetSun = THREE.MathUtils.lerp(3.65, 3.1, orbitalT) * dim;
+        sunRef.current.intensity = THREE.MathUtils.damp(sunRef.current.intensity, targetSun, 6, dt);
+        sunRef.current.castShadow = useShadows && p < 3.0;
+      }
     }
     if (rimRef.current) {
-      rimRef.current.color.copy(duskRimColor).lerp(orbitalRimColor, orbitalT);
-      const targetRim = THREE.MathUtils.lerp(1.05, 0.85, orbitalT) * dim;
-      rimRef.current.intensity = THREE.MathUtils.damp(rimRef.current.intensity, targetRim, 6, dt);
+      if (inMoonHall) {
+        // Near-black lunar sky -> disable secondary rim fill so shadows stay sharp
+        rimRef.current.intensity = THREE.MathUtils.damp(rimRef.current.intensity, 0.14 * dim, 8, dt);
+      } else {
+        rimRef.current.color.copy(duskRimColor).lerp(orbitalRimColor, orbitalT);
+        const targetRim = (inMarsHall ? 0.55 : THREE.MathUtils.lerp(1.05, 0.85, orbitalT)) * dim;
+        rimRef.current.intensity = THREE.MathUtils.damp(rimRef.current.intensity, targetRim, 6, dt);
+      }
     }
     if (ambRef.current) {
-      ambRef.current.intensity = THREE.MathUtils.damp(ambRef.current.intensity, 0.42 * dim, 6, dt);
+      if (inMoonHall) {
+        ambRef.current.color.copy(moonAmbColor);
+        ambRef.current.intensity = THREE.MathUtils.damp(ambRef.current.intensity, 0.14 * dim, 8, dt);
+      } else if (inMarsHall) {
+        ambRef.current.color.copy(marsAmbColor);
+        ambRef.current.intensity = THREE.MathUtils.damp(ambRef.current.intensity, 0.38 * dim, 8, dt);
+      } else {
+        ambRef.current.color.copy(orbitalAmbColor);
+        ambRef.current.intensity = THREE.MathUtils.damp(ambRef.current.intensity, 0.42 * dim, 6, dt);
+      }
     }
     if (hemiRef.current) {
-      hemiRef.current.color.copy(duskHemiSky).lerp(orbitalHemiSky, orbitalT);
-      hemiRef.current.groundColor.copy(duskHemiGround).lerp(orbitalHemiGround, orbitalT);
-      const targetHemi = THREE.MathUtils.lerp(0.58, 0.48, orbitalT) * dim;
-      hemiRef.current.intensity = THREE.MathUtils.damp(hemiRef.current.intensity, targetHemi, 6, dt);
+      if (inMoonHall) {
+        hemiRef.current.color.copy(moonHemiSky);
+        hemiRef.current.groundColor.copy(moonHemiGround);
+        hemiRef.current.intensity = THREE.MathUtils.damp(hemiRef.current.intensity, 0.18 * dim, 8, dt);
+      } else if (inMarsHall) {
+        hemiRef.current.color.copy(marsHemiSky);
+        hemiRef.current.groundColor.copy(marsHemiGround);
+        hemiRef.current.intensity = THREE.MathUtils.damp(hemiRef.current.intensity, 0.56 * dim, 8, dt);
+      } else {
+        hemiRef.current.color.copy(duskHemiSky).lerp(orbitalHemiSky, orbitalT);
+        hemiRef.current.groundColor.copy(duskHemiGround).lerp(orbitalHemiGround, orbitalT);
+        const targetHemi = THREE.MathUtils.lerp(0.58, 0.48, orbitalT) * dim;
+        hemiRef.current.intensity = THREE.MathUtils.damp(hemiRef.current.intensity, targetHemi, 6, dt);
+      }
     }
   });
 
   return (
     <>
+      <primitive object={sunTarget} />
       <ambientLight ref={ambRef} color="#1A2644" intensity={0.42} />
       <hemisphereLight ref={hemiRef} args={["#4D75CA", "#2A1A14", 0.58]} />
       <directionalLight
+        key={budget.tier}
         ref={sunRef}
+        target={sunTarget}
         position={[-58, 15, -22]}
         color="#FF9852"
         intensity={3.65}
         castShadow={useShadows}
-        shadow-mapSize={[1024, 1024]}
+        shadow-mapSize={budget.tier === "high" ? [2048, 2048] : [1024, 1024]}
         shadow-camera-left={-24}
         shadow-camera-right={26}
         shadow-camera-top={24}
         shadow-camera-bottom={-14}
         shadow-camera-near={10}
         shadow-camera-far={165}
-        shadow-bias={-0.0005}
+        shadow-bias={-0.0003}
+        shadow-normalBias={0.02}
       />
       <directionalLight ref={rimRef} position={[48, 22, -45]} color="#5280EA" intensity={1.05} />
     </>
@@ -298,29 +313,31 @@ export default function SpaceScene() {
   return (
     <div aria-hidden className={`fixed inset-0 bg-void ${posterBeat !== null ? "z-50" : "z-0"}`}>
       <Canvas
-        shadows={budget.tier !== "low"}
+        shadows={budget.tier !== "low" ? "soft" : false}
         frameloop={isPageHidden ? "never" : "always"}
         dpr={reducedMotion ? 1 : budget.dpr}
         camera={{ fov: 44, near: 0.25, far: 2600, position: [14, 5.2, 23] }}
-        onCreated={({ gl, scene }) => {
+        onCreated={({ gl }) => {
+          gl.localClippingEnabled = true;
           detectInitialPerfTier(gl);
-          configureAerospaceEnvironment(gl, scene);
         }}
         gl={{
-          antialias: true,
+          antialias: budget.tier === "low",
           preserveDrawingBuffer: posterBeat !== null,
           powerPreference: "high-performance",
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.08,
+          toneMappingExposure: 1.06,
         }}
       >
         <color attach="background" args={["#04060B"]} />
         <SceneChoreographer rocketRef={rocketRef} reducedMotion={reducedMotion} />
         <Suspense fallback={null}>
+          <HallEnvironment />
           <CelestialWorlds reducedMotion={reducedMotion} />
           <LaunchComplex />
           <SLSRocket rocketRef={rocketRef} reducedMotion={reducedMotion} />
           <ExhibitStage3D reducedMotion={reducedMotion} />
+          <PostEffects />
           <MaterialPrewarmer />
         </Suspense>
       </Canvas>
