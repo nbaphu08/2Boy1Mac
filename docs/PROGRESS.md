@@ -62,3 +62,8 @@ Remaining: THREE.Clock warning (Antigravity); beat-0 location tag sits at y~88 u
 - Done: `/` is now a light landing page (hero + About the gallery, no WebGL). `/journey` is the 3D journey, track clamped to start at beat 1 (`enter`; hero beat/overlay/portal removed from Stage). `/gallery` -> `/collection` (308), `/?poster=X` -> `/journey?poster=X`, `/#<beatId>` -> `/journey#<beatId>` (client). Sitemap, nav and exhibit links updated.
 - Next: preview deploy by Opus; poster script should use `/journey?poster=`.
 - Risks: Nav label "Collection" is hard-coded (journey.ui.gallery still says "Gallery"); hero beat 0 is still in `content/beats.ts` and three/trajectory.
+
+## Story map on /collection (Opus, 14 Nov 2026)
+- Done: "Where they rest" section on `/collection` (`components/museum/StoryMap.tsx`), answering the mentor's project idea 1 (map with clickable story pins). Moon/Mars tabs; pins placed only from cited `location.lat/lon` in `content/exhibits.ts` (Ingenuity has no published position, so no pin, with a note); card shows status, landing/impact and last-contact dates, coordinates + coordSource, young-explorer line, links to the exhibit page and `/journey#<slug>`. Pins are mouse targets; keyboard/screen readers use the numbered list (aria-pressed). Strings in `site.map`. Map images cropped from the existing NASA textures: `public/media/images/map/moon-nearside` (90°W–90°E, 20°S–85°N) and `mars-global` (60°S–80°N), JPG + WebP, ~120–300 KB.
+- Checked: pin positions match terrain (Tranquility, Hadley, Chryse, Meridiani, Gusev, Elysium); no horizontal page overflow at 390 px (Mars map scrolls inside its own box); tsc, eslint, build clean.
+- Next: preview deploy; mention the story map in SUBMISSION.md. Risks: none known; not checked on a real phone.

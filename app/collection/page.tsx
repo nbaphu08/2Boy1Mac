@@ -3,6 +3,36 @@ import Link from "next/link";
 import { exhibitsByHall } from "@/content/exhibits";
 import { site } from "@/content/site";
 import { statusLabel } from "@/components/museum/ExhibitContent";
+import { StoryMap, type MapPin } from "@/components/museum/StoryMap";
+import type { Exhibit } from "@/content/types";
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/** "1969-07-20" -> "20 Jul 1969", "1982-11" -> "Nov 1982" (no Date parsing, so no timezone shift). */
+function fmtIso(iso: string) {
+  const [y, m, d] = iso.split("-");
+  if (!m) return y;
+  return [d ? String(Number(d)) : null, MONTHS[Number(m) - 1], y].filter(Boolean).join(" ");
+}
+
+function toPin(ex: Exhibit): MapPin {
+  return {
+    slug: ex.slug,
+    catalogNo: ex.catalogNo,
+    name: ex.name,
+    site: ex.location.site,
+    status: statusLabel(ex),
+    active: ex.status === "still-active",
+    lat: ex.location.lat,
+    lon: ex.location.lon,
+    coordNote: ex.location.coordNote,
+    coordSource: ex.location.coordSource,
+    landed: fmtIso(ex.dates.landing),
+    impact: ex.type === "impact-site",
+    lastContact: ex.dates.lastContact ? fmtIso(ex.dates.lastContact) : undefined,
+    young: ex.youngExplorer,
+    poster: `/media/three/posters/${ex.slug}-1920x1080`,
+  };
+}
 
 export const metadata: Metadata = { title: "Collection", description: `All twelve exhibits: ${site.tagline}`, alternates: { canonical: "/collection" } };
 
@@ -15,6 +45,7 @@ export default function CollectionPage() {
       </nav>
       <h1 className="font-display text-3xl md:text-5xl">Collection</h1>
       <p className="mt-2 text-mute">{site.tagline}</p>
+      <StoryMap pins={{ moon: exhibitsByHall("moon").map(toPin), mars: exhibitsByHall("mars").map(toPin) }} />
       {(["moon", "mars"] as const).map((hall) => (
         <section key={hall} className="mt-12" aria-labelledby={`h-${hall}`}>
           <h2 id={`h-${hall}`} className="font-display text-xl">{site.halls[hall].name}</h2>
