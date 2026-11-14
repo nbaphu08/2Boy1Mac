@@ -7,22 +7,90 @@ import * as THREE from "three";
 import { scrollState, smoothstep, clamp01 } from "@/lib/scroll/progress";
 import { usePerfBudget } from "./perfTier";
 import { getKaptonBumpMap } from "./rocketTextures";
-import { getDarkEjectaTexture } from "./MoonModels";
-import { getLunarRegolithTextures } from "./MoonDioramas";
+import {
+  applyWorldTerrainShader,
+  InstancedLandscapeRocks,
+} from "./landscapeMaterials";
 import { grailSimState, subscribeGrailReplay } from "./simulationBus";
 
 const GRAIL_BEAT = 12;
 const SIM_DURATION = 14.0;
 const GLOBE_LOCAL_POS: [number, number, number] = [0, 36, -34];
 const GLOBE_RADIUS = 5.2;
-const IMPACT_A_LOCAL: [number, number, number] = [-1.05, 0.32, 0.38];
-const IMPACT_B_LOCAL: [number, number, number] = [1.05, 0.48, -0.32];
+const IMPACT_A_LOCAL: [number, number, number] = [-1.12, 0.24, 0.42];
+const IMPACT_B_LOCAL: [number, number, number] = [1.14, 0.44, -0.36];
 const SURFACE_Y = 0.22;
 
-// World anchor of moon-grail from trajectory.ts: [0, 371.0, -188.0]
-const ANCHOR_WORLD = new THREE.Vector3(0, 371.0, -188.0);
+// World anchor of moon-grail from trajectory.ts: [0.5, 370.6, -188.0]
+const ANCHOR_WORLD = new THREE.Vector3(0.5, 370.6, -188.0);
 const REST_CAM_WORLD = new THREE.Vector3(2.9, 372.6, -182.0);
 const REST_LOOK_WORLD = new THREE.Vector3(-0.15, 371.22, -188.0);
+
+let cachedFlashTex: THREE.CanvasTexture | null = null;
+function getSoftImpactFlashTexture(): THREE.CanvasTexture {
+  if (cachedFlashTex) return cachedFlashTex;
+  const c = document.createElement("canvas");
+  c.width = 128;
+  c.height = 128;
+  const ctx = c.getContext("2d")!;
+  const g = ctx.createRadialGradient(64, 64, 1, 64, 64, 62);
+  g.addColorStop(0, "rgba(255, 250, 232, 1.0)");
+  g.addColorStop(0.22, "rgba(255, 212, 148, 0.72)");
+  g.addColorStop(0.55, "rgba(235, 130, 62, 0.22)");
+  g.addColorStop(1, "rgba(180, 75, 20, 0.0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 128, 128);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  cachedFlashTex = tex;
+  return tex;
+}
+
+let cachedStarburstEjectaTex: THREE.CanvasTexture | null = null;
+function getStarburstEjectaTexture(): THREE.CanvasTexture {
+  if (cachedStarburstEjectaTex) return cachedStarburstEjectaTex;
+  const c = document.createElement("canvas");
+  c.width = 256;
+  c.height = 256;
+  const ctx = c.getContext("2d")!;
+  ctx.clearRect(0, 0, 256, 256);
+
+  // Subtle dark crater bowl interior
+  const bowl = ctx.createRadialGradient(128, 128, 6, 128, 128, 56);
+  bowl.addColorStop(0, "rgba(22, 20, 18, 0.88)");
+  bowl.addColorStop(0.65, "rgba(32, 30, 27, 0.62)");
+  bowl.addColorStop(1, "rgba(40, 38, 35, 0.0)");
+  ctx.fillStyle = bowl;
+  ctx.beginPath();
+  ctx.arc(128, 128, 58, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Sharp asymmetrical dark basaltic impact ejecta rays along downrange/lateral azimuths
+  for (let i = 0; i < 34; i++) {
+    const k = i * 47 + 13;
+    const angle = ((k * 71) % 360) * (Math.PI / 180);
+    const len = 46 + ((k * 37) % 76);
+    const width = 0.04 + ((k * 19) % 10) * 0.009;
+    const x2 = 128 + Math.cos(angle) * len;
+    const y2 = 128 + Math.sin(angle) * len;
+    const grad = ctx.createLinearGradient(128, 128, x2, y2);
+    grad.addColorStop(0, "rgba(26, 24, 22, 0.78)");
+    grad.addColorStop(0.55, "rgba(34, 32, 29, 0.35)");
+    grad.addColorStop(1, "rgba(34, 32, 29, 0.0)");
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(128, 128);
+    ctx.lineTo(128 + Math.cos(angle - width) * len, 128 + Math.sin(angle - width) * len);
+    ctx.lineTo(128 + Math.cos(angle + width) * len, 128 + Math.sin(angle + width) * len);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  cachedStarburstEjectaTex = tex;
+  return tex;
+}
 
 let cachedGrailSolarTex: THREE.CanvasTexture | null = null;
 function getGrailSolarTexture(): THREE.CanvasTexture {
@@ -119,20 +187,20 @@ function GrailSpacecraftModel({
 
 /** Smooth continuous north-polar Goldschmidt mountain slope extending to the horizon (no plinth). */
 function createPolarLandscapeGeometry(): THREE.BufferGeometry {
-  const size = 96;
-  const segs = 128;
+  const size = 128;
+  const segs = 140;
   const geo = new THREE.PlaneGeometry(size, size, segs, segs);
   geo.rotateX(-Math.PI / 2);
   const pos = geo.attributes.position;
 
   const craterBowl = (x: number, z: number, radius: number, depth: number, rim: number) => {
     const r = Math.hypot(x, z);
-    if (r > radius * 1.45) return 0;
+    if (r > radius * 1.48) return 0;
     const u = r / radius;
     if (u < 1.0) {
-      return -depth * (1 - u * u) + rim * Math.exp(-Math.pow((u - 0.94) / 0.16, 2));
+      return -depth * (1 - u * u) + rim * Math.exp(-Math.pow((u - 0.94) / 0.15, 2));
     }
-    return rim * Math.exp(-Math.pow((u - 0.94) / 0.2, 2));
+    return rim * Math.exp(-Math.pow((u - 0.94) / 0.19, 2));
   };
 
   for (let i = 0; i < pos.count; i++) {
@@ -141,11 +209,11 @@ function createPolarLandscapeGeometry(): THREE.BufferGeometry {
     const dist = Math.hypot(vx, vz);
 
     // Gentle undulating southern slope rising toward the ~2.5 km Goldschmidt polar mountain crest behind (-Z)
-    const farScale = smoothstep(3.5, 22, dist);
+    const farScale = smoothstep(3.5, 26, dist);
     const baseSlope = -vz * (0.14 - 0.04 * farScale);
     const ridgeRise =
       vz < -4
-        ? Math.pow(Math.max(0, -vz - 4) / 28, 1.35) * 4.2 * (0.78 + 0.28 * Math.cos(vx * 0.11 + 0.7))
+        ? Math.pow(Math.max(0, -vz - 4) / 30, 1.35) * 4.8 * (0.78 + 0.28 * Math.cos(vx * 0.11 + 0.7))
         : 0;
 
     // Distant flanking highland perimeter hills
@@ -167,9 +235,9 @@ function createPolarLandscapeGeometry(): THREE.BufferGeometry {
       craterBowl(vx - 8.5, vz - 7.5, 2.2, 0.42, 0.12) +
       craterBowl(vx + 3.2, vz + 4.8, 0.9, 0.18, 0.05);
 
-    // Two fresh ~5 m impact craters on the southern slope (Ebb at A, Flow at B)
-    craters += craterBowl(vx - IMPACT_A_LOCAL[0], vz - IMPACT_A_LOCAL[2], 0.62, 0.17, 0.055);
-    craters += craterBowl(vx - IMPACT_B_LOCAL[0], vz - IMPACT_B_LOCAL[2], 0.62, 0.17, 0.055);
+    // Two crisp ~5 m fresh impact craters on the southern slope (Ebb at A, Flow at B)
+    craters += craterBowl(vx - IMPACT_A_LOCAL[0], vz - IMPACT_A_LOCAL[2], 0.88, 0.28, 0.09);
+    craters += craterBowl(vx - IMPACT_B_LOCAL[0], vz - IMPACT_B_LOCAL[2], 0.88, 0.28, 0.09);
 
     pos.setY(i, baseSlope + ridgeRise + outerMassif + micro + craters);
   }
@@ -229,48 +297,31 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
     gravityUrl,
   ]);
 
-  const { map: regolithMap, bumpMap: regolithBump } = useMemo(() => {
-    const t = getLunarRegolithTextures();
-    return t;
+  const terrainMat = useMemo(() => {
+    const mat = new THREE.MeshStandardMaterial({
+      color: "#88837B",
+      roughness: 0.96,
+      metalness: 0.02,
+    });
+    applyWorldTerrainShader(mat, {
+      planet: "moon",
+      anchorXZ: [ANCHOR_WORLD.x, ANCHOR_WORLD.z],
+      baseTint: "#746F68",
+      brightTint: "#A7A299",
+      fadeStart: 38,
+      fadeEnd: 64,
+    });
+    return mat;
   }, []);
-  const regolithLarge = useMemo(() => {
-    const clonedMap = regolithMap.clone();
-    clonedMap.repeat.set(22, 22);
-    clonedMap.needsUpdate = true;
-    const clonedBump = regolithBump.clone();
-    clonedBump.repeat.set(22, 22);
-    clonedBump.needsUpdate = true;
-    return { map: clonedMap, bumpMap: clonedBump };
-  }, [regolithMap, regolithBump]);
 
-  const ejectaTex = useMemo(() => getDarkEjectaTexture(), []);
+  const ejectaTex = useMemo(() => getStarburstEjectaTexture(), []);
+  const flashTex = useMemo(() => getSoftImpactFlashTexture(), []);
   const kaptonBump = useMemo(() => getKaptonBumpMap(), []);
   const solarTex = useMemo(() => getGrailSolarTexture(), []);
   const terrainGeo = useMemo(() => createPolarLandscapeGeometry(), []);
 
   const ejectaPerImpact = budget.tier === "high" ? 220 : budget.tier === "medium" ? 130 : 48;
   const ballistic = useMemo(() => buildBallisticData(ejectaPerImpact), [ejectaPerImpact]);
-
-  // Pre-scattered polar highland boulders
-  const highlandRocks = useMemo(() => {
-    const rockCount = budget.tier === "high" ? 42 : 24;
-    const items: { pos: [number, number, number]; scale: [number, number, number]; rot: [number, number, number] }[] = [];
-    for (let i = 0; i < rockCount; i++) {
-      const k = i * 53 + 17;
-      const a = ((k * 83) % 360) * (Math.PI / 180);
-      const r = 2.4 + ((k * 41) % 100) * 0.16;
-      const rx = Math.cos(a) * r;
-      const rz = Math.sin(a) * r;
-      const ry = SURFACE_Y + getPolarHeightApprox(rx, rz);
-      const s = 0.07 + (i % 5) * 0.045;
-      items.push({
-        pos: [rx, ry + s * 0.28, rz],
-        scale: [s * 1.35, s * 0.72, s * 1.05],
-        rot: [(k % 6) * 0.4, (k % 9) * 0.5, (k % 5) * 0.3],
-      });
-    }
-    return items;
-  }, [budget.tier]);
 
   // Swath-painted Moon globe shader uniforms
   const globeUniforms = useMemo(
@@ -293,12 +344,12 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
   const orbiterEbbRef = useRef<THREE.Group>(null);
   const orbiterFlowRef = useRef<THREE.Group>(null);
   const rangingBeamRef = useRef<THREE.Mesh>(null);
-  const pulseBeadRef = useRef<THREE.Mesh>(null);
+  const orbitRingRef = useRef<THREE.Mesh>(null);
 
   const craterARef = useRef<THREE.Mesh>(null);
   const craterBRef = useRef<THREE.Mesh>(null);
-  const flashARef = useRef<THREE.Mesh>(null);
-  const flashBRef = useRef<THREE.Mesh>(null);
+  const flashARef = useRef<THREE.Sprite>(null);
+  const flashBRef = useRef<THREE.Sprite>(null);
   const impactLightRef = useRef<THREE.PointLight>(null);
   const ejectaPointsRef = useRef<THREE.Points>(null);
   const restGhostsRef = useRef<THREE.Group>(null);
@@ -404,22 +455,31 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
     if (globeGroupRef.current && globeMatRef.current) {
       globeGroupRef.current.visible = showGlobe;
       if (showGlobe) {
-        const orbitIn = smoothstep(0.0, 0.65, t);
+        const orbitIn = smoothstep(0.0, 0.55, t);
         const orbitOut = 1 - smoothstep(6.0, 7.5, t);
-        globeGroupRef.current.scale.setScalar(0.85 + 0.15 * orbitIn * orbitOut);
+        globeGroupRef.current.scale.setScalar(0.88 + 0.12 * orbitIn * orbitOut);
 
         // Time-compressed lunar rotation under fixed polar orbit plane
         const moonTurn = (t / 5.4) * Math.PI * 2;
         const uniforms = globeMatRef.current.uniforms;
         uniforms.uGravityMap.value = gravityTex;
         uniforms.uSkipSwath.value = isLow ? 1 : 0;
+        // Swath advances progressively from 0% to 100% behind the orbiting ground track
         uniforms.uGroundOffset.value = t / 5.4;
-        uniforms.uSweepProgress.value = clamp01((t - 0.25) / 5.15);
+        uniforms.uSweepProgress.value = clamp01((t - 0.15) / 5.25);
 
-        const gravIn = smoothstep(0.15, 0.7, t);
+        const gravIn = smoothstep(0.08, 0.45, t);
         const gravOut = 1 - smoothstep(5.85, 7.1, t);
         uniforms.uGravityMix.value = gravIn * gravOut;
-        globeGroupRef.current.rotation.y = moonTurn * 0.08;
+        globeGroupRef.current.rotation.y = moonTurn * 0.12;
+      }
+    }
+
+    if (orbitRingRef.current) {
+      orbitRingRef.current.visible = st.playing && t < 6.4;
+      if (orbitRingRef.current.visible) {
+        const ringMat = orbitRingRef.current.material as THREE.MeshBasicMaterial;
+        ringMat.opacity = 0.24 * (1 - smoothstep(5.7, 6.4, t));
       }
     }
 
@@ -432,9 +492,9 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
       if (showPair) {
         if (t < 6.2) {
           // Polar orbit (YZ plane) around GLOBE_LOCAL_POS
-          const thetaEbb = t * 1.45 + 0.35;
-          const thetaFlow = thetaEbb - 0.32;
-          const rOrbit = GLOBE_RADIUS + 0.85;
+          const thetaEbb = t * 1.45 + 0.45;
+          const thetaFlow = thetaEbb - 0.36;
+          const rOrbit = GLOBE_RADIUS + 1.05;
 
           tmpEbbPos.set(
             GLOBE_LOCAL_POS[0],
@@ -449,8 +509,9 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
 
           orbiterEbbRef.current.position.copy(tmpEbbPos);
           orbiterFlowRef.current.position.copy(tmpFlowPos);
-          orbiterEbbRef.current.scale.setScalar(0.32);
-          orbiterFlowRef.current.scale.setScalar(0.32);
+          // Clearly legible PIA13965 spacecraft silhouette at orbital scale
+          orbiterEbbRef.current.scale.setScalar(0.62);
+          orbiterFlowRef.current.scale.setScalar(0.62);
           // Point Ka-band horns toward each other along orbital tangent
           orbiterEbbRef.current.lookAt(
             ANCHOR_WORLD.x + tmpFlowPos.x,
@@ -493,8 +554,8 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
           orbiterFlowRef.current.visible = t < 11.88;
           orbiterEbbRef.current.position.copy(tmpEbbPos);
           orbiterFlowRef.current.position.copy(tmpFlowPos);
-          orbiterEbbRef.current.scale.setScalar(0.34);
-          orbiterFlowRef.current.scale.setScalar(0.34);
+          orbiterEbbRef.current.scale.setScalar(0.38);
+          orbiterFlowRef.current.scale.setScalar(0.38);
           orbiterEbbRef.current.lookAt(
             ANCHOR_WORLD.x + IMPACT_A_LOCAL[0],
             ANCHOR_WORLD.y + endAY,
@@ -509,11 +570,10 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
       }
     }
 
-    // Thin pulsing #9DB8FF Ka-band link beam between Ebb & Flow
-    if (rangingBeamRef.current && pulseBeadRef.current) {
+    // Thin pulsing #9DB8FF Ka-band link beam only (no sphere bead)
+    if (rangingBeamRef.current) {
       const showLink = showPair && t < 11.15;
       rangingBeamRef.current.visible = showLink;
-      pulseBeadRef.current.visible = showLink;
       if (showLink) {
         tmpMid.copy(tmpEbbPos).add(tmpFlowPos).multiplyScalar(0.5);
         tmpDir.copy(tmpFlowPos).sub(tmpEbbPos);
@@ -526,10 +586,7 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
         rangingBeamRef.current.scale.set(1, sep, 1);
 
         const beamMat = rangingBeamRef.current.material as THREE.MeshBasicMaterial;
-        beamMat.opacity = 0.52 + 0.35 * Math.sin(t * 14.0);
-
-        const ping = 0.5 + 0.5 * Math.sin(t * 7.5);
-        pulseBeadRef.current.position.lerpVectors(tmpEbbPos, tmpFlowPos, ping);
+        beamMat.opacity = 0.58 + 0.36 * Math.sin(t * 16.0);
       }
     }
 
@@ -540,37 +597,41 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
       craterARef.current.visible = showCraterA;
       if (showCraterA && st.playing) {
         const s = smoothstep(11.2, 11.45, t);
-        (craterARef.current.material as THREE.MeshBasicMaterial).opacity = 0.9 * s;
+        (craterARef.current.material as THREE.MeshBasicMaterial).opacity = 0.88 * s;
       } else if (!st.playing) {
-        (craterARef.current.material as THREE.MeshBasicMaterial).opacity = cratersVisibleYet ? 0.9 : 0;
+        (craterARef.current.material as THREE.MeshBasicMaterial).opacity = cratersVisibleYet ? 0.88 : 0;
       }
     }
     if (craterBRef.current) {
       craterBRef.current.visible = showCraterB;
       if (showCraterB && st.playing) {
         const s = smoothstep(11.85, 12.1, t);
-        (craterBRef.current.material as THREE.MeshBasicMaterial).opacity = 0.9 * s;
+        (craterBRef.current.material as THREE.MeshBasicMaterial).opacity = 0.88 * s;
       } else if (!st.playing) {
-        (craterBRef.current.material as THREE.MeshBasicMaterial).opacity = cratersVisibleYet ? 0.9 : 0;
+        (craterBRef.current.material as THREE.MeshBasicMaterial).opacity = cratersVisibleYet ? 0.88 : 0;
       }
     }
 
-    // Impact flashes
-    const flashA = st.playing && t >= 11.18 && t <= 11.65 ? 1 - (t - 11.18) / 0.47 : 0;
-    const flashB = st.playing && t >= 11.83 && t <= 12.3 ? 1 - (t - 11.83) / 0.47 : 0;
+    // Brief soft additive radial impact flashes (fast exponential decay, no solid ball)
+    const rawFlashA = st.playing && t >= 11.18 && t <= 11.44 ? 1 - (t - 11.18) / 0.26 : 0;
+    const rawFlashB = st.playing && t >= 11.83 && t <= 12.09 ? 1 - (t - 11.83) / 0.26 : 0;
+    const flashA = Math.pow(rawFlashA, 2.2);
+    const flashB = Math.pow(rawFlashB, 2.2);
     if (flashARef.current) {
       flashARef.current.visible = flashA > 0.01;
-      flashARef.current.scale.setScalar(0.35 + (1 - flashA) * 1.15);
-      (flashARef.current.material as THREE.MeshBasicMaterial).opacity = flashA * 0.95;
+      const sc = 0.6 + (1 - rawFlashA) * 1.45;
+      flashARef.current.scale.set(sc, sc, 1);
+      (flashARef.current.material as THREE.SpriteMaterial).opacity = flashA * 0.92;
     }
     if (flashBRef.current) {
       flashBRef.current.visible = flashB > 0.01;
-      flashBRef.current.scale.setScalar(0.35 + (1 - flashB) * 1.15);
-      (flashBRef.current.material as THREE.MeshBasicMaterial).opacity = flashB * 0.95;
+      const sc = 0.6 + (1 - rawFlashB) * 1.45;
+      flashBRef.current.scale.set(sc, sc, 1);
+      (flashBRef.current.material as THREE.SpriteMaterial).opacity = flashB * 0.92;
     }
     if (impactLightRef.current) {
       const peak = Math.max(flashA, flashB);
-      impactLightRef.current.intensity = peak * 32;
+      impactLightRef.current.intensity = peak * 26;
       if (flashB > flashA) {
         impactLightRef.current.position.set(IMPACT_B_LOCAL[0], SURFACE_Y + IMPACT_B_LOCAL[1] + 0.35, IMPACT_B_LOCAL[2]);
       } else {
@@ -629,9 +690,9 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
         // Orbit camera looking squarely at the GRAIL Moon globe with Ebb & Flow crossing front face
         const u = clamp01(t / 6.0);
         tmpCamWorld.set(
-          ANCHOR_WORLD.x + THREE.MathUtils.lerp(5.8, 4.4, u),
-          ANCHOR_WORLD.y + GLOBE_LOCAL_POS[1] + THREE.MathUtils.lerp(2.2, 3.8, u),
-          ANCHOR_WORLD.z + GLOBE_LOCAL_POS[2] + THREE.MathUtils.lerp(14.5, 13.2, u),
+          ANCHOR_WORLD.x + THREE.MathUtils.lerp(5.2, 4.1, u),
+          ANCHOR_WORLD.y + GLOBE_LOCAL_POS[1] + THREE.MathUtils.lerp(1.8, 3.1, u),
+          ANCHOR_WORLD.z + GLOBE_LOCAL_POS[2] + THREE.MathUtils.lerp(11.6, 10.6, u),
         );
         tmpLookWorld.set(
           ANCHOR_WORLD.x + GLOBE_LOCAL_POS[0],
@@ -642,9 +703,9 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
         // Slew smoothly from orbit globe down behind the descending pair over the polar ridge
         const u = smoothstep(6.0, 7.6, t);
         tmpCamWorld.set(
-          ANCHOR_WORLD.x + THREE.MathUtils.lerp(4.4, -1.6, u),
-          ANCHOR_WORLD.y + THREE.MathUtils.lerp(GLOBE_LOCAL_POS[1] + 3.8, 5.4, u),
-          ANCHOR_WORLD.z + THREE.MathUtils.lerp(GLOBE_LOCAL_POS[2] + 13.2, -9.5, u),
+          ANCHOR_WORLD.x + THREE.MathUtils.lerp(4.1, -1.6, u),
+          ANCHOR_WORLD.y + THREE.MathUtils.lerp(GLOBE_LOCAL_POS[1] + 3.1, 5.4, u),
+          ANCHOR_WORLD.z + THREE.MathUtils.lerp(GLOBE_LOCAL_POS[2] + 10.6, -9.5, u),
         );
         tmpLookWorld.set(
           ANCHOR_WORLD.x + THREE.MathUtils.lerp(GLOBE_LOCAL_POS[0], -2.8, u),
@@ -655,27 +716,27 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
         // Low grazing chase camera swooping along the north-polar mountain slope toward impact site
         const u = smoothstep(7.6, 11.4, t);
         tmpCamWorld.set(
-          ANCHOR_WORLD.x + THREE.MathUtils.lerp(-1.6, 3.2, u),
+          ANCHOR_WORLD.x + THREE.MathUtils.lerp(-1.6, 3.0, u),
           ANCHOR_WORLD.y + THREE.MathUtils.lerp(5.4, 2.35, u),
-          ANCHOR_WORLD.z + THREE.MathUtils.lerp(-9.5, 5.8, u),
+          ANCHOR_WORLD.z + THREE.MathUtils.lerp(-9.5, 5.6, u),
         );
         tmpLookWorld.set(
-          ANCHOR_WORLD.x + THREE.MathUtils.lerp(-2.8, -0.1, u),
-          ANCHOR_WORLD.y + THREE.MathUtils.lerp(3.2, 0.55, u),
-          ANCHOR_WORLD.z + THREE.MathUtils.lerp(-11.5, 0.0, u),
+          ANCHOR_WORLD.x + THREE.MathUtils.lerp(-2.8, -0.18, u),
+          ANCHOR_WORLD.y + THREE.MathUtils.lerp(3.2, 0.5, u),
+          ANCHOR_WORLD.z + THREE.MathUtils.lerp(-11.5, 0.1, u),
         );
       } else {
         // Pull into final rest impact site framing
         const u = smoothstep(11.4, 13.9, t);
         tmpCamWorld.set(
-          THREE.MathUtils.lerp(ANCHOR_WORLD.x + 3.2, REST_CAM_WORLD.x, u),
+          THREE.MathUtils.lerp(ANCHOR_WORLD.x + 3.0, REST_CAM_WORLD.x, u),
           THREE.MathUtils.lerp(ANCHOR_WORLD.y + 2.35, REST_CAM_WORLD.y, u),
-          THREE.MathUtils.lerp(ANCHOR_WORLD.z + 5.8, REST_CAM_WORLD.z, u),
+          THREE.MathUtils.lerp(ANCHOR_WORLD.z + 5.6, REST_CAM_WORLD.z, u),
         );
         tmpLookWorld.set(
-          THREE.MathUtils.lerp(ANCHOR_WORLD.x - 0.1, REST_LOOK_WORLD.x, u),
-          THREE.MathUtils.lerp(ANCHOR_WORLD.y + 0.55, REST_LOOK_WORLD.y, u),
-          ANCHOR_WORLD.z,
+          THREE.MathUtils.lerp(ANCHOR_WORLD.x - 0.18, REST_LOOK_WORLD.x, u),
+          THREE.MathUtils.lerp(ANCHOR_WORLD.y + 0.5, REST_LOOK_WORLD.y, u),
+          THREE.MathUtils.lerp(ANCHOR_WORLD.z + 0.1, REST_LOOK_WORLD.z, u),
         );
       }
 
@@ -686,84 +747,95 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
 
   return (
     <group>
-      {/* ─── NORTH-POLAR GOLDSCHMIDT MOUNTAIN SLOPE TO HORIZON (AG-9b PILOT, NO PLINTH) ─── */}
+      {/* ─── NORTH-POLAR GOLDSCHMIDT MOUNTAIN SLOPE TO HORIZON (NO PLINTH, ZERO DOT GRID) ─── */}
       <mesh
         name="diorama-terrain"
         geometry={terrainGeo}
+        material={terrainMat}
         position={[0, SURFACE_Y, 0]}
         receiveShadow
-      >
-        <meshStandardMaterial
-          map={regolithLarge.map}
-          bumpMap={regolithLarge.bumpMap}
-          bumpScale={0.08}
-          color="#868077"
-          roughness={0.95}
-          metalness={0.03}
-        />
-      </mesh>
+      />
 
-      {/* Scattered highland basalt rocks */}
-      <group>
-        {highlandRocks.map((r, i) => (
-          <mesh key={i} position={r.pos} scale={r.scale} rotation={r.rot} castShadow receiveShadow>
-            <dodecahedronGeometry args={[1, 0]} />
-            <meshStandardMaterial color="#4A4742" roughness={0.96} metalness={0.04} />
-          </mesh>
-        ))}
-      </group>
+      {/* Instanced fractured lunar highland basalt rocks */}
+      <InstancedLandscapeRocks
+        planet="moon"
+        anchorXZ={[ANCHOR_WORLD.x, ANCHOR_WORLD.z]}
+        count={budget.tier === "high" ? 130 : budget.tier === "medium" ? 80 : 40}
+        seed={1203}
+        maxRadius={34}
+        clearRadius={2.6}
+        scaleRange={[0.06, 0.28]}
+        surfaceY={SURFACE_Y}
+        heightFn={getPolarHeightApprox}
+      />
 
-      {/* Impact Crater A (Ebb / GRAIL-A) dark ejecta overlay */}
+      {/* Impact Crater A (Ebb / GRAIL-A) sharp radial dark basaltic ejecta rays */}
       <mesh
         ref={craterARef}
-        position={[IMPACT_A_LOCAL[0], SURFACE_Y + IMPACT_A_LOCAL[1] - 0.14, IMPACT_A_LOCAL[2]]}
+        name="grail-ejecta-a"
+        position={[IMPACT_A_LOCAL[0], SURFACE_Y + IMPACT_A_LOCAL[1] - 0.04, IMPACT_A_LOCAL[2]]}
         rotation={[-Math.PI / 2 + 0.14, 0, 0.25]}
       >
-        <planeGeometry args={[1.95, 1.95]} />
-        <meshBasicMaterial map={ejectaTex} transparent opacity={0.9} depthWrite={false} />
+        <planeGeometry args={[2.55, 2.55]} />
+        <meshBasicMaterial
+          map={ejectaTex}
+          transparent
+          opacity={0.88}
+          depthWrite={false}
+          polygonOffset
+          polygonOffsetFactor={-1}
+        />
       </mesh>
 
-      {/* Impact Crater B (Flow / GRAIL-B) dark ejecta overlay */}
+      {/* Impact Crater B (Flow / GRAIL-B) sharp radial dark basaltic ejecta rays */}
       <mesh
         ref={craterBRef}
-        position={[IMPACT_B_LOCAL[0], SURFACE_Y + IMPACT_B_LOCAL[1] - 0.15, IMPACT_B_LOCAL[2]]}
+        name="grail-ejecta-b"
+        position={[IMPACT_B_LOCAL[0], SURFACE_Y + IMPACT_B_LOCAL[1] - 0.05, IMPACT_B_LOCAL[2]]}
         rotation={[-Math.PI / 2 + 0.14, 0, -0.35]}
       >
-        <planeGeometry args={[1.95, 1.95]} />
-        <meshBasicMaterial map={ejectaTex} transparent opacity={0.9} depthWrite={false} />
+        <planeGeometry args={[2.55, 2.55]} />
+        <meshBasicMaterial
+          map={ejectaTex}
+          transparent
+          opacity={0.88}
+          depthWrite={false}
+          polygonOffset
+          polygonOffsetFactor={-1}
+        />
       </mesh>
 
-      {/* Hypervelocity Impact Flashes (HDR > 1 for selective Bloom) */}
-      <mesh
+      {/* Brief soft additive hypervelocity impact flash sprites (no opaque ball) */}
+      <sprite
         ref={flashARef}
-        position={[IMPACT_A_LOCAL[0], SURFACE_Y + IMPACT_A_LOCAL[1], IMPACT_A_LOCAL[2]]}
+        position={[IMPACT_A_LOCAL[0], SURFACE_Y + IMPACT_A_LOCAL[1] + 0.12, IMPACT_A_LOCAL[2]]}
         visible={false}
       >
-        <sphereGeometry args={[0.45, 12, 10]} />
-        <meshBasicMaterial
-          color={[3.2, 2.2, 1.3]}
+        <spriteMaterial
+          map={flashTex}
+          color={[2.6, 1.85, 1.1]}
           toneMapped={false}
           transparent
-          opacity={0.95}
+          opacity={0.9}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
         />
-      </mesh>
-      <mesh
+      </sprite>
+      <sprite
         ref={flashBRef}
-        position={[IMPACT_B_LOCAL[0], SURFACE_Y + IMPACT_B_LOCAL[1], IMPACT_B_LOCAL[2]]}
+        position={[IMPACT_B_LOCAL[0], SURFACE_Y + IMPACT_B_LOCAL[1] + 0.12, IMPACT_B_LOCAL[2]]}
         visible={false}
       >
-        <sphereGeometry args={[0.45, 12, 10]} />
-        <meshBasicMaterial
-          color={[3.2, 2.2, 1.3]}
+        <spriteMaterial
+          map={flashTex}
+          color={[2.6, 1.85, 1.1]}
           toneMapped={false}
           transparent
-          opacity={0.95}
+          opacity={0.9}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
         />
-      </mesh>
+      </sprite>
       <pointLight ref={impactLightRef} intensity={0} distance={14} color="#FFD39B" />
 
       {/* Vacuum Ballistic Ejecta Particles (clean conic trajectories, zero billowing smoke) */}
@@ -780,44 +852,44 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
         />
       </points>
 
-      {/* Subtle Rest-State Ghost Silhouettes above the Sally K. Ride Impact Site */}
+      {/* Very subtle uprange approach wireframes (zero shadows, offset uprange from craters) */}
       <group ref={restGhostsRef}>
         {[-1, 1].map((side) => {
           const base = side < 0 ? IMPACT_A_LOCAL : IMPACT_B_LOCAL;
           return (
             <group
               key={side}
-              position={[base[0], SURFACE_Y + base[1] + 0.92, base[2]]}
-              rotation={[0.25, 0.25, -0.1]}
-              scale={0.44}
+              position={[base[0] - 0.55, SURFACE_Y + base[1] + 1.05, base[2] - 0.9]}
+              rotation={[0.32, 0.2, -0.08]}
+              scale={0.34}
             >
-              <mesh>
+              <mesh name="grail-ghost-bus" castShadow={false} receiveShadow={false}>
                 <boxGeometry args={[0.95, 0.76, 1.09]} />
                 <meshBasicMaterial
                   color="#9DB8FF"
                   wireframe
                   transparent
-                  opacity={0.14}
+                  opacity={0.075}
                   depthWrite={false}
                 />
               </mesh>
-              <mesh position={[1.12, 0, -0.06]}>
+              <mesh name="grail-ghost-wing-r" position={[1.12, 0, -0.06]} castShadow={false} receiveShadow={false}>
                 <boxGeometry args={[1.18, 0.025, 1.02]} />
                 <meshBasicMaterial
                   color="#9DB8FF"
                   wireframe
                   transparent
-                  opacity={0.12}
+                  opacity={0.065}
                   depthWrite={false}
                 />
               </mesh>
-              <mesh position={[-1.12, 0, -0.06]}>
+              <mesh name="grail-ghost-wing-l" position={[-1.12, 0, -0.06]} castShadow={false} receiveShadow={false}>
                 <boxGeometry args={[1.18, 0.025, 1.02]} />
                 <meshBasicMaterial
                   color="#9DB8FF"
                   wireframe
                   transparent
-                  opacity={0.12}
+                  opacity={0.065}
                   depthWrite={false}
                 />
               </mesh>
@@ -855,37 +927,46 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
 
               void main() {
                 vec3 moonCol = texture2D(uMoonMap, vUv).rgb;
-                vec3 gravCol = texture2D(uGravityMap, vUv).rgb;
+                vec3 gravRaw = texture2D(uGravityMap, vUv).rgb;
+                // Keep SVS 4014 reds & blues vivid under ACES tone mapping (avoid pastel washout)
+                vec3 gravSat = pow(max(gravRaw, vec3(0.001)), vec3(1.55));
 
-                // Longitude-swept swath mask synced to polar ground track
+                // Progressive swath mask swept smoothly 0% -> 100% behind polar orbit ground track
                 float reveal = 1.0;
                 float edgeGlow = 0.0;
                 if (uSkipSwath < 0.5) {
                   float progress = clamp(uSweepProgress, 0.0, 1.0);
                   float delta = fract(uGroundOffset - vUv.x);
-                  reveal = smoothstep(0.025, 0.0, delta - progress);
-                  // Active polar ground-track highlight right at the leading swath meridian (delta == 0)
+                  reveal = 1.0 - smoothstep(0.0, 0.03, delta - progress);
                   float trackDist = min(delta, 1.0 - delta);
-                  edgeGlow = exp(-trackDist * 65.0) * step(0.02, progress) * (1.0 - smoothstep(0.95, 1.0, progress));
+                  edgeGlow = exp(-trackDist * 68.0) * step(0.02, progress) * (1.0 - smoothstep(0.95, 1.0, progress));
                 }
 
                 float mixAmt = uGravityMix * reveal;
-                // Mascon soft crimson/amber HDR glow where red dominates blue
-                float mascon = smoothstep(0.22, 0.62, gravCol.r - gravCol.b);
-
                 float NdotL = max(0.08, dot(normalize(vNormalWorld), normalize(uSunDir)));
-                vec3 litMoon = moonCol * (0.22 + 1.05 * NdotL);
-                vec3 litGrav = gravCol * (0.35 + 0.9 * NdotL);
+                vec3 litMoon = moonCol * (0.20 + 0.92 * NdotL);
+                vec3 litGrav = gravSat * (0.34 + 0.72 * NdotL);
 
-                vec3 col = mix(litMoon, litGrav, mixAmt * 0.82);
-                col += vec3(1.25, 0.42, 0.2) * mascon * mixAmt * 0.42;
-                col += vec3(0.75, 1.1, 1.85) * edgeGlow * uGravityMix * 0.75;
+                vec3 col = mix(litMoon, litGrav, mixAmt * 0.9);
+                col += vec3(0.55, 0.9, 1.55) * edgeGlow * uGravityMix * 0.55;
 
                 gl_FragColor = vec4(col, 1.0);
                 #include <tonemapping_fragment>
                 #include <colorspace_fragment>
               }
             `}
+          />
+        </mesh>
+
+        {/* Subtle polar orbital track ring around Moon globe (YZ plane) */}
+        <mesh ref={orbitRingRef} rotation={[0, Math.PI / 2, 0]} visible={false}>
+          <torusGeometry args={[GLOBE_RADIUS + 1.05, 0.018, 8, 96]} />
+          <meshBasicMaterial
+            color="#9DB8FF"
+            transparent
+            opacity={0.24}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
           />
         </mesh>
       </group>
@@ -898,25 +979,14 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
         <GrailSpacecraftModel kaptonBump={kaptonBump} solarTex={solarTex} />
       </group>
 
-      {/* Thin pulsing #9DB8FF Ka-band Ranging Link + Signal Pulse Bead */}
+      {/* Thin pulsing #9DB8FF Ka-band Ranging Link (only the line, zero sphere bead) */}
       <mesh ref={rangingBeamRef} visible={false}>
-        <cylinderGeometry args={[0.025, 0.025, 1, 8]} />
+        <cylinderGeometry args={[0.015, 0.015, 1, 8]} />
         <meshBasicMaterial
           color={[1.15, 1.45, 2.25]}
           toneMapped={false}
           transparent
-          opacity={0.75}
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-        />
-      </mesh>
-      <mesh ref={pulseBeadRef} visible={false}>
-        <sphereGeometry args={[0.09, 10, 10]} />
-        <meshBasicMaterial
-          color={[1.6, 2.0, 3.0]}
-          toneMapped={false}
-          transparent
-          opacity={0.95}
+          opacity={0.78}
           depthWrite={false}
           blending={THREE.AdditiveBlending}
         />

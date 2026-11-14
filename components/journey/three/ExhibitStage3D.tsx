@@ -36,14 +36,15 @@ function ShadowEnabler({
       root.traverse((obj) => {
         if (!(obj as THREE.Mesh).isMesh) return;
         const mesh = obj as THREE.Mesh;
-        if (mesh.name === "diorama-terrain") {
+        if (mesh.name === "diorama-terrain" || mesh.name.startsWith("grail-ghost")) {
           mesh.castShadow = false;
-          mesh.receiveShadow = enabled;
+          mesh.receiveShadow = mesh.name === "diorama-terrain" ? enabled : false;
           return;
         }
         const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
         const hasTransparentOnly = mats.every((m) => m && m.transparent && !m.depthWrite);
-        if (hasTransparentOnly) {
+        const hasWireframe = mats.some((m) => m && "wireframe" in m && (m as THREE.MeshBasicMaterial).wireframe);
+        if (hasTransparentOnly || hasWireframe) {
           mesh.castShadow = false;
           mesh.receiveShadow = false;
         } else {
@@ -213,9 +214,7 @@ function SingleExhibitPlinth({
   const budget = usePerfBudget();
   const spinRef = useRef<THREE.Group>(null);
   const spotRef = useRef<THREE.SpotLight>(null);
-  const coneRef = useRef<THREE.Mesh>(null);
   const rootRef = useRef<THREE.Group>(null);
-  const elapsedRef = useRef(0);
   const [hovered, setHovered] = useState(false);
   // AG-6: Lazy-load / mount heavy exhibit GLBs only when within ±budget.glbMountWindow beats
   const [inGlbRange, setInGlbRange] = useState(false);
@@ -230,9 +229,8 @@ function SingleExhibitPlinth({
   }, [hovered]);
 
   const isMoon = anchor?.planet === "moon";
-  const isPilot = exhibit.slug === "moon-grail" || exhibit.slug === "mars-pathfinder";
 
-  useFrame((_, delta) => {
+  useFrame(() => {
     const p = scrollState.current;
     const dist = Math.abs(p - beatIndex);
     const shouldMountGlb = dist <= budget.glbMountWindow;
@@ -242,26 +240,18 @@ function SingleExhibitPlinth({
       setInGlbRange(false);
     }
 
-    const vis = 1 - smoothstep(0.42, 0.78, dist);
+    // Strict non-overlapping horizon swap at midpoint dist = 0.50 behind SpaceScene transition veil
     if (!rootRef.current) return;
-    rootRef.current.visible = vis > 0.01;
-    if (!rootRef.current.visible) return;
+    const inBeatWindow = dist < 0.5;
+    rootRef.current.visible = inBeatWindow;
+    if (!inBeatWindow) return;
 
-    rootRef.current.scale.setScalar(isPilot ? 1 : 0.76 + 0.24 * vis);
+    rootRef.current.scale.setScalar(1);
 
-    if (spinRef.current && !reducedMotion && !isPilot) {
-      elapsedRef.current += Math.min(delta, 0.05);
-      // Subtle diorama presentation sway so mountain/plateau backdrops remain oriented toward camera
-      spinRef.current.rotation.y = Math.sin(elapsedRef.current * 0.28 + beatIndex) * 0.08;
-    }
-
-    const boost = activeExhibit === exhibit.slug ? 1.45 : hovered ? 1.22 : 1.0;
+    const boost = activeExhibit === exhibit.slug ? 1.35 : hovered ? 1.18 : 1.0;
     if (spotRef.current) {
-      spotRef.current.intensity = (isMoon ? 58 : 54) * vis * boost;
-    }
-    if (coneRef.current) {
-      const mat = coneRef.current.material as THREE.MeshBasicMaterial;
-      mat.opacity = 0.028 * vis * boost;
+      const fade = 1 - smoothstep(0.35, 0.49, dist);
+      spotRef.current.intensity = (isMoon ? 28 : 34) * fade * boost;
     }
   });
 
@@ -282,37 +272,16 @@ function SingleExhibitPlinth({
       }}
       onPointerOut={() => setHovered(false)}
     >
-      {/* Cold museum spotlight (#DCE6FF) — omitted on Moon/AG-9b pilot landscapes to prevent milky dome artifacts */}
-      {!isPilot ? (
-        <spotLight
-          ref={spotRef}
-          position={[0, 6.4, 1.35]}
-          angle={0.56}
-          penumbra={0.85}
-          intensity={isMoon ? 42 : 54}
-          distance={18}
-          color="#DCE6FF"
-        />
-      ) : null}
-
-      {/* Volumetric spotlight cone removed on Moon dioramas (AG-9a review) and AG-9b landscape pilots */}
-      {!isMoon && !isPilot ? (
-        <mesh
-          ref={coneRef}
-          position={[0, 3.2, 0.42]}
-          rotation={[0.15, 0, 0]}
-        >
-          <coneGeometry args={[3.35, 6.2, 28, 1, true]} />
-          <meshBasicMaterial
-            color="#DCE6FF"
-            transparent
-            opacity={0.028}
-            blending={THREE.AdditiveBlending}
-            depthWrite={false}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
-      ) : null}
+      {/* Subtle overhead documentary rim fill (#DCE6FF) without any conical beam mesh (AG-9b) */}
+      <spotLight
+        ref={spotRef}
+        position={[0, 7.2, 1.5]}
+        angle={0.62}
+        penumbra={0.92}
+        intensity={isMoon ? 28 : 34}
+        distance={22}
+        color="#DCE6FF"
+      />
 
       <group ref={spinRef}>
         {isMoon ? (
