@@ -154,19 +154,18 @@ function SceneChoreographer({
     const nearestSlug = beats[nearestIdx]?.exhibitSlug;
     const exhibitAnchor = nearestSlug ? EXHIBIT_PLINTH_ANCHORS[nearestSlug] : undefined;
 
-    // Very brief, shallow transition softening between exhibits so lunar terrain never dips to black (AG-12b)
+    // Keep lunar transitions dark-free and Mars swap mist subtle over textured terrain (AG-12c)
     if (veilRef.current) {
-      const inMoonSwap = p >= 8.05 && p <= 11.95;
       const inMarsSwap = p >= 14.05 && p <= 19.95;
-      if (!reducedMotion && (inMoonSwap || inMarsSwap)) {
+      if (!reducedMotion && inMarsSwap) {
         const frac = p - Math.floor(p);
         const distMid = Math.abs(frac - 0.5);
-        const halfWin = inMoonSwap ? 0.042 : 0.06;
-        const maxAlpha = inMoonSwap ? 0.18 : 0.34;
+        const halfWin = 0.032;
+        const maxAlpha = 0.14;
         const veilAlpha = distMid < halfWin ? Math.pow(1 - distMid / halfWin, 1.4) * maxAlpha : 0;
         veilRef.current.style.opacity = veilAlpha.toFixed(3);
         if (veilAlpha > 0.01) {
-          veilRef.current.style.backgroundColor = inMoonSwap ? "rgb(4, 6, 11)" : "rgb(154, 94, 58)";
+          veilRef.current.style.backgroundColor = "rgb(154, 94, 58)";
         }
       } else if (veilRef.current.style.opacity !== "0") {
         veilRef.current.style.opacity = "0";

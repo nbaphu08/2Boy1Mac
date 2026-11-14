@@ -142,9 +142,9 @@ function sampleInterSiteFlight(
     setFromVec3(tmpPosA, poseA.camPos);
     setFromVec3(tmpLookA, poseA.camLook);
 
-    // Lift cleanly up to ~8.2 m altitude and accelerate downrange (-Z) across the landscape
-    tmpPosB.set(ax + 1.2, ay + 8.2, az - 28.0);
-    tmpLookB.set(ax, ay + 1.2, az - 52.0);
+    // Lift cleanly up to ~5.8 m altitude and skim over textured regolith/soil pitched slightly down at horizon
+    tmpPosB.set(ax + 1.2, ay + 5.8, az - 10.5);
+    tmpLookB.set(ax, ay + 0.25, az - 34.0);
     outPos.lerpVectors(tmpPosA, tmpPosB, sEase);
     outLook.lerpVectors(tmpLookA, tmpLookB, sEase);
     return;
@@ -160,8 +160,8 @@ function sampleInterSiteFlight(
   const sGlide = 1 - Math.pow(1 - s, 1.85);
   const [bx, by, bz] = anchorB.pos;
 
-  tmpPosA.set(bx + 1.4, by + 7.8, bz + 34.0);
-  tmpLookA.set(bx, by + 1.0, bz - 4.0);
+  tmpPosA.set(bx + 1.4, by + 5.6, bz + 19.5);
+  tmpLookA.set(bx, by + 0.35, bz - 10.0);
   setFromVec3(tmpPosB, poseB.camPos);
   setFromVec3(tmpLookB, poseB.camLook);
 
