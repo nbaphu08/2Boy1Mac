@@ -101,10 +101,10 @@ function AtmosphereRim({
   );
 }
 
-const DAWN_ZENITH = new THREE.Color("#102752");
-const DAWN_MID = new THREE.Color("#2C3C68");
-const DAWN_HORIZON = new THREE.Color("#B86246");
-const DAWN_SUN_GLOW = new THREE.Color("#FF9E54");
+const DAWN_ZENITH = new THREE.Color("#09193D");
+const DAWN_MID = new THREE.Color("#21396B");
+const DAWN_HORIZON = new THREE.Color("#CF724B");
+const DAWN_SUN_GLOW = new THREE.Color("#FFA25E");
 const DAY_ZENITH = new THREE.Color("#0D2F6E");
 const DAY_MID = new THREE.Color("#2358A6");
 const DAY_HORIZON = new THREE.Color("#6AA2E0");
@@ -112,10 +112,11 @@ const HIGH_ZENITH = new THREE.Color("#040712");
 const HIGH_MID = new THREE.Color("#091532");
 const HIGH_HORIZON = new THREE.Color("#183568");
 
-/** Dynamic Earth sky dome: 6:35 p.m. EDT KSC sunset dusk -> stratosphere cobalt -> orbital black. */
-function AscentSkyDome() {
+/** E1 · Physically based 6:35 p.m. EDT dusk sky (sun ~4° above WNW horizon) + broken sunlit/shadowed clouds. */
+function AscentSkyDome({ reducedMotion }: { reducedMotion: boolean }) {
   const meshRef = useRef<THREE.Mesh>(null);
   const matRef = useRef<THREE.ShaderMaterial>(null);
+  const timeRef = useRef(0);
 
   const uniforms = useMemo(
     () => ({
@@ -123,20 +124,24 @@ function AscentSkyDome() {
       uMid: { value: DAWN_MID.clone() },
       uHorizon: { value: DAWN_HORIZON.clone() },
       uSunGlow: { value: DAWN_SUN_GLOW.clone() },
-      uSunDir: { value: new THREE.Vector3(-0.82, 0.11, -0.56).normalize() },
+      uSunDir: { value: new THREE.Vector3(-0.82, 0.072, -0.57).normalize() },
       uSunsetStrength: { value: 1 },
+      uTime: { value: 0 },
       uOpacity: { value: 1 },
     }),
     [],
   );
 
-  useFrame(({ camera }) => {
+  useFrame(({ camera }, delta) => {
     const p = scrollState.current;
     if (!meshRef.current || !matRef.current) return;
     const opacity = 1 - smoothstep(5.2, 6.4, p);
     meshRef.current.visible = opacity > 0.01;
     if (!meshRef.current.visible) return;
 
+    if (!reducedMotion) {
+      timeRef.current += Math.min(delta, 0.05);
+    }
     meshRef.current.position.copy(camera.position);
 
     const launchDay = smoothstep(2.05, 3.55, p);
@@ -155,17 +160,19 @@ function AscentSkyDome() {
       .lerp(DAY_HORIZON, launchDay)
       .lerp(HIGH_HORIZON, upperStrat);
     matRef.current.uniforms.uSunsetStrength.value = 1 - smoothstep(1.9, 3.6, p);
+    matRef.current.uniforms.uTime.value = timeRef.current;
     matRef.current.uniforms.uOpacity.value = opacity;
   });
 
   return (
     <mesh ref={meshRef} renderOrder={-10}>
-      <sphereGeometry args={[850, 32, 24]} />
+      <sphereGeometry args={[850, 40, 28]} />
       <shaderMaterial
         ref={matRef}
         uniforms={uniforms}
         transparent
         depthWrite={false}
+        fog={false}
         side={THREE.BackSide}
         vertexShader={`
           varying vec3 vLocalPos;
@@ -181,25 +188,88 @@ function AscentSkyDome() {
           uniform vec3 uSunGlow;
           uniform vec3 uSunDir;
           uniform float uSunsetStrength;
+          uniform float uTime;
           uniform float uOpacity;
           varying vec3 vLocalPos;
+
+          float hash21(vec2 p) {
+            p = fract(p * vec2(123.34, 456.21));
+            p += dot(p, p + 45.32);
+            return fract(p.x * p.y);
+          }
+
+          float vnoise(vec2 p) {
+            vec2 i = floor(p);
+            vec2 f = fract(p);
+            f = f * f * (3.0 - 2.0 * f);
+            float a = hash21(i);
+            float b = hash21(i + vec2(1.0, 0.0));
+            float c = hash21(i + vec2(0.0, 1.0));
+            float d = hash21(i + vec2(1.0, 1.0));
+            return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+          }
+
+          float fbmCloud(vec2 p) {
+            float v = 0.0;
+            float amp = 0.5;
+            mat2 rot = mat2(0.8, 0.6, -0.6, 0.8);
+            for (int i = 0; i < 4; i++) {
+              v += amp * vnoise(p);
+              p = rot * p * 2.04 + vec2(11.3, 7.1);
+              amp *= 0.5;
+            }
+            return v;
+          }
+
           void main() {
             vec3 dir = normalize(vLocalPos);
             float h = clamp(dir.y, -0.25, 1.0);
-            float skyT = clamp((h + 0.04) / 0.85, 0.0, 1.0);
+            float skyT = clamp((h + 0.02) / 0.86, 0.0, 1.0);
 
-            vec3 lowMix = mix(uHorizon, uMid, smoothstep(0.0, 0.28, skyT));
-            vec3 col = mix(lowMix, uZenith, smoothstep(0.22, 0.92, skyT));
+            // Rayleigh/twilight gradient from warm dusk horizon through cobalt zenith
+            vec3 lowMix = mix(uHorizon, uMid, pow(smoothstep(0.0, 0.34, skyT), 0.82));
+            vec3 col = mix(lowMix, uZenith, smoothstep(0.24, 0.94, skyT));
 
-            // Western sunset horizon azimuth glow (6:35 p.m. EDT)
+            // Azimuthal western dusk scatter + solar aureole (~4° above WNW horizon)
             float sunDot = max(dot(dir, uSunDir), 0.0);
-            float horizonBand = exp(-abs(dir.y - 0.04) * 6.5);
-            float sunsetArc = (pow(sunDot, 2.2) * 0.65 + pow(sunDot, 12.0) * 0.55) * horizonBand;
-            col += uSunGlow * sunsetArc * uSunsetStrength * 1.15;
+            float horizonBand = exp(-max(dir.y + 0.015, 0.0) * 8.2);
+            float sunsetWide = pow(sunDot, 2.0) * 0.58 * horizonBand;
+            float mieCore = (pow(sunDot, 14.0) * 0.62 + pow(sunDot, 160.0) * 0.85) * exp(-max(dir.y - 0.02, 0.0) * 4.5);
+            col += uSunGlow * (sunsetWide + mieCore) * uSunsetStrength;
 
-            // Darken cleanly below the sea/land horizon
+            // Broken dusk cloud layer with warm sunlit edges and cool dark bellies
+            if (uSunsetStrength > 0.01 && dir.y > 0.008) {
+              vec2 wind = vec2(uTime * 0.012, uTime * 0.004);
+              float projY = max(dir.y, 0.055);
+              vec2 uv = (dir.xz / (projY + 0.14)) * vec2(1.45, 2.25) + wind;
+
+              float n = fbmCloud(uv);
+              // Directional sample toward western sun for rim vs belly self-shadowing
+              vec2 toSun = normalize(uSunDir.xz);
+              float nSun = fbmCloud(uv + toSun * 0.16);
+
+              float cloudMask = smoothstep(0.45, 0.77, n);
+              float altFade = smoothstep(0.012, 0.09, dir.y) * (1.0 - smoothstep(0.42, 0.78, dir.y));
+              float alpha = cloudMask * altFade * uSunsetStrength * 0.86;
+
+              float litEdge = clamp(0.52 + (n - nSun) * 3.8 + pow(sunDot, 3.0) * 0.65, 0.0, 1.0);
+              vec3 bellyCol = mix(vec3(0.11, 0.15, 0.25), uMid * 0.85, 0.35);
+              vec3 sunlitEdgeCol = mix(vec3(0.95, 0.56, 0.34), vec3(1.0, 0.8, 0.56), pow(sunDot, 2.5));
+              vec3 cloudCol = mix(bellyCol, sunlitEdgeCol, litEdge);
+
+              // Subtle horizon haze blend on distant low clouds
+              cloudCol = mix(uHorizon * 0.92 + uSunGlow * 0.22 * pow(sunDot, 2.0), cloudCol, smoothstep(0.012, 0.12, dir.y));
+              col = mix(col, cloudCol, alpha);
+            }
+
+            // Soft low atmospheric horizon haze band unifying sky, ocean, and distant KSC coast
+            float horizonHaze = exp(-abs(dir.y) * 16.0) * 0.36;
+            vec3 hazeCol = mix(uHorizon * 0.88, uSunGlow * 0.9, pow(sunDot, 3.0) * 0.65 * uSunsetStrength);
+            col = mix(col, hazeCol, horizonHaze * (0.4 + 0.6 * uSunsetStrength));
+
+            // Smooth extinction below sea level
             float groundFade = smoothstep(-0.18, 0.01, dir.y);
-            col = mix(uZenith * 0.35, col, groundFade);
+            col = mix(vec3(0.04, 0.06, 0.11), col, groundFade);
 
             gl_FragColor = vec4(col, uOpacity);
             #include <tonemapping_fragment>
@@ -584,7 +654,7 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
   return (
     <>
       <SpaceBackdrop reducedMotion={reducedMotion} />
-      <AscentSkyDome />
+      <AscentSkyDome reducedMotion={reducedMotion} />
       <AscentCoastAndCloudDeck />
       <MarsDaytimeSkyDome />
 
