@@ -11,3 +11,16 @@
 - **MET values on ascent beats are indicative.** ascent-1 shows T+00:00:02→05 (continuity from ignition), ascent-2 ends at T+00:01:30 and ascent-3 at T+00:02:00 (matching the "about 90 seconds" / "about two minutes" captions). No source gives exact MET for the clip frames. ascent-4 shows `ABOVE 100 KM` instead of a clock (the SAJ-jettison clip is not at a verified MET). Please verify or approve (Curator).
 - `ignition` count-down numbers T-5…T-1 are timed by us (T-0 = 5.0 s into the clip, per the media skill) and should be eyeballed against the footage.
 - Hero shows the footer disclaimer as a small line (layout footer is hidden by the fixed stage).
+
+## Unverified strings (Sonnet, S-2) — in `content/journey.ts`, not found in docs/COPY.md / EXHIBITS.md
+- `HIGH BAY 3` (hero location line)
+- `PAD LC-39B · SLS BLOCK 1 ON MOBILE LAUNCHER` (enter)
+- `EST. VISIT 10 MIN` (hero; COPY line 30 may cover it — please confirm)
+- `ROFI SPARK IGNITION` (ignition)
+- `2× 5-SEG RSRMV SOLID`, `4× RS-25 + 2× RSRMV ACTIVE` (counts and 5-segment claim)
+- `PITCH & ROLL PROGRAM`, `CORE THROTTLE BUCKET`, `SUPERSONIC`, `MAX-Q` (ascent HUD)
+- `ESM FAIRING & LAS JETTISON`, `ORION MPCV EXPOSED TO VACUUM` (ascent-4)
+- `INTERPLANETARY CRUISE · HOHMANN TRANSFER` (transit)
+- `ARTEMIS ERA EARTHRISE · 6 APR 2026` (finale date)
+- `12 STAMPS` total (matches 12 exhibits; fine)
+- Removed: MET clocks T+00:00:12 / T+01:30 / T+02:06 / T+00:00:00, MACH 1.8+, 109% RATED, 8× BSM, TRANS-LUNAR INJECTION (no separate transit-to-Moon label).

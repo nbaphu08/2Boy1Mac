@@ -31,7 +31,8 @@ export default function AboutPage() {
       </ul>
       <h2 className="font-hud mt-10 mb-3 text-xs text-mute">Sources</h2>
       <SourceList sources={allSources()} />
-      <p className="mt-10 text-sm text-mute">{site.disclaimer}</p>
+      <p className="mt-10 text-sm text-mute">{site.illustrative}</p>
+      <p className="mt-3 text-sm text-mute">{site.disclaimer}</p>
     </main>
   );
 }

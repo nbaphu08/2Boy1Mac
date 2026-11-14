@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Archivo, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { site } from "@/content/site";
 
 const archivo = Archivo({
   variable: "--font-archivo",
@@ -24,9 +25,6 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = { themeColor: "#04060B" };
 
-const DISCLAIMER =
-  "SpaceMuse is an independent project for the NASA Space Apps Challenge 2026. It is not affiliated with or endorsed by NASA. Images and footage courtesy of NASA and partners; see Sources & Credits.";
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
@@ -36,7 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-full flex flex-col bg-void text-text">
         {children}
         <footer className="font-hud px-6 py-4 text-[11px] leading-relaxed text-mute normal-case tracking-normal">
-          {DISCLAIMER}
+          {site.disclaimer} {site.illustrative}
         </footer>
       </body>
     </html>

@@ -37,7 +37,6 @@ export type Beat = {
   act: "earth" | "ascent" | "halls" | "epilogue";
   rail: "KSC" | "LAUNCH" | "SPACE" | "MOON" | "MARS" | "SILENCE" | "BEYOND";
   duration: number; // seconds (0 = rest frame only)
-  clip?: { src: string; mobileSrc: string; poster: string; nasaId: string; credit: string };
   exhibitSlug?: string;
   caption?: string;
   sub?: string; // small HUD / label line

@@ -7,6 +7,7 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "lenis";
 import { beats, beatIndexById } from "@/content/beats";
+import { journey } from "@/content/journey";
 import { site } from "@/content/site";
 import type { Beat } from "@/content/types";
 import {
@@ -59,18 +60,18 @@ function TopHudBar() {
       </div>
 
       <nav
-        aria-label="Museum navigation"
+        aria-label={journey.ui.navLabel}
         className="pointer-events-auto flex items-center gap-3 rounded-full border border-line/80 bg-surface/65 px-3.5 py-1.5 backdrop-blur-md"
       >
         <span className="font-hud hidden text-[10px] text-mute sm:inline">
-          {visitedCount}/12 STAMPS
+          {journey.ui.stamps(visitedCount)}
         </span>
         <span aria-hidden className="hidden text-line sm:inline">|</span>
         <Link href="/gallery" className="font-hud text-[10px] text-text transition-colors hover:text-starlight">
-          Gallery
+          {journey.ui.gallery}
         </Link>
         <Link href="/about" className="font-hud text-[10px] text-mute transition-colors hover:text-text">
-          About
+          {journey.ui.about}
         </Link>
       </nav>
     </header>
@@ -81,7 +82,7 @@ function ProgressRail() {
   const beatIndex = useMuseum((s) => s.beatIndex);
   return (
     <nav
-      aria-label="Mission progress"
+      aria-label={journey.ui.railLabel}
       className="fixed right-3 top-1/2 z-30 flex -translate-y-1/2 flex-col items-end gap-3 sm:right-6"
     >
       {railGroups.map((group) => {
@@ -100,7 +101,7 @@ function ProgressRail() {
                       type="button"
                       onClick={() => scrollToBeat(index)}
                       title={beat.title ?? beat.sub ?? beat.id}
-                      aria-label={`Go to ${beat.title ?? beat.sub ?? beat.id}`}
+                      aria-label={journey.ui.goTo(beat.title ?? beat.sub ?? beat.id)}
                       aria-current={on ? "step" : undefined}
                       className="flex h-4 w-6 cursor-pointer items-center justify-center"
                     >

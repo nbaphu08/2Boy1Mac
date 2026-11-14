@@ -10,40 +10,33 @@ export const beats: Beat[] = [
   },
   { // 1
     id: "enter", act: "earth", rail: "KSC", duration: 3.0,
-    clip: { src: "/media/footage/enter.1080.mp4", mobileSrc: "/media/footage/enter.720.mp4", poster: "/media/footage/enter.poster.avif", nasaId: "KSC-20260319-MH-CSH01-0001-Artemis_II_Rollout_For_Launch_VAB-M19827", credit: "NASA/Cory S. Huston" },
     caption: "Every journey to another world begins here.",
     sub: "SPACE LAUNCH SYSTEM · ORION",
   },
   { // 2
     id: "ignition", act: "earth", rail: "LAUNCH", duration: 7.0,
-    clip: { src: "/media/footage/ignition.1080.mp4", mobileSrc: "/media/footage/ignition.720.mp4", poster: "/media/footage/ignition.poster.avif", nasaId: "KSC-20260401-MH-AJN01-0001-Artemis_II_Launch_ISO_VAB_Roof_4K", credit: "NASA" },
     title: "LIFTOFF",
     sub: "ARTEMIS II · 1 APR 2026 · 6:35 P.M. EDT",
   },
   { // 3
     id: "ascent-1", act: "ascent", rail: "LAUNCH", duration: 3.5,
-    clip: { src: "/media/footage/ascent-1.1080.mp4", mobileSrc: "/media/footage/ascent-1.720.mp4", poster: "/media/footage/ascent-1.poster.avif", nasaId: "KSC-20260401-MH-AJN01-0001-Artemis_II_Launch_ISO_VAB_Roof_4K", credit: "NASA" },
     caption: "8.8 million pounds of thrust. Four astronauts on board.",
   },
   { // 4
     id: "ascent-2", act: "ascent", rail: "LAUNCH", duration: 3.5,
-    clip: { src: "/media/footage/ascent-2.1080.mp4", mobileSrc: "/media/footage/ascent-2.720.mp4", poster: "/media/footage/ascent-2.poster.avif", nasaId: "KSC-20260401-MH-JBP01-0001-Artemis_II_Launch_Cessna_GSS_8k_60fps-M19183", credit: "NASA/Jamie Peer" },
     caption: "Max-Q — about 90 seconds in, the moment of greatest aerodynamic stress.",
   },
   { // 5
     id: "ascent-3", act: "ascent", rail: "LAUNCH", duration: 3.5,
-    clip: { src: "/media/footage/ascent-3.1080.mp4", mobileSrc: "/media/footage/ascent-3.720.mp4", poster: "/media/footage/ascent-3.poster.avif", nasaId: "KSC-20260401-MH-JBP01-0001-Artemis_II_Launch_Cessna_GSS_8k_60fps-M19183", credit: "NASA/Jamie Peer" },
     caption: "About two minutes in, the side boosters fall away.",
   },
   { // 6
     id: "ascent-4", act: "ascent", rail: "SPACE", duration: 4.0,
-    clip: { src: "/media/footage/ascent-4.1080.mp4", mobileSrc: "/media/footage/ascent-4.720.mp4", poster: "/media/footage/ascent-4.poster.avif", nasaId: "art002m1200912231B_SAJ-Jettison_SAW4", credit: "NASA" },
     title: "WELCOME TO SPACE",
     caption: "Above 100 km — a widely used boundary of space.",
   },
   { // 7
     id: "deep-space", act: "halls", rail: "SPACE", duration: 4.0,
-    clip: { src: "/media/footage/deep-space.1080.mp4", mobileSrc: "/media/footage/deep-space.720.mp4", poster: "/media/footage/deep-space.poster.avif", nasaId: "art002m1200920011_Apogee_Raise_Burn", credit: "NASA" },
     title: "HALL I — THE MOON",
     caption: "Five exhibits, from 1967 to 2012. One small world.",
     sub: "384,400 KM FROM EARTH",

@@ -5,6 +5,7 @@ import { useLayoutEffect, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { beats } from "@/content/beats";
+import { journey } from "@/content/journey";
 import { exhibitBySlug } from "@/content/exhibits";
 import { silence } from "@/content/silence";
 import { site } from "@/content/site";
@@ -14,36 +15,6 @@ import { scrollToBeat } from "@/lib/scroll/progress";
 import { useMuseum } from "@/lib/store";
 
 gsap.registerPlugin(ScrollTrigger);
-
-const ASCENT_HUD: Record<
-  string,
-  { event: string; met: string; sys: string; thrust: string }
-> = {
-  "ascent-1": {
-    event: "CLEAR THE TOWER",
-    met: "T+00:00:12",
-    sys: "4× RS-25 + 2× RSRMV ACTIVE",
-    thrust: "39.1 MN · PITCH & ROLL PROGRAM",
-  },
-  "ascent-2": {
-    event: "MAX-Q · SUPERSONIC",
-    met: "T+00:01:30",
-    sys: "PEAK AERODYNAMIC STRESS",
-    thrust: "CORE THROTTLE BUCKET · MACH 1.8+",
-  },
-  "ascent-3": {
-    event: "BOOSTER SEPARATION",
-    met: "T+00:02:06",
-    sys: "8× BSM PYROTECHNIC SEPARATION",
-    thrust: "SRB JETTISON · CORE STAGE CONTINUES",
-  },
-  "ascent-4": {
-    event: "EDGE OF SPACE",
-    met: "ABOVE 100 KM",
-    sys: "ESM FAIRING & LAS JETTISON",
-    thrust: "ORION MPCV EXPOSED TO VACUUM",
-  },
-};
 
 function HeroOverlay({ beat }: { beat: Beat }) {
   return (
@@ -68,7 +39,7 @@ function HeroOverlay({ beat }: { beat: Beat }) {
       >
         <span>{beat.sub}</span>
         <span className="text-line">·</span>
-        <span className="text-starlight">VEHICLE ASSEMBLY BUILDING · HIGH BAY 3</span>
+        <span className="text-starlight">{journey.hero.location}</span>
       </div>
 
       <div
@@ -93,7 +64,7 @@ function HeroOverlay({ beat }: { beat: Beat }) {
         className="text-shadow-copy relative z-10 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"
       >
         <div className="pointer-events-auto flex max-w-xl flex-col gap-2.5">
-          <p className="font-hud text-[11px] text-platinum">ADMISSION FREE · EST. VISIT 10 MIN</p>
+          <p className="font-hud text-[11px] text-platinum">{journey.hero.admission}</p>
           <button
             type="button"
             onClick={() => scrollToBeat("deep-space")}
@@ -102,11 +73,11 @@ function HeroOverlay({ beat }: { beat: Beat }) {
             {site.skip}
           </button>
           <p className="font-hud text-[9px] leading-relaxed text-platinum/85 normal-case tracking-normal">
-            {site.disclaimer}
+            {site.disclaimer} {site.illustrative}
           </p>
         </div>
 
-        <p className="font-hud text-xs text-starlight">Scroll to enter VAB &amp; launchpad ↓</p>
+        <p className="font-hud text-xs text-starlight">{journey.hero.scrollHint}</p>
       </div>
     </div>
   );
@@ -123,7 +94,7 @@ function EnterOverlay({ beat }: { beat: Beat }) {
         <div className="font-hud text-shadow-copy mb-3 flex flex-wrap items-center gap-2.5 text-[11px] text-platinum">
           <span>{beat.sub}</span>
           <span className="text-line">·</span>
-          <span className="text-starlight">PAD LC-39B · SLS BLOCK 1 ON MOBILE LAUNCHER</span>
+          <span className="text-starlight">{journey.enter.location}</span>
         </div>
         <p className="font-display text-shadow-display text-[clamp(1.5rem,4.2vw,3rem)] leading-tight text-white">
           {beat.caption}
@@ -149,9 +120,7 @@ function IgnitionOverlay({ beat }: { beat: Beat }) {
         <div className="max-w-2xl">
           <div className="font-hud text-shadow-copy mb-2.5 flex flex-wrap items-center gap-2.5 text-[11px] text-platinum">
             <span className="inline-block h-2 w-2 rounded-full bg-ignite" />
-            <span>MAIN ENGINE START · ROFI SPARK IGNITION</span>
-            <span className="text-line">·</span>
-            <span>T+00:00:00</span>
+            <span>{journey.ignition.event}</span>
           </div>
           <h2
             className="font-display text-shadow-display text-[clamp(2.5rem,8.5vw,6.2rem)] leading-none"
@@ -163,9 +132,9 @@ function IgnitionOverlay({ beat }: { beat: Beat }) {
         </div>
 
         <div className="font-hud rounded border border-line/80 bg-surface/75 px-4 py-3 text-[10px] leading-relaxed text-platinum backdrop-blur-md">
-          <div className="text-text">PROPULSION TELEMETRY</div>
-          <div className="mt-1 text-mute">CORE: 4× RS-25 LH2/LOX · 109% RATED</div>
-          <div className="text-mute">BOOSTERS: 2× 5-SEG RSRMV SOLID</div>
+          <div className="text-text">{journey.ignition.telemetryTitle}</div>
+          <div className="mt-1 text-mute">{journey.ignition.core}</div>
+          <div className="text-mute">{journey.ignition.boosters}</div>
         </div>
       </div>
     </div>
@@ -173,7 +142,7 @@ function IgnitionOverlay({ beat }: { beat: Beat }) {
 }
 
 function AscentOverlay({ beat }: { beat: Beat }) {
-  const hud = ASCENT_HUD[beat.id];
+  const hud = journey.ascent[beat.id];
   return (
     <div className="relative flex h-full w-full items-end justify-between px-6 pb-14 pr-14 sm:px-12 sm:pb-16 sm:pr-36">
       <div
@@ -219,9 +188,7 @@ function HallTitleOverlay({ beat }: { beat: Beat }) {
           <span>{beat.sub}</span>
           <span className="text-line">·</span>
           <span>
-            {isMars
-              ? "INTERPLANETARY CRUISE · HOHMANN TRANSFER"
-              : "TRANS-LUNAR INJECTION · ORION SOLAR ARRAYS DEPLOYED"}
+            {journey.hall[beat.id]}
           </span>
         </div>
         <h2 className="font-display text-shadow-display text-[clamp(2rem,6vw,4.5rem)] leading-none text-white">
@@ -261,10 +228,10 @@ function ExhibitBeatOverlay({ beat }: { beat: Beat }) {
         <div className="font-hud flex flex-wrap items-center gap-2 text-[11px] text-mute">
           <span style={{ color: isMoon ? "var(--lunar)" : "var(--oxide)" }}>{ex.catalogNo}</span>
           <span>·</span>
-          <span>{isMoon ? "HALL I · THE MOON" : "HALL II · MARS"}</span>
+          <span>{isMoon ? journey.exhibit.hallMoon : journey.exhibit.hallMars}</span>
           <span>·</span>
           <span className={ex.status === "still-active" ? "text-starlight" : "text-ignite"}>
-            {ex.statusLabel ?? (ex.status === "still-active" ? "STILL ACTIVE" : "SILENT")}
+            {ex.statusLabel ?? (ex.status === "still-active" ? journey.exhibit.stillActive : journey.exhibit.silent)}
           </span>
         </div>
 
@@ -283,7 +250,7 @@ function ExhibitBeatOverlay({ beat }: { beat: Beat }) {
           >
             {site.explore} →
           </button>
-          {hasStamp ? <span className="font-hud text-[10px] text-platinum">◉ Stamp collected</span> : null}
+          {hasStamp ? <span className="font-hud text-[10px] text-platinum">{journey.exhibit.stamp}</span> : null}
         </div>
       </div>
     </div>
@@ -297,7 +264,7 @@ function SilenceOverlay() {
         data-hud-card
         className="pointer-events-auto max-h-[82dvh] w-full max-w-4xl overflow-y-auto rounded-lg border border-line bg-surface/80 p-6 backdrop-blur-lg sm:p-8"
       >
-        <p className="font-hud text-[11px] text-mute">EPILOGUE</p>
+        <p className="font-hud text-[11px] text-mute">{journey.silence.eyebrow}</p>
         <h2 className="font-display mt-2 text-2xl text-text sm:text-4xl">{silence.title}</h2>
         <p className="mt-2 max-w-2xl text-sm text-mute sm:text-base">{silence.intro}</p>
 
@@ -345,7 +312,7 @@ function BeyondOverlay() {
             <p className="mt-1.5 text-sm text-text/90 sm:text-base">{teaser.line}</p>
           </div>
           <span className="font-hud rounded border border-platinum/30 px-2.5 py-1 text-[10px] text-platinum">
-            TEASER · 3D SILHOUETTES
+            {journey.beyond.badge}
           </span>
         </div>
 
@@ -385,27 +352,27 @@ function FinaleOverlay({ beat }: { beat: Beat }) {
         className="pointer-events-none absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-void/90 to-transparent"
       />
       <div data-hud-card className="pointer-events-auto relative z-10 max-w-2xl">
-        <p className="font-hud mb-3 text-[11px] text-platinum">ARTEMIS ERA EARTHRISE · 6 APR 2026</p>
+        <p className="font-hud mb-3 text-[11px] text-platinum">{journey.finale.eyebrow}</p>
         <p className="text-lg leading-relaxed text-text sm:text-2xl">{beat.caption}</p>
         <div className="mt-6 flex flex-wrap items-center gap-4">
           <Link
             href="/gallery"
             className="font-hud rounded border border-starlight/60 bg-raised/85 px-4 py-2 text-xs text-starlight transition-colors hover:bg-starlight hover:text-void"
           >
-            Revisit the galleries →
+            {journey.finale.revisit}
           </Link>
           <Link
             href="/about"
             className="font-hud rounded border border-line bg-surface/80 px-4 py-2 text-xs text-text transition-colors hover:border-platinum"
           >
-            Sources &amp; Credits
+            {journey.finale.sources}
           </Link>
           <button
             type="button"
             onClick={() => scrollToBeat(0)}
             className="font-hud cursor-pointer px-2 py-2 text-xs text-mute transition-colors hover:text-text"
           >
-            Back to launchpad ↑
+            {journey.finale.back}
           </button>
         </div>
       </div>
