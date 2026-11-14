@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { exhibits, exhibitBySlug } from "@/content/exhibits";
+import { expedition } from "@/content/guide";
 import { site } from "@/content/site";
 import { useMuseum } from "@/lib/store";
 import { ExhibitMedia, ExhibitText } from "./ExhibitContent";
@@ -102,7 +103,7 @@ export function ExhibitPanel() {
           <button type="button" disabled={!prev} onClick={() => prev && openExhibit(prev.slug)} className="rounded px-2 py-1 text-text hover:text-starlight disabled:opacity-30">
             {prev ? `← ${prev.name}` : ""}
           </button>
-          <span className="font-hud hidden text-[11px] text-mute sm:block">{site.passport(visitedCount)}</span>
+          <span className="font-hud hidden text-[11px] text-mute sm:block">{expedition.fieldLog(visitedCount)}</span>
           <button type="button" disabled={!next} onClick={() => next && openExhibit(next.slug)} className="rounded px-2 py-1 text-text hover:text-starlight disabled:opacity-30">
             {next ? `${next.name} →` : ""}
           </button>

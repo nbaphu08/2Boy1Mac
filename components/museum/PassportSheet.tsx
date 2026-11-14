@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { exhibits } from "@/content/exhibits";
+import { expedition } from "@/content/guide";
 import { site } from "@/content/site";
 import { useMuseum } from "@/lib/store";
 
@@ -112,8 +113,7 @@ export function PassportSheet({ onClose }: { onClose: () => void }) {
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 id="passport-title" className="font-display text-xl">Museum Passport</h2>
-            <p className="font-hud mt-1 text-[11px] text-mute">{site.passport(count)}</p>
+            <h2 id="passport-title" className="font-hud text-sm text-text">{expedition.fieldLog(count)}</h2>
           </div>
           <button
             type="button"

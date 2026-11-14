@@ -1,4 +1,5 @@
 import type { Exhibit } from "@/content/types";
+import { expedition, guide } from "@/content/guide";
 import { AgeCounter } from "@/components/ui/AgeCounter";
 import { ModelViewer } from "./ModelViewer";
 import { Plaque } from "./Plaque";
@@ -78,7 +79,24 @@ export function ExhibitText({ ex, headingId }: { ex: Exhibit; headingId: string 
         </dl>
       </div>
 
-      <Plaque text={ex.plaque} className="mt-6" />
+      {guide[ex.slug] ? (
+        <>
+          <Heading>{expedition.questions.what}</Heading>
+          <p className="text-text">{guide[ex.slug].what}</p>
+        </>
+      ) : null}
+
+      <Heading>{expedition.questions.did}</Heading>
+      <Plaque text={ex.plaque} />
+
+      {guide[ex.slug] ? (
+        <>
+          <Heading>{expedition.questions.why}</Heading>
+          <p className="text-text">{guide[ex.slug].why}</p>
+        </>
+      ) : null}
+
+      <Heading>{expedition.questions.now}</Heading>
 
       <Heading>The story</Heading>
       <div className="space-y-3">

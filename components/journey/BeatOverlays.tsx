@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useLayoutEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { beatIndexById, beats } from "@/content/beats";
-import { journey, narration, transitTimeline } from "@/content/journey";
+import { grailSim, journey, transitTimeline } from "@/content/journey";
+import { expedition, guide } from "@/content/guide";
+import { narrationFor } from "@/lib/expedition";
+import { replayGrailSim } from "@/components/journey/three/simulationBus";
 import { exhibitBySlug } from "@/content/exhibits";
 import { silence } from "@/content/silence";
 import { site } from "@/content/site";
@@ -21,7 +24,7 @@ function Narration({ beat }: { beat: Beat }) {
   const ref = useRef<HTMLParagraphElement>(null);
   const reducedMotion = useMuseum((s) => s.reducedMotion);
   const index = beatIndexById(beat.id);
-  const text = narration[beat.id];
+  const text = narrationFor(beat.id);
 
   useLayoutEffect(() => {
     const el = ref.current;
@@ -113,9 +116,41 @@ function TransitTimeline({ index }: { index: number }) {
   );
 }
 
+function Briefing() {
+  const [open, setOpen] = useState(false);
+  const b = expedition.briefing;
+  return (
+    <div
+      data-hud-card
+      className="pointer-events-auto absolute right-3 top-[9.5rem] z-10 w-[min(19rem,calc(100vw-4.5rem))] rounded-lg border border-line/80 bg-surface/75 p-4 backdrop-blur-md sm:right-24 sm:top-24 sm:w-[24rem] sm:p-5"
+    >
+      <p className="font-hud text-[10px] text-starlight sm:text-[11px]">{b.eyebrow}</p>
+      <h2 className="font-display mt-1.5 text-lg leading-tight text-text sm:text-2xl">{b.title}</h2>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="font-hud mt-2 cursor-pointer text-[10px] text-platinum hover:text-text sm:hidden"
+      >
+        {open ? "Hide briefing" : "Read briefing"}
+      </button>
+      <div className={`${open ? "block" : "hidden"} sm:block`}>
+        {b.body.map((p, i) => (
+          <p key={i} className="mt-3 text-[13px] leading-relaxed text-text/90 sm:text-sm">
+            {p}
+          </p>
+        ))}
+        <p className="mt-3 text-xs leading-relaxed text-mute">{b.honesty}</p>
+        <p className="font-hud mt-3 text-[9px] leading-snug text-mute/80">{b.source}</p>
+      </div>
+    </div>
+  );
+}
+
 function EnterOverlay({ beat }: { beat: Beat }) {
   return (
     <div className="relative flex h-full w-full items-end px-6 pb-14 pr-14 sm:px-12 sm:pb-16 sm:pr-36">
+      <Briefing />
       <div data-hud-card className="relative z-10 max-w-2xl">
         <div className="font-hud text-shadow-copy mb-3 flex flex-wrap items-center gap-2.5 text-[11px] text-platinum">
           <span>{beat.sub}</span>
@@ -186,6 +221,12 @@ function AscentOverlay({ beat }: { beat: Beat }) {
   );
 }
 
+function hallEvent(id: string): string {
+  if (id === "deep-space") return expedition.moonMap.label;
+  if (id === "transit") return expedition.marsMap.label;
+  return journey.hall[id];
+}
+
 function HallTitleOverlay({ beat }: { beat: Beat }) {
   const isMars = beat.rail === "MARS";
   return (
@@ -197,10 +238,11 @@ function HallTitleOverlay({ beat }: { beat: Beat }) {
         >
           <span>{beat.sub}</span>
           <span className="text-line">·</span>
-          <span>
-            {journey.hall[beat.id]}
-          </span>
+          <span>{hallEvent(beat.id)}</span>
         </div>
+        {beat.id === "transit" ? (
+          <p className="font-hud text-shadow-copy -mt-1 mb-3 text-[11px] text-platinum">{journey.hall.transit}</p>
+        ) : null}
         <h2 className="font-display text-shadow-display text-[clamp(2rem,6vw,4.5rem)] leading-none text-white">
           {beat.title}
         </h2>
@@ -215,7 +257,9 @@ function ExhibitBeatOverlay({ beat }: { beat: Beat }) {
   const ex = beat.exhibitSlug ? exhibitBySlug(beat.exhibitSlug) : undefined;
   const openExhibit = useMuseum((s) => s.openExhibit);
   const visited = useMuseum((s) => s.visited);
+  const isStatic = useMuseum((s) => s.reducedMotion || s.lightweight || s.webglFailed);
   if (!ex) return null;
+  const g = guide[ex.slug];
 
   const isMoon = ex.hall === "moon";
   const hasStamp = visited.includes(ex.slug);
@@ -247,7 +291,19 @@ function ExhibitBeatOverlay({ beat }: { beat: Beat }) {
           {ex.location.site}
           {coords}
         </p>
-        <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-text/90">{ex.plaque}</p>
+        {g ? (
+          <div className="mt-3 space-y-2.5">
+            <div>
+              <p className="font-hud text-[10px] text-starlight">{expedition.questions.what}</p>
+              <p className="mt-0.5 text-[13px] leading-snug text-text/90 sm:text-sm">{g.what}</p>
+            </div>
+            <div>
+              <p className="font-hud text-[10px] text-starlight">{expedition.questions.why}</p>
+              <p className="mt-0.5 line-clamp-3 text-[13px] leading-snug text-text/90 sm:line-clamp-none sm:text-sm">{g.why}</p>
+            </div>
+          </div>
+        ) : null}
+        <p className="font-hud mt-2.5 text-[9px] text-mute">{expedition.scale}</p>
 
         <div className="mt-4 flex flex-wrap items-center gap-4">
           <button
@@ -257,8 +313,22 @@ function ExhibitBeatOverlay({ beat }: { beat: Beat }) {
           >
             {site.explore} →
           </button>
-          {hasStamp ? <span className="font-hud text-[10px] text-platinum">{journey.exhibit.stamp}</span> : null}
+          {ex.slug === "moon-grail" && !isStatic ? (
+            <div className="flex flex-col items-start gap-1">
+              <button
+                type="button"
+                onClick={() => replayGrailSim()}
+                className="font-hud cursor-pointer rounded border border-line bg-raised/90 px-3 py-2 text-xs text-text transition-colors hover:border-platinum"
+              >
+                {"\u21BB "}{grailSim.replay}
+              </button>
+            </div>
+          ) : null}
+          {hasStamp ? <span className="font-hud text-[10px] text-platinum">{expedition.found}</span> : null}
         </div>
+        {ex.slug === "moon-grail" && !isStatic ? (
+          <p className="font-hud mt-2 text-[9px] text-mute">{grailSim.note}</p>
+        ) : null}
       </div>
     </div>
   );

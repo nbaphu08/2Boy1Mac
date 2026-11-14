@@ -7,7 +7,9 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "lenis";
 import { beats, beatIndexById } from "@/content/beats";
-import { journey, narration } from "@/content/journey";
+import { journey } from "@/content/journey";
+import { expedition } from "@/content/guide";
+import { narrationFor } from "@/lib/expedition";
 import { site } from "@/content/site";
 import type { Beat } from "@/content/types";
 import {
@@ -19,6 +21,7 @@ import { useMuseum } from "@/lib/store";
 import { ExhibitPanel } from "@/components/museum/ExhibitPanel";
 import { PassportSheet } from "@/components/museum/PassportSheet";
 import { BeatSection } from "./BeatOverlays";
+import { TrackerHud } from "./TrackerHud";
 import { StaticPoster } from "./StaticPoster";
 
 function hasWebGL(): boolean {
@@ -102,12 +105,12 @@ function TopHudBar() {
           type="button"
           onClick={() => setPassportOpen(true)}
           aria-haspopup="dialog"
-          aria-label={`Open museum passport, ${visitedCount} of 12 stamps`}
-          title="Museum passport"
+          aria-label={expedition.fieldLog(visitedCount)}
+          title={expedition.fieldLog(visitedCount)}
           className="font-hud cursor-pointer text-[10px] text-mute transition-colors hover:text-text"
         >
           <span aria-hidden className="sm:hidden">&#9733; {visitedCount}/12</span>
-          <span className="hidden sm:inline">{journey.ui.stamps(visitedCount)}</span>
+          <span className="hidden sm:inline">{expedition.fieldLogShort(visitedCount)}</span>
         </button>
         <span aria-hidden className="text-line">|</span>
         <button
@@ -221,7 +224,7 @@ function ScrollLiveCaption() {
   const beat = beats[beatIndex] ?? beats[0];
   return (
     <p aria-live="polite" className="sr-only">
-      {[beat.title, narration[beat.id], beat.caption ?? beat.sub].filter(Boolean).join(". ")}
+      {[beat.title, narrationFor(beat.id), beat.caption ?? beat.sub].filter(Boolean).join(". ")}
     </p>
   );
 }
@@ -442,6 +445,7 @@ export default function Stage() {
       </div>
 
       <TopHudBar />
+      <TrackerHud />
       <ProgressRail />
       <ScrollLiveCaption />
       <ExhibitPanel />
