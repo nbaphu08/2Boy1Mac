@@ -521,7 +521,7 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
     }
 
     if (lunarApproachArcRef.current) {
-      lunarApproachArcRef.current.visible = p > 6.2 && p < 7.36;
+      lunarApproachArcRef.current.visible = false; // humans: no trajectory lines
     }
 
     if (marsRef.current) {
@@ -547,7 +547,7 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
     }
 
     if (transitArcRef.current) {
-      transitArcRef.current.visible = p > 12.15 && p < 13.82;
+      transitArcRef.current.visible = false; // humans: no trajectory lines
       if (transitArcRef.current.visible && transitCruiseDotRef.current) {
         const cruiseU = Math.min(0.96, Math.max(0.04, smoothstep(12.25, 13.68, p)));
         const pt = transitCurve.getPoint(cruiseU);
