@@ -9,6 +9,8 @@ import { usePerfBudget } from "./perfTier";
 import { getKaptonBumpMap } from "./rocketTextures";
 import {
   applyWorldTerrainShader,
+  type CraterAnchor,
+  createNearFieldHorizonGeometry,
   InstancedLandscapeRocks,
 } from "./landscapeMaterials";
 import { grailSimState, subscribeGrailReplay } from "./simulationBus";
@@ -19,20 +21,38 @@ const GLOBE_LOCAL_POS: [number, number, number] = [0, 36, -34];
 const GLOBE_RADIUS = 5.2;
 const SURFACE_Y = 0.22;
 
+const GRAIL_CRATERS: readonly (CraterAnchor & { d: number; rim?: number })[] = [
+  { x: -3.2, z: 2.8, r: 0.72, d: 0.14 },
+  { x: 4.1, z: 2.6, r: 0.88, d: 0.17 },
+  { x: -5.6, z: 2.2, r: 1.45, d: 0.3 },
+  { x: 6.4, z: -3.6, r: 1.75, d: 0.34 },
+  { x: -8.5, z: -7.5, r: 2.2, d: 0.44 },
+  { x: 3.8, z: 4.4, r: 0.95, d: 0.2 },
+  { x: -1.4, z: 4.8, r: 0.62, d: 0.12 },
+  { x: -4.2, z: -3.2, r: 1.15, d: 0.22 },
+  { x: 10.2, z: -13.5, r: 3.4, d: 0.56 },
+];
+
+function polarRidgeHill(x: number, z: number, cx: number, cz: number, rx: number, rz: number, h: number): number {
+  const dx = (x - cx) / rx;
+  const dz = (z - cz) / rz;
+  const d2 = dx * dx + dz * dz;
+  if (d2 > 5.0) return 0;
+  const radial = Math.exp(-d2 * 0.85);
+  const shoulder = Math.exp(-d2 * 0.35) * 0.28;
+  return h * (radial * 0.82 + shoulder * 0.18);
+}
+
 function getPolarSlopeHeight(vx: number, vz: number): number {
   const dist = Math.hypot(vx, vz);
   const farScale = smoothstep(3.5, 26, dist);
-  const baseSlope = -vz * (0.16 - 0.03 * farScale);
-  const ridgeRise =
-    vz < -3.5
-      ? Math.pow(Math.max(0, -vz - 3.5) / 26, 1.28) *
-        8.2 *
-        (0.8 + 0.26 * Math.cos(vx * 0.1 + 0.65))
-      : 0;
-  const micro =
-    Math.sin(vx * 1.4 + vz * 1.1) * 0.04 +
-    Math.cos(vx * 2.7 - vz * 2.1) * 0.02;
-  return baseSlope + ridgeRise + micro;
+  const baseSlope = -vz * (0.15 - 0.025 * farScale);
+  // Smooth monumental Goldschmidt north-polar mountain massif (-Z), zero sine wave stripes
+  const mainMassif =
+    polarRidgeHill(vx, vz, 13.0, -52.0, 26.0, 18.0, 18.2) +
+    polarRidgeHill(vx, vz, -22.0, -54.0, 24.0, 16.5, 14.8);
+  const gentleRoll = farScale * (Math.sin(vx * 0.11 + vz * 0.09) * 0.16);
+  return baseSlope + mainMassif + gentleRoll;
 }
 
 const IMPACT_A_LOCAL: [number, number, number] = [
@@ -48,8 +68,8 @@ const IMPACT_B_LOCAL: [number, number, number] = [
 
 // World anchor of moon-grail from trajectory.ts: [0.5, 370.6, -188.0]
 const ANCHOR_WORLD = new THREE.Vector3(0.5, 370.6, -188.0);
-const REST_CAM_WORLD = new THREE.Vector3(2.85, 372.65, -180.8);
-const REST_LOOK_WORLD = new THREE.Vector3(0.85, 371.55, -188.2);
+const REST_CAM_WORLD = new THREE.Vector3(2.95, 372.6, -181.1);
+const REST_LOOK_WORLD = new THREE.Vector3(0.85, 371.5, -188.25);
 
 let cachedFlashTex: THREE.CanvasTexture | null = null;
 function getSoftImpactFlashTexture(): THREE.CanvasTexture {
@@ -210,60 +230,39 @@ function GrailSpacecraftModel({
   );
 }
 
-/** Smooth continuous north-polar Goldschmidt mountain slope extending to the horizon (no plinth). */
-function createPolarLandscapeGeometry(): THREE.BufferGeometry {
-  const size = 128;
-  const segs = 140;
-  const geo = new THREE.PlaneGeometry(size, size, segs, segs);
-  geo.rotateX(-Math.PI / 2);
-  const pos = geo.attributes.position;
-
-  const craterBowl = (x: number, z: number, radius: number, depth: number, rim: number) => {
-    const r = Math.hypot(x, z);
-    if (r > radius * 1.48) return 0;
-    const u = r / radius;
-    if (u < 1.0) {
-      return -depth * (1 - u * u) + rim * Math.exp(-Math.pow((u - 0.94) / 0.15, 2));
-    }
-    return rim * Math.exp(-Math.pow((u - 0.94) / 0.19, 2));
-  };
-
-  for (let i = 0; i < pos.count; i++) {
-    const vx = pos.getX(i);
-    const vz = pos.getZ(i);
-    const dist = Math.hypot(vx, vz);
-
-    // Prominent southern slope rising boldly into the ~2.5 km Goldschmidt polar mountain crest (-Z)
-    const farScale = smoothstep(3.5, 26, dist);
-    const baseSlope = getPolarSlopeHeight(vx, vz);
-
-    // Distant flanking highland perimeter hills
-    const outerMassif =
-      farScale *
-      (Math.sin(vx * 0.14 + vz * 0.1) * 0.82 +
-        Math.cos(vx * 0.08 - vz * 0.13) * 0.68 +
-        Math.sin(vx * 0.35 + vz * 0.27) * 0.2);
-
-    // Pre-existing polar craters across the highland terrain (outside Ebb/Flow sites)
-    let craters =
-      craterBowl(vx - 5.6, vz + 2.2, 1.45, 0.32, 0.1) +
-      craterBowl(vx + 6.4, vz - 3.6, 1.75, 0.36, 0.11) +
-      craterBowl(vx - 8.5, vz - 7.5, 2.2, 0.44, 0.12) +
-      craterBowl(vx + 3.8, vz + 4.4, 0.95, 0.2, 0.06);
-
-    // Two crisp ~5 m fresh impact craters on the southern slope (Ebb at A, Flow at B)
-    craters += craterBowl(vx - IMPACT_A_LOCAL[0], vz - IMPACT_A_LOCAL[2], 1.22, 0.4, 0.13);
-    craters += craterBowl(vx - IMPACT_B_LOCAL[0], vz - IMPACT_B_LOCAL[2], 1.22, 0.4, 0.13);
-
-    pos.setY(i, baseSlope + outerMassif + craters);
+function polarCraterBowl(
+  x: number,
+  z: number,
+  radius: number,
+  depth: number,
+  rim: number,
+): number {
+  const r = Math.hypot(x, z);
+  if (r > radius * 1.48) return 0;
+  const u = r / radius;
+  if (u < 1.0) {
+    return -depth * (1 - u * u) + rim * Math.exp(-Math.pow((u - 0.94) / 0.15, 2));
   }
-
-  geo.computeVertexNormals();
-  return geo;
+  return rim * Math.exp(-Math.pow((u - 0.94) / 0.19, 2));
 }
 
-function getPolarHeightApprox(vx: number, vz: number): number {
-  return getPolarSlopeHeight(vx, vz);
+function getPolarFullHeight(vx: number, vz: number): number {
+  const baseSlope = getPolarSlopeHeight(vx, vz);
+  let craters = 0;
+  for (let i = 0; i < GRAIL_CRATERS.length; i++) {
+    const c = GRAIL_CRATERS[i];
+    craters += polarCraterBowl(vx - c.x, vz - c.z, c.r, c.d, c.d * 0.28);
+  }
+  // Two crisp ~5 m fresh impact craters on the southern slope (Ebb at A, Flow at B)
+  craters += polarCraterBowl(vx - IMPACT_A_LOCAL[0], vz - IMPACT_A_LOCAL[2], 1.22, 0.4, 0.13);
+  craters += polarCraterBowl(vx - IMPACT_B_LOCAL[0], vz - IMPACT_B_LOCAL[2], 1.22, 0.4, 0.13);
+  return baseSlope + craters;
+}
+
+/** Smooth continuous north-polar Goldschmidt mountain slope extending to the horizon (near-field tessellated, zero tracks/boots). */
+function createPolarLandscapeGeometry(tier: "high" | "medium" | "low"): THREE.BufferGeometry {
+  const segs = tier === "high" ? 192 : tier === "medium" ? 136 : 92;
+  return createNearFieldHorizonGeometry(176, segs, getPolarFullHeight);
 }
 
 /** Deterministic ballistic vacuum ejecta particle vectors for two hypervelocity impacts. */
@@ -312,26 +311,29 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
 
   const terrainMat = useMemo(() => {
     const mat = new THREE.MeshStandardMaterial({
-      color: "#88837B",
+      color: "#FFFFFF",
       roughness: 0.96,
-      metalness: 0.02,
+      metalness: 0.01,
     });
     applyWorldTerrainShader(mat, {
       planet: "moon",
       anchorXZ: [ANCHOR_WORLD.x, ANCHOR_WORLD.z],
-      baseTint: "#746F68",
-      brightTint: "#A7A299",
-      fadeStart: 38,
-      fadeEnd: 64,
+      baseTint: "#524B42",
+      brightTint: "#9E9689",
+      highlandBrightTint: "#E4DDD2",
+      fadeStart: 72,
+      fadeEnd: 87.5,
+      qualityTier: budget.tier,
+      moonSunDir: [9.4, 2.85, 4.3],
     });
     return mat;
-  }, []);
+  }, [budget.tier]);
 
   const ejectaTex = useMemo(() => getStarburstEjectaTexture(), []);
   const flashTex = useMemo(() => getSoftImpactFlashTexture(), []);
   const kaptonBump = useMemo(() => getKaptonBumpMap(), []);
   const solarTex = useMemo(() => getGrailSolarTexture(), []);
-  const terrainGeo = useMemo(() => createPolarLandscapeGeometry(), []);
+  const terrainGeo = useMemo(() => createPolarLandscapeGeometry(budget.tier), [budget.tier]);
 
   const ejectaPerImpact = budget.tier === "high" ? 220 : budget.tier === "medium" ? 130 : 48;
   const ballistic = useMemo(() => buildBallisticData(ejectaPerImpact), [ejectaPerImpact]);
@@ -671,7 +673,7 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
 
           const x = origin[0] + dx * tau;
           const z = origin[2] + dz * tau;
-          const groundY = SURFACE_Y + getPolarHeightApprox(x, z);
+          const groundY = SURFACE_Y + getPolarFullHeight(x, z);
           const startY = SURFACE_Y + origin[1];
           const rawY = startY + dy * tau - 0.5 * gLunar * tau * tau;
           posAttr.setXYZ(i, x, Math.max(groundY, rawY), z);
@@ -769,17 +771,34 @@ export function GrailSimulation({ reducedMotion }: { reducedMotion: boolean }) {
         receiveShadow
       />
 
-      {/* Instanced fractured lunar highland basalt rocks */}
+      {/* Instanced dense half-buried lunar highland pebbles + scattered boulders (strictly ZERO tracks/bootprints) */}
       <InstancedLandscapeRocks
         planet="moon"
         anchorXZ={[ANCHOR_WORLD.x, ANCHOR_WORLD.z]}
-        count={budget.tier === "high" ? 130 : budget.tier === "medium" ? 80 : 40}
-        seed={1203}
-        maxRadius={34}
+        count={budget.tier === "high" ? 560 : budget.tier === "medium" ? 300 : 120}
+        seed={1219}
+        maxRadius={15}
         clearRadius={2.6}
-        scaleRange={[0.06, 0.28]}
+        scaleRange={[0.028, 0.11]}
+        scalePower={1.75}
+        embedOffset={-0.06}
+        moonCraters={GRAIL_CRATERS}
         surfaceY={SURFACE_Y}
-        heightFn={getPolarHeightApprox}
+        heightFn={getPolarFullHeight}
+      />
+      <InstancedLandscapeRocks
+        planet="moon"
+        anchorXZ={[ANCHOR_WORLD.x, ANCHOR_WORLD.z]}
+        count={budget.tier === "high" ? 115 : budget.tier === "medium" ? 68 : 32}
+        seed={1203}
+        maxRadius={38}
+        clearRadius={2.8}
+        scaleRange={[0.14, 0.44]}
+        scalePower={2.35}
+        embedOffset={-0.04}
+        moonCraters={GRAIL_CRATERS}
+        surfaceY={SURFACE_Y}
+        heightFn={getPolarFullHeight}
       />
 
       {/* Impact Crater A (Ebb / GRAIL-A) sharp radial dark basaltic ejecta rays */}

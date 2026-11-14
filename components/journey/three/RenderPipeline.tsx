@@ -44,33 +44,25 @@ export function HallEnvironment() {
   });
 
   if (hall === "moon") {
-    // Hard white solar key + near-black lunar sky + faint regolith underside bounce
+    // Hard single white solar key + pitch-black lunar sky + minimal regolith underside bounce
     return (
-      <Environment key="moon" resolution={128} frames={1} environmentIntensity={0.62}>
-        <color attach="background" args={["#020306"]} />
+      <Environment key="moon" resolution={128} frames={1} environmentIntensity={0.14}>
+        <color attach="background" args={["#000000"]} />
         <Lightformer
           form="circle"
-          intensity={7.5}
-          color="#FFFDF8"
-          position={[-18, 8, 12]}
-          scale={[6, 6, 1]}
+          intensity={9.0}
+          color="#FFFDF5"
+          position={[18, 6, 8]}
+          scale={[4.5, 4.5, 1]}
           target={[0, 0, 0]}
         />
         <Lightformer
           form="rect"
-          intensity={0.45}
-          color="#78746C"
+          intensity={0.12}
+          color="#7A746C"
           position={[0, -12, 0]}
           rotation={[-Math.PI / 2, 0, 0]}
           scale={[30, 30, 1]}
-        />
-        <Lightformer
-          form="rect"
-          intensity={0.4}
-          color="#6B8CFF"
-          position={[-10, 10, -18]}
-          scale={[8, 8, 1]}
-          target={[0, 0, 0]}
         />
       </Environment>
     );
@@ -221,11 +213,11 @@ export function PostEffects() {
   useFrame((_, delta) => {
     if (budget.tier !== "high" || !dofRef.current) return;
     const p = scrollState.current;
-    const inMoon = smoothstep(7.65, 8.0, p) * (1 - smoothstep(12.05, 12.45, p));
+    // Moon Apollo Hasselblad optics keep distant Mount Hadley / massifs razor-sharp (AG-12)
     const inMars = smoothstep(13.65, 14.0, p) * (1 - smoothstep(20.05, 20.45, p));
     const isResting = 1 - smoothstep(0.08, 0.45, Math.abs(scrollState.velocity));
     const simMute = grailSimState.active ? 1 - grailSimState.camBlend : 1;
-    const targetBokeh = Math.max(inMoon, inMars) * isResting * simMute * 1.35;
+    const targetBokeh = inMars * isResting * simMute * 1.35;
 
     dofRef.current.bokehScale = THREE.MathUtils.damp(
       dofRef.current.bokehScale,

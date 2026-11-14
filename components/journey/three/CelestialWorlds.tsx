@@ -371,14 +371,16 @@ function SpaceBackdrop({ reducedMotion }: { reducedMotion: boolean }) {
 
   useFrame(({ camera }, delta) => {
     const p = scrollState.current;
-    // Hide stars during Mars atmospheric entry & daytime surface beats 14–20 (AG-2b #2 + AG-11 entry)
+    // Hide stars on lunar surface (beats 8–12, Apollo sunlight exposure) & Mars daytime surface (beats 14–20)
+    const moonSurfaceMask = 1 - smoothstep(7.55, 7.88, p) * (1 - smoothstep(12.15, 12.48, p));
     const marsDayMask = 1 - smoothstep(13.15, 13.48, p) * (1 - smoothstep(20.2, 20.65, p));
+    const skyMask = moonSurfaceMask * marsDayMask;
 
     if (skyRef.current) {
       skyRef.current.position.copy(camera.position);
       const starVis = smoothstep(3.2, 5.4, p);
       const mat = skyRef.current.material as THREE.MeshBasicMaterial;
-      mat.opacity = (0.04 + starVis * 0.96) * marsDayMask;
+      mat.opacity = (0.04 + starVis * 0.96) * skyMask;
       skyRef.current.visible = mat.opacity > 0.01;
     }
     if (pointsRef.current) {
@@ -388,7 +390,7 @@ function SpaceBackdrop({ reducedMotion }: { reducedMotion: boolean }) {
         pointsRef.current.rotation.y = elapsedRef.current * 0.0035;
       }
       const pMat = pointsRef.current.material as THREE.PointsMaterial;
-      pMat.opacity = (0.05 + smoothstep(3.0, 5.2, p) * 0.85) * marsDayMask;
+      pMat.opacity = (0.05 + smoothstep(3.0, 5.2, p) * 0.85) * skyMask;
       pointsRef.current.visible = pMat.opacity > 0.01;
     }
   });

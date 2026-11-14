@@ -351,3 +351,25 @@ Do NOT generate posters.
 
 ## Opus review — AG-11b accepted (15/11)
 - Merged. Streaks gone, GRAIL autoplay works, Pathfinder mounts, Mars halos removed. Next: AG-12 (remove scale figures per humans, photo-real lunar surface).
+
+---
+
+## AG-12 — Scale Figures Removed, Hero Re-Framing & Photo-Real Apollo Lunar Surface (15/11)
+
+**Branch:** `ag/12-moon-surface` (from `origin/main`)
+
+1. **All Human Scale Figures Removed & Rest Shots Re-Framed (`ScaleSilhouette.tsx` deleted, `ExhibitStage3D.tsx`, `trajectory.ts`, `GrailSimulation.tsx`, `simulationBus.ts`)**:
+   - Deleted `components/journey/three/ScaleSilhouette.tsx` and stripped all imports, helpers, placement tables, and `<ScaleSilhouette />` mounts from `ExhibitStage3D.tsx`.
+   - Re-framed `BEAT_POSES[8..12, 14..20]`, `GrailSimulation.tsx` (`REST_CAM_WORLD`), and `simulationBus.ts` (including tighter `mars-ingenuity` `3.4 m` hero close-up) so every exhibit fills the frame with zero empty right-hand margin beside the bottom-left HUD card.
+2. **Photo-Real Apollo Regolith Micro-Relief, Craters & Rocks (`landscapeMaterials.tsx`, `MoonDioramas.tsx`, `GrailSimulation.tsx`)**:
+   - Added non-uniformly warped near-field horizon terrain geometry (`createNearFieldHorizonGeometry`, `176 m` span, `~0.20 m` near-field triangles at `192×192` on `high`, `136×136` on `medium`, `92×92` on `low`).
+   - Upgraded Moon branch in `applyWorldTerrainShader`: tier-scaled Worley cauliflower regolith clods, jittered sub-meter eroded micro-crater pits (`0.22–1.1 m`), warm neutral grey-brown mare soil transitioning smoothly on elevated massifs (`> 1.2 m`) to luminous cream-white `#DDD6CA` (`highlandBrightTint`), Lommel-Seeliger/Hapke opposition surge along `uMoonSunDir`, and zero atmospheric haze on elevated terrain (`fadeStart: 72, fadeEnd: 87.5` mare horizon only).
+   - Removed sine-wave `strata` from `ridgeHill` / `polarRidgeHill` so Mount Hadley, North & South Massifs, Surveyor Crater rim, and Goldschmidt massifs form smooth, rounded monumental landforms.
+   - Added dense overlapping eroded craters (`0.48–5.2 m`) + dual-tier `InstancedLandscapeRocks`: half-buried `2–10 cm` cream-grey pebbles (`embedOffset: -0.06`, `moonCraters` rim bias; `680`/`360`/`140` by tier) + scattered `14–52 cm` angular basalt/breccia rocks (`110–145`/`70`/`32`).
+3. **Single Hard Sun, Pitch-Black Shadows & Starless Lunar Sky (`SpaceScene.tsx`, `RenderPipeline.tsx`, `ExhibitStage3D.tsx`, `CelestialWorlds.tsx`, `MoonDioramas.tsx`)**:
+   - Disabled overhead `<spotLight>` fill on Moon, dropped `ambRef` (`0.014`), `hemiRef` (`0.024`), `rimRef` (`0.0`), lowered Moon `Environment` (`environmentIntensity={0.14}`, `#000000` background, removed `#6B8CFF` blue fill), aligned key solar light at `[ax + 9.4, ay + 2.85, az + 4.3]` (`intensity = 5.8`, tight `shadow-normalBias = 0.01`), and disabled Moon DOF bokeh in `PostEffects` so distant massifs stay crisp.
+   - Faded `SpaceBackdrop` Milky Way sky sphere & star points to `0` across lunar surface beats `8..12` while keeping `lunarSkyEarthRef` visible in upper-right near-side sky.
+   - Switched Apollo 11, Surveyor 3 (Apollo 12 approach bootpath only), Apollo 15, and Apollo 17 bootprint/tire-rut decals to lit `meshStandardMaterial` (`roughness = 0.98`); confirmed **zero tracks/footprints** at GRAIL (`moon-grail`).
+4. **Verification**: Verified `npx tsc --noEmit`, `npx eslint components/journey/three`, and `npx next build --webpack` pass cleanly; zero posters generated or modified.
+
+**Files changed:** `CelestialWorlds.tsx`, `ExhibitStage3D.tsx`, `GrailSimulation.tsx`, `MoonDioramas.tsx`, `RenderPipeline.tsx`, `SpaceScene.tsx`, `landscapeMaterials.tsx`, `simulationBus.ts`, `trajectory.ts`, `docs/HANDOFF_ANTIGRAVITY.md` (plus `ScaleSilhouette.tsx` removed).
