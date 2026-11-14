@@ -447,3 +447,6 @@ If anything is not finished by 12:00, hand off what is stable and stop. Do NOT g
 
 ## Opus review — AG-13 accepted (15/11)
 - Full-journey wheel scroll from beat 1 (real flow, prewarm during launch): median 16.7 ms, max 283 ms (finale), lunar touchdown 83 ms; Earth removed from the Moon; descent and site hops continuous. Merged; all posters re-captured.
+
+## Opus hotfix (15/11)
+- `SpaceScene.tsx` MOON_SITE_SLUGS had `"moon-lrv"` instead of `"moon-apollo-15-lrv"` → `sampleInterpolatedSitePos` threw every frame from p≈9 to 12 and froze the 3D between Surveyor 3 and GRAIL. Fixed on main — **pull main before any further work**.

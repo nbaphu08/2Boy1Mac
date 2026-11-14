@@ -26,7 +26,7 @@ import {
 const MOON_SITE_SLUGS = [
   "moon-apollo-11",
   "moon-surveyor-3",
-  "moon-lrv",
+  "moon-apollo-15-lrv",
   "moon-apollo-17",
   "moon-grail",
 ] as const;
