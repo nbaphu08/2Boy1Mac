@@ -3,6 +3,7 @@
 import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
+import { usePerfBudget } from "./perfTier";
 import {
   Apollo11SiteProps,
   ClippedLmTopCap,
@@ -270,7 +271,9 @@ function createLunarTerrainGeometry(slug: string): THREE.BufferGeometry {
 /** Sparse, slow-drifting lunar dust motes suspended in the cold #DCE6FF spotlight beam (no haze). */
 export function LunarDustMotes({ reducedMotion }: { reducedMotion: boolean }) {
   const pointsRef = useRef<THREE.Points>(null);
-  const count = 26;
+  const elapsedRef = useRef(0);
+  const budget = usePerfBudget();
+  const count = Math.max(10, Math.round(budget.dioramaDustCount * 0.56));
 
   const basePositions = useMemo(() => {
     const arr = new Float32Array(count * 3);
@@ -282,11 +285,12 @@ export function LunarDustMotes({ reducedMotion }: { reducedMotion: boolean }) {
       arr[i * 3 + 2] = Math.sin(a) * r;
     }
     return arr;
-  }, []);
+  }, [count]);
 
-  useFrame(({ clock }) => {
+  useFrame((_, delta) => {
     if (!pointsRef.current || reducedMotion) return;
-    const t = clock.elapsedTime;
+    elapsedRef.current += Math.min(delta, 0.05);
+    const t = elapsedRef.current;
     const pos = pointsRef.current.geometry.attributes.position as THREE.BufferAttribute;
     for (let i = 0; i < count; i++) {
       const bx = basePositions[i * 3 + 0];

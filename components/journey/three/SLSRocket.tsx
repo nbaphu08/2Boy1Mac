@@ -15,6 +15,7 @@ import {
   getSparkTexture,
   getSrbTextures,
 } from "./rocketTextures";
+import { usePerfBudget } from "./perfTier";
 import { WORLD_ANCHORS } from "./trajectory";
 
 const SRB_OFFSETS: [-1 | 1, number][] = [
@@ -35,10 +36,6 @@ const BSM_ANGLES = [0.4, -0.4, Math.PI - 0.4, Math.PI + 0.4];
 const FAIRING_ANGLES = [0, (Math.PI * 2) / 3, (Math.PI * 4) / 3];
 const SOLAR_WING_ANGLES = [Math.PI * 0.25, Math.PI * 0.75, Math.PI * 1.25, Math.PI * 1.75];
 const MACH_DIAMOND_Offsets = [-0.55, -1.25, -2.05, -2.95];
-
-const STEAM_COUNT = 140;
-const SPARK_COUNT = 260;
-const PYRO_SPARK_COUNT = 120;
 
 export function SLSRocket({
   rocketRef,
@@ -65,6 +62,11 @@ export function SLSRocket({
   const padSparksRef = useRef<THREE.Points>(null);
   const pyroSparksRef = useRef<THREE.Points>(null);
   const engineLightRef = useRef<THREE.PointLight>(null);
+  const elapsedRef = useRef(0);
+  const budget = usePerfBudget();
+  const steamCount = budget.steamCount;
+  const sparkCount = budget.sparkCount;
+  const pyroCount = budget.pyroCount;
 
   const coreTex = useMemo(() => getCoreStageTextures(), []);
   const srbTex = useMemo(() => getSrbTextures(), []);
@@ -78,47 +80,50 @@ export function SLSRocket({
 
   // Pre-seed pad acoustic deluge steam particles
   const steamData = useMemo(() => {
-    const positions = new Float32Array(STEAM_COUNT * 3);
-    const seeds = new Float32Array(STEAM_COUNT * 4);
-    for (let i = 0; i < STEAM_COUNT; i++) {
-      seeds[i * 4 + 0] = (i / STEAM_COUNT) * Math.PI * 2 + (i % 7) * 0.17;
+    const positions = new Float32Array(steamCount * 3);
+    const seeds = new Float32Array(steamCount * 4);
+    for (let i = 0; i < steamCount; i++) {
+      seeds[i * 4 + 0] = (i / steamCount) * Math.PI * 2 + (i % 7) * 0.17;
       seeds[i * 4 + 1] = 2.8 + (i % 6) * 1.25;
       seeds[i * 4 + 2] = ((i * 19) % 13) / 13;
       seeds[i * 4 + 3] = (i % 17) / 17;
     }
     return { positions, seeds };
-  }, []);
+  }, [steamCount]);
 
   // Pre-seed ROFI igniter + exhaust spark particles
   const sparkData = useMemo(() => {
-    const positions = new Float32Array(SPARK_COUNT * 3);
-    const seeds = new Float32Array(SPARK_COUNT * 4); // angle, radialSpeed, vy, phase
-    for (let i = 0; i < SPARK_COUNT; i++) {
+    const positions = new Float32Array(sparkCount * 3);
+    const seeds = new Float32Array(sparkCount * 4); // angle, radialSpeed, vy, phase
+    for (let i = 0; i < sparkCount; i++) {
       seeds[i * 4 + 0] = ((i * 137.5) % 360) * (Math.PI / 180);
       seeds[i * 4 + 1] = 1.6 + ((i * 29) % 10) * 0.55;
       seeds[i * 4 + 2] = 3.2 + ((i * 43) % 9) * 0.65;
       seeds[i * 4 + 3] = (i % 31) / 31;
     }
     return { positions, seeds };
-  }, []);
+  }, [sparkCount]);
 
   // Pre-seed staging pyrotechnic ordnance sparks
   const pyroData = useMemo(() => {
-    const positions = new Float32Array(PYRO_SPARK_COUNT * 3);
-    const dirs = new Float32Array(PYRO_SPARK_COUNT * 3);
-    for (let i = 0; i < PYRO_SPARK_COUNT; i++) {
-      const a = (i / PYRO_SPARK_COUNT) * Math.PI * 2;
+    const positions = new Float32Array(pyroCount * 3);
+    const dirs = new Float32Array(pyroCount * 3);
+    for (let i = 0; i < pyroCount; i++) {
+      const a = (i / pyroCount) * Math.PI * 2;
       const spd = 1.2 + (i % 5) * 0.65;
       dirs[i * 3 + 0] = Math.cos(a) * spd;
       dirs[i * 3 + 1] = (((i * 7) % 11) / 11 - 0.5) * 2.2;
       dirs[i * 3 + 2] = Math.sin(a) * spd;
     }
     return { positions, dirs };
-  }, []);
+  }, [pyroCount]);
 
-  useFrame((state) => {
+  useFrame((_, delta) => {
     const p = scrollState.current;
-    const t = state.clock.elapsedTime;
+    if (!reducedMotion) {
+      elapsedRef.current += Math.min(delta, 0.05);
+    }
+    const t = elapsedRef.current;
 
     // 1. Pre-ignition ROFI sparks start at p=1.35, full liftoff thrust builds at p=1.78..2.04
     const rofiActive = smoothstep(1.32, 1.65, p) * (1 - smoothstep(3.1, 3.6, p));
@@ -265,8 +270,8 @@ export function SLSRocket({
         const posAttr = padSteamRef.current.geometry.attributes.position as THREE.BufferAttribute;
         const arr = posAttr.array as Float32Array;
         const { seeds } = steamData;
-        const drift = Math.max(0, p - 1.72) * 1.5;
-        for (let i = 0; i < STEAM_COUNT; i++) {
+        const drift = reducedMotion ? 0 : Math.max(0, p - 1.72) * 1.5;
+        for (let i = 0; i < steamCount; i++) {
           const ang = seeds[i * 4 + 0];
           const spd = seeds[i * 4 + 1];
           const hBias = seeds[i * 4 + 2];
@@ -291,7 +296,7 @@ export function SLSRocket({
         const arr = posAttr.array as Float32Array;
         const { seeds } = sparkData;
         const rocketLiftY = p < 1.85 ? 0 : Math.min(28, (p - 1.85) * 32);
-        for (let i = 0; i < SPARK_COUNT; i++) {
+        for (let i = 0; i < sparkCount; i++) {
           const ang = seeds[i * 4 + 0];
           const rSpd = seeds[i * 4 + 1];
           const vSpd = seeds[i * 4 + 2];
@@ -329,7 +334,7 @@ export function SLSRocket({
         const posAttr = pyroSparksRef.current.geometry.attributes.position as THREE.BufferAttribute;
         const arr = posAttr.array as Float32Array;
         const { dirs } = pyroData;
-        for (let i = 0; i < PYRO_SPARK_COUNT; i++) {
+        for (let i = 0; i < pyroCount; i++) {
           arr[i * 3 + 0] = dirs[i * 3 + 0] * expand;
           arr[i * 3 + 1] = yOrigin + dirs[i * 3 + 1] * expand;
           arr[i * 3 + 2] = dirs[i * 3 + 2] * expand;

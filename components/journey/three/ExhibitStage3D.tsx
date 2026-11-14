@@ -13,6 +13,7 @@ import { scrollState, smoothstep } from "@/lib/scroll/progress";
 import { EXHIBIT_PLINTH_ANCHORS } from "./trajectory";
 import { HallOneLunarDiorama } from "./MoonDioramas";
 import { HallTwoMarsDiorama } from "./MarsDioramas";
+import { usePerfBudget } from "./perfTier";
 
 const PLINTH_SURFACE_Y = 0.22;
 
@@ -167,11 +168,15 @@ function SingleExhibitPlinth({
   const anchor = EXHIBIT_PLINTH_ANCHORS[exhibit.slug];
   const openExhibit = useMuseum((s) => s.openExhibit);
   const activeExhibit = useMuseum((s) => s.activeExhibit);
+  const budget = usePerfBudget();
   const spinRef = useRef<THREE.Group>(null);
   const spotRef = useRef<THREE.SpotLight>(null);
   const coneRef = useRef<THREE.Mesh>(null);
   const rootRef = useRef<THREE.Group>(null);
+  const elapsedRef = useRef(0);
   const [hovered, setHovered] = useState(false);
+  // AG-6: Lazy-load / mount heavy exhibit GLBs only when within ±budget.glbMountWindow beats
+  const [inGlbRange, setInGlbRange] = useState(false);
 
   const isApolloLm = exhibit.catalogNo === "SM-L-001" || exhibit.catalogNo === "SM-L-004";
 
@@ -184,9 +189,16 @@ function SingleExhibitPlinth({
 
   const isMoon = anchor?.planet === "moon";
 
-  useFrame((state) => {
+  useFrame((_, delta) => {
     const p = scrollState.current;
     const dist = Math.abs(p - beatIndex);
+    const shouldMountGlb = dist <= budget.glbMountWindow;
+    if (shouldMountGlb && !inGlbRange) {
+      setInGlbRange(true);
+    } else if (!shouldMountGlb && inGlbRange && budget.tier === "low" && dist > budget.glbMountWindow + 0.8) {
+      setInGlbRange(false);
+    }
+
     const vis = 1 - smoothstep(0.42, 0.78, dist);
     if (!rootRef.current) return;
     rootRef.current.visible = vis > 0.01;
@@ -195,8 +207,9 @@ function SingleExhibitPlinth({
     rootRef.current.scale.setScalar(0.76 + 0.24 * vis);
 
     if (spinRef.current && !reducedMotion) {
+      elapsedRef.current += Math.min(delta, 0.05);
       // Subtle diorama presentation sway so mountain/plateau backdrops remain oriented toward camera
-      spinRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.28 + beatIndex) * 0.08;
+      spinRef.current.rotation.y = Math.sin(elapsedRef.current * 0.28 + beatIndex) * 0.08;
     }
 
     const boost = activeExhibit === exhibit.slug ? 1.45 : hovered ? 1.22 : 1.0;
@@ -257,7 +270,7 @@ function SingleExhibitPlinth({
       <group ref={spinRef}>
         {isMoon ? (
           <HallOneLunarDiorama slug={exhibit.slug} reducedMotion={reducedMotion}>
-            {exhibit.media.model ? (
+            {exhibit.media.model && inGlbRange ? (
               <Suspense fallback={<PlinthFallback />}>
                 <GlbExhibitMesh url={exhibit.media.model} slug={exhibit.slug} isApolloLm={isApolloLm} />
               </Suspense>
@@ -265,7 +278,7 @@ function SingleExhibitPlinth({
           </HallOneLunarDiorama>
         ) : (
           <HallTwoMarsDiorama slug={exhibit.slug} reducedMotion={reducedMotion}>
-            {exhibit.media.model ? (
+            {exhibit.media.model && inGlbRange ? (
               <Suspense fallback={<PlinthFallback />}>
                 <GlbExhibitMesh url={exhibit.media.model} slug={exhibit.slug} isApolloLm={false} />
               </Suspense>
@@ -594,18 +607,17 @@ function BeyondSilhouettes3D({ reducedMotion }: { reducedMotion: boolean }) {
 
       {/* ─── TALL FROSTED-GLASS MUSEUM DOORWAY (Platinum Frame #C7CDD8) ─── */}
       <group position={[0, -0.35, -1.35]}>
-        {/* Frosted translucent glass portal pane */}
+        {/* Frosted translucent glass portal pane (uses standard transparent material so zero transmission framebuffer readbacks occur) */}
         <mesh position={[0, 0, -0.08]}>
           <planeGeometry args={[15.2, 6.4]} />
-          <meshPhysicalMaterial
+          <meshStandardMaterial
             color="#0D1526"
             emissive="#162440"
-            emissiveIntensity={0.28}
-            roughness={0.65}
-            metalness={0.12}
-            transmission={0.45}
+            emissiveIntensity={0.32}
+            roughness={0.55}
+            metalness={0.22}
             transparent
-            opacity={0.52}
+            opacity={0.56}
           />
         </mesh>
 

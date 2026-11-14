@@ -334,11 +334,13 @@ export function ClippedLmTopCap({ baseY }: { baseY: number }) {
 export function Apollo11SiteProps({ baseY }: { baseY: number }) {
   const prismTex = useMemo(() => getLrrrPrismTexture(), []);
   const laserRef = useRef<THREE.Mesh>(null);
+  const elapsedRef = useRef(0);
 
-  useFrame(({ clock }) => {
+  useFrame((_, delta) => {
     if (!laserRef.current) return;
+    elapsedRef.current += Math.min(delta, 0.05);
     const mat = laserRef.current.material as THREE.MeshBasicMaterial;
-    mat.opacity = 0.24 + Math.sin(clock.elapsedTime * 3.2) * 0.06;
+    mat.opacity = 0.24 + Math.sin(elapsedRef.current * 3.2) * 0.06;
   });
 
   return (
@@ -925,10 +927,12 @@ function SingleGrailGhostCraft({
 
 export function GrailTwinHolograms({ reducedMotion }: { reducedMotion: boolean }) {
   const groupRef = useRef<THREE.Group>(null);
+  const elapsedRef = useRef(0);
 
-  useFrame(({ clock }) => {
+  useFrame((_, delta) => {
     if (!groupRef.current || reducedMotion) return;
-    groupRef.current.position.y = Math.sin(clock.elapsedTime * 1.4) * 0.05;
+    elapsedRef.current += Math.min(delta, 0.05);
+    groupRef.current.position.y = Math.sin(elapsedRef.current * 1.4) * 0.05;
   });
 
   return (

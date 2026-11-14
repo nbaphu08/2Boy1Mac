@@ -130,6 +130,18 @@ See `GEMINI.md` §1–2 (architecture). Merged to `main` in commit a5633df.
 **Files changed:**
 - `components/journey/three/CelestialWorlds.tsx`, `ExhibitStage3D.tsx`, `SpaceScene.tsx`
 
+## AG-6 — Performance Tiers & S-6 Baseline Fixes — 14/11 — branch `ag/6-perf-tiers`
+**Done:**
+1. **Auto-detected 3 Performance Tiers (`perfTier.ts`)**: Auto-selects `high`, `medium`, or `low` from WebGL `UNMASKED_RENDERER_WEBGL`, `navigator.hardwareConcurrency`, viewport width, and a live 2-second FPS monitor (`updatePerfFpsMonitor`). Dynamically scales DPR cap (`[1, 2]` / `[1, 1.5]` / `[1, 1.25]`), star count (`1100` / `640` / `320`), pad deluge steam (`140` / `88` / `48`), ROFI sparks (`260` / `160` / `84`), pyro sparks (`120` / `76` / `42`), diorama dust motes (`46` / `28` / `14`), and lazy exhibit GLB mount window (`±3.2` / `±2.4` / `±1.8` beats).
+2. **S-6 Fix #1 — Removed all `THREE.Clock` usages**: Replaced every `state.clock.elapsedTime` / `clock.elapsedTime` across `SpaceScene.tsx`, `LaunchComplex.tsx`, `SLSRocket.tsx`, `ExhibitStage3D.tsx`, `CelestialWorlds.tsx`, `MoonDioramas.tsx`, `MarsDioramas.tsx`, and `MoonModels.tsx` with delta-accumulated `elapsedRef` timers.
+3. **S-6 Fix #2 — Eliminated incomplete-framebuffer / `readPixels` readback**: Deferred `configureAerospaceEnvironment` (`PMREMGenerator.fromScene`) until `gl.getContext().drawingBufferWidth > 0 && drawingBufferHeight > 0` via `requestAnimationFrame` and replaced `transmission` on the Beyond frosted doorway with standard transparent material so zero transmission framebuffer readbacks occur.
+4. **S-6 Fix #3 — Background tab pause (`0%` CPU)**: Added a `visibilitychange` listener in `SpaceScene.tsx` setting `<Canvas frameloop={isPageHidden ? "never" : "always"}>`.
+5. **S-6 Fix #4 — `reducedMotion` strict compliance**: Snaps `scrollState.current = scrollState.target; scrollState.velocity = 0;` immediately with zero camera micro-orbit, zero breathing/shake, and frozen particle drift.
+
+**Files changed:**
+- `components/journey/three/perfTier.ts` (new), `SpaceScene.tsx`, `SLSRocket.tsx`, `LaunchComplex.tsx`, `ExhibitStage3D.tsx`, `CelestialWorlds.tsx`, `MoonDioramas.tsx`, `MarsDioramas.tsx`, `MoonModels.tsx`
+
+
 
 
 

@@ -5,6 +5,7 @@ import { useFrame } from "@react-three/fiber";
 import { Line, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import { scrollState, smoothstep } from "@/lib/scroll/progress";
+import { usePerfBudget } from "./perfTier";
 import { EXHIBIT_PLINTH_ANCHORS, WORLD_ANCHORS, sampleTrajectory } from "./trajectory";
 
 /** Fresnel atmosphere / rim glow shader for Earth, Moon & Mars limbs. */
@@ -217,11 +218,13 @@ function MarsDaytimeSkyDome() {
 /** 3D twinkling star points + NASA Deep Star Maps equirectangular skybox. */
 function SpaceBackdrop({ reducedMotion }: { reducedMotion: boolean }) {
   const starTex = useTexture("/media/textures/starfield_4k.jpg");
+  const budget = usePerfBudget();
+  const count = budget.starCount;
   const skyRef = useRef<THREE.Mesh>(null);
   const pointsRef = useRef<THREE.Points>(null);
+  const elapsedRef = useRef(0);
 
   const starPositions = useMemo(() => {
-    const count = 1100;
     const arr = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
       const u = ((i * 73) % 1000) / 1000;
@@ -234,9 +237,9 @@ function SpaceBackdrop({ reducedMotion }: { reducedMotion: boolean }) {
       arr[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
     }
     return arr;
-  }, []);
+  }, [count]);
 
-  useFrame(({ camera, clock }) => {
+  useFrame(({ camera }, delta) => {
     const p = scrollState.current;
     // Hide stars during Martian daytime surface beats 14–20 (AG-2b #2)
     const marsDayMask = 1 - smoothstep(13.35, 13.8, p) * (1 - smoothstep(20.2, 20.65, p));
@@ -251,7 +254,8 @@ function SpaceBackdrop({ reducedMotion }: { reducedMotion: boolean }) {
     if (pointsRef.current) {
       pointsRef.current.position.copy(camera.position);
       if (!reducedMotion) {
-        pointsRef.current.rotation.y = clock.elapsedTime * 0.0035;
+        elapsedRef.current += Math.min(delta, 0.05);
+        pointsRef.current.rotation.y = elapsedRef.current * 0.0035;
       }
       const pMat = pointsRef.current.material as THREE.PointsMaterial;
       pMat.opacity = (0.25 + smoothstep(2.2, 4.8, p) * 0.65) * marsDayMask;
