@@ -47,7 +47,7 @@ export const journey = {
   hall: {
     // Moon hall title beat (deep-space). TRANS-LUNAR INJECTION dropped: no separate transit-to-Moon label exists.
     "deep-space": "SOLAR ARRAYS DEPLOYED",
-    transit: "INTERPLANETARY CRUISE · HOHMANN TRANSFER",
+    transit: "INTERPLANETARY CRUISE · 7 TO 10 MONTHS",
   } as Record<string, string>,
   exhibit: {
     hallMoon: "HALL I · THE MOON",

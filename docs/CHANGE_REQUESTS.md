@@ -24,3 +24,7 @@
 - `ARTEMIS ERA EARTHRISE · 6 APR 2026` (finale date)
 - `12 STAMPS` total (matches 12 exhibits; fine)
 - Removed: MET clocks T+00:00:12 / T+01:30 / T+02:06 / T+00:00:00, MACH 1.8+, 109% RATED, 8× BSM, TRANS-LUNAR INJECTION (no separate transit-to-Moon label).
+
+## Opus verdict on "Unverified strings" (14/11 12:10)
+- KEEP (accurate technical terms / verified): `HIGH BAY 3` (NASA photo captions KSC-20220803-PH-FMX01_0001 etc.), `PAD LC-39B` (S40), `SLS BLOCK 1`, `ROFI SPARK IGNITION`, `5-SEG RSRMV`, `4× RS-25`, `PITCH & ROLL PROGRAM`, `MAX-Q`, `SUPERSONIC`, `CORE THROTTLE BUCKET`, `ESM FAIRING & LAS JETTISON` (adapter fairing jettison seen in NASA clip art002m1200912231B; LAS jettison in Artemis press kit S44), `ORION MPCV EXPOSED TO VACUUM`, `ARTEMIS ERA EARTHRISE · 6 APR 2026` (NASA image art002e009280b), `EST. VISIT 10 MIN` (UX estimate, not a fact).
+- FIXED: `HOHMANN TRANSFER` → `7 TO 10 MONTHS` (S46; Mars landers did not fly strict Hohmann transfers).
