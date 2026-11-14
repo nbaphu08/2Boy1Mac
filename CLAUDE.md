@@ -15,6 +15,11 @@ A continuous-scroll 3D museum website about NASA hardware left on the Moon and M
 - **Fable** — only when the humans explicitly ask.
 - While an AG packet is open, nobody else edits `components/journey/three/**`.
 
+## Working directories (avoid branch collisions)
+- **Antigravity** works in the main folder `/Users/nguyenbaphu/2Boy1Mac` on its `ag/*` branches.
+- **Opus and Sonnet** work in the separate worktree `/Users/nguyenbaphu/2Boy1Mac-main` on branch `main` (own `node_modules`, own `.vercel`). Never run `git checkout` in the other agent's folder.
+- Opus merges `ag/*` branches into `main` from the worktree after review, then deploys preview from the worktree.
+
 ## Hard rules
 - No invented numbers, dates or quotes. Every visible string comes from `docs/COPY.md` or `content/journey.ts` and is sourced.
 - 3D reconstructions are illustrative: keep the "3D reconstructions are illustrative, based on NASA imagery and data." line in footer/About.
