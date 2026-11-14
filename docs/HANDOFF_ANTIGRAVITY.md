@@ -210,3 +210,11 @@ See `GEMINI.md` §1–2 (architecture). Merged to `main` in commit a5633df.
 - `components/journey/three/RenderPipeline.tsx` (new), `perfTier.ts`, `SpaceScene.tsx`, `ExhibitStage3D.tsx`, `MoonDioramas.tsx`, `MarsDioramas.tsx`, `MoonModels.tsx`, `LaunchComplex.tsx`, `SLSRocket.tsx`
 - `docs/HANDOFF_ANTIGRAVITY.md`
 
+
+## Opus review — AG-9a accepted (15/11)
+- Merged into `main`; deps install clean, `npm audit --omit=dev` 0 vulnerabilities, checks pass. Real-WebGL grid: `docs/antigravity/shots/review-AG9a-grid.jpg`.
+- Better: real soft shadows (LRV, Viking, InSight), AO, bloom on plumes/laser, warmer Mars sky.
+- Carry into AG-10 / AG-9b:
+  1. **Moon spotlight cones** now read as a milky grey glass dome over every Moon diorama (brighter after tonemapping/bloom) — they are removed in 9b anyway; make sure none remain.
+  2. **ESM engine plume at `deep-space`** is a huge bright blue cone dominating the frame. A vacuum plume from Orion's service-module engine is nearly invisible: make it a short, faint, mostly transparent glow (no long cone).
+  3. Posters will be re-captured by Opus after 9b, not now.
