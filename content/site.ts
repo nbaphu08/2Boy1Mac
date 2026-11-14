@@ -15,13 +15,39 @@ export const site = {
   certificate: (date: string) => `Certificate of Visit — ${date} — "You have visited every machine in the SpaceMuse collection."`,
   rail: ["KSC", "LAUNCH", "SPACE", "MOON", "MARS", "SILENCE", "BEYOND"],
   reducedMotion: "Motion reduced to match your system settings.",
+  // Landing page (/) — hero + "About the gallery" section. Facts reuse verified strings (COPY.md, EXHIBITS.md).
+  landing: {
+    cta: "Visit gallery",
+    scrollHint: "Scroll to learn about the museum ↓",
+    eyebrow: "ABOUT THE GALLERY",
+    heading: "Twelve machines we left behind — and the stories they still tell.",
+    intro: [
+      "Between 1967 and 2021, the twelve machines in this collection landed on the Moon and Mars: landers, rovers, a car, instruments and even a helicopter. Today they stand silent where their missions ended.",
+      "All but one. A laser reflector left by Apollo 11 in 1969 still answers the lasers we fire at it from Earth.",
+    ],
+    routeTitle: "YOUR ROUTE",
+    route: [
+      { name: "Launch", text: "Ride an SLS rocket from Launch Complex 39B into space." },
+      { name: "Hall I — The Moon", text: "Five exhibits, from 1967 to 2012. One small world." },
+      { name: "Hall II — Mars", text: "Seven machines. Some rolled, one flew, all fell silent." },
+      { name: "Hall of Silence", text: "The last time each machine talked to Earth." },
+      { name: "Beyond", text: "A glimpse of the ones that kept going." },
+    ],
+    howTitle: "HOW TO VISIT",
+    how: [
+      "Scroll to fly from one exhibit to the next.",
+      "Open any exhibit for its museum label, Then/Now photographs and sources.",
+      "Collect a passport stamp at each of the twelve machines.",
+    ],
+    secondary: { collection: "Browse the collection", about: "About the project" },
+  },
   halls: {
     moon: { name: "HALL I — THE MOON", sub: "Five exhibits, from 1967 to 2012. One small world." },
     mars: { name: "HALL II — MARS", sub: "Seven machines. Some rolled, one flew, all fell silent." },
   },
   about: {
     heading: "About SpaceMuse",
-    body: "SpaceMuse treats the machines humanity left on the Moon and Mars as museum objects. Every date and number on this site comes from NASA, JPL, NSSDCA or the Smithsonian, and every exhibit lists its sources. Footage and images come from the NASA Image and Video Library, the Lunar Reconnaissance Orbiter Camera (LROC) and HiRISE.",
+    body: "SpaceMuse treats the machines humanity left on the Moon and Mars as museum objects. Every date and number on this site comes from NASA, JPL, NSSDCA or the Smithsonian, and every exhibit lists its sources. Images come from the NASA Image and Video Library, the Lunar Reconnaissance Orbiter Camera (LROC) and HiRISE.",
     builtFor:
       "NASA Space Apps Challenge 2026 — \"Abandoned but not Forgotten: Storytelling about NASA's Discarded Equipment on the Moon and Mars.\"",
     team: "2Boy1Mac",
