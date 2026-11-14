@@ -10,69 +10,14 @@ import { teaserItems } from "@/content/teaser";
 import type { Exhibit } from "@/content/types";
 import { useMuseum } from "@/lib/store";
 import { scrollState, smoothstep } from "@/lib/scroll/progress";
-import { BEAT_POSES, EXHIBIT_PLINTH_ANCHORS } from "./trajectory";
-import { getMoonTerrainHeight, HallOneLunarDiorama } from "./MoonDioramas";
-import { getMarsTerrainHeight, HallTwoMarsDiorama } from "./MarsDioramas";
+import { EXHIBIT_PLINTH_ANCHORS } from "./trajectory";
+import { HallOneLunarDiorama } from "./MoonDioramas";
+import { HallTwoMarsDiorama } from "./MarsDioramas";
 import { GrailSimulation } from "./GrailSimulation";
 import { PathfinderLandscape } from "./PathfinderLandscape";
-import { ScaleSilhouette } from "./ScaleSilhouette";
 import { usePerfBudget } from "./perfTier";
 
 const PLINTH_SURFACE_Y = 0.22;
-
-/**
- * Lateral distance (in world meters, strict 1:1 scale) from exhibit center to the 1.80 m
- * scale silhouette along the camera's horizontal screen-right axis so every silhouette
- * stands beside its exhibit at exact equal distance from the camera.
- */
-const SILHOUETTE_SIDE_DIST: Record<string, number> = {
-  "moon-apollo-11": 4.25,
-  "moon-surveyor-3": 2.55,
-  "moon-apollo-15-lrv": 2.35,
-  "moon-apollo-17": 6.25,
-  "moon-grail": 3.35,
-  "mars-viking-1": 2.15,
-  "mars-pathfinder": 2.45,
-  "mars-spirit": 2.15,
-  "mars-opportunity": 2.15,
-  "mars-phoenix": 3.25,
-  "mars-insight": 3.65,
-  "mars-ingenuity": 1.35,
-};
-
-function computeEqualDistanceSilhouettePlacement(
-  slug: string,
-  beatIndex: number,
-  anchorPos: [number, number, number],
-  anchorRotY: number,
-): { dx: number; dz: number; rotY: number } {
-  const pose = BEAT_POSES[beatIndex];
-  const sideDist = SILHOUETTE_SIDE_DIST[slug] ?? 2.2;
-  if (!pose) return { dx: sideDist, dz: 0, rotY: 0 };
-
-  const fx = anchorPos[0] - pose.camPos[0];
-  const fz = anchorPos[2] - pose.camPos[2];
-  const fLen = Math.hypot(fx, fz) || 1;
-  // Screen-right unit vector in world XZ orthogonal to camera-to-exhibit ray
-  const rxWorld = -fz / fLen;
-  const rzWorld = fx / fLen;
-
-  // Transform screen-right direction from world XZ into plinth local XZ (inverse Y-rotation)
-  const cos = Math.cos(anchorRotY);
-  const sin = Math.sin(anchorRotY);
-  const rxLocal = rxWorld * cos - rzWorld * sin;
-  const rzLocal = rxWorld * sin + rzWorld * cos;
-
-  // Orient the flat silhouette face directly toward the camera (forward normal = -viewRay)
-  const camWorldYaw = Math.atan2(pose.camPos[0] - anchorPos[0], pose.camPos[2] - anchorPos[2]);
-  const rotY = camWorldYaw - anchorRotY;
-
-  return {
-    dx: rxLocal * sideDist,
-    dz: rzLocal * sideDist,
-    rotY,
-  };
-}
 
 /**
  * Enables real PCFSoftShadowMap shadow casting/receiving on opaque artifact
@@ -289,25 +234,6 @@ function SingleExhibitPlinth({
   const isGrail = exhibit.slug === "moon-grail";
   const isPathfinder = exhibit.slug === "mars-pathfinder";
 
-  const silhouetteCfg = useMemo(() => {
-    if (!anchor) return { dx: 2.2, dz: 0, rotY: 0 };
-    return computeEqualDistanceSilhouettePlacement(exhibit.slug, beatIndex, anchor.pos, anchor.rotY);
-  }, [exhibit.slug, beatIndex, anchor]);
-
-  const silhouettePos = useMemo<[number, number, number]>(() => {
-    let terrainY = 0;
-    if (isGrail) {
-      terrainY = Math.max(-0.4, -silhouetteCfg.dz * 0.16);
-    } else if (isPathfinder) {
-      terrainY = 0;
-    } else if (isMoon) {
-      terrainY = getMoonTerrainHeight(exhibit.slug, silhouetteCfg.dx, silhouetteCfg.dz);
-    } else {
-      terrainY = getMarsTerrainHeight(exhibit.slug, silhouetteCfg.dx, silhouetteCfg.dz);
-    }
-    return [silhouetteCfg.dx, PLINTH_SURFACE_Y + terrainY, silhouetteCfg.dz];
-  }, [exhibit.slug, isMoon, isGrail, isPathfinder, silhouetteCfg]);
-
   useFrame(() => {
     const p = scrollState.current;
     const dist = Math.abs(p - beatIndex);
@@ -331,7 +257,8 @@ function SingleExhibitPlinth({
     const boost = activeExhibit === exhibit.slug ? 1.35 : hovered ? 1.18 : 1.0;
     if (spotRef.current) {
       const fade = 1 - smoothstep(0.35, 0.49, dist);
-      spotRef.current.intensity = (isMoon ? 28 : 34) * fade * boost;
+      // Hard single sun on Moon (AG-12): zero overhead spotlight fill on Moon surface
+      spotRef.current.intensity = (isMoon ? 0 : 34) * fade * boost;
     }
   });
 
@@ -352,16 +279,18 @@ function SingleExhibitPlinth({
       }}
       onPointerOut={() => setHovered(false)}
     >
-      {/* Subtle overhead documentary rim fill (#DCE6FF) without any conical beam mesh (AG-9b) */}
-      <spotLight
-        ref={spotRef}
-        position={[0, 7.2, 1.5]}
-        angle={0.62}
-        penumbra={0.92}
-        intensity={isMoon ? 28 : 34}
-        distance={22}
-        color="#DCE6FF"
-      />
+      {/* Overhead warm/cool fill on Mars only; Moon uses single hard sun with deep black shadows (AG-12) */}
+      {!isMoon && (
+        <spotLight
+          ref={spotRef}
+          position={[0, 7.2, 1.5]}
+          angle={0.62}
+          penumbra={0.92}
+          intensity={34}
+          distance={22}
+          color="#DCE6FF"
+        />
+      )}
 
       <group ref={spinRef}>
         {isGrail ? (
@@ -391,10 +320,6 @@ function SingleExhibitPlinth({
             ) : null}
           </HallTwoMarsDiorama>
         )}
-        <ScaleSilhouette
-          position={silhouettePos}
-          rotationY={silhouetteCfg.rotY}
-        />
         <ShadowEnabler targetRef={spinRef} enabled={budget.tier !== "low"} />
       </group>
     </group>

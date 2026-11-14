@@ -47,13 +47,13 @@ function SceneChoreographer({
   const orbitalRimColor = useMemo(() => new THREE.Color("#6E96FF"), []);
   const duskHemiSky = useMemo(() => new THREE.Color("#4D75CA"), []);
   const orbitalHemiSky = useMemo(() => new THREE.Color("#ADC8FF"), []);
-  const moonHemiSky = useMemo(() => new THREE.Color("#1E2434"), []);
+  const moonHemiSky = useMemo(() => new THREE.Color("#141210"), []);
   const marsHemiSky = useMemo(() => new THREE.Color("#D89362"), []);
   const duskHemiGround = useMemo(() => new THREE.Color("#2A1A14"), []);
   const orbitalHemiGround = useMemo(() => new THREE.Color("#0A0E18"), []);
-  const moonHemiGround = useMemo(() => new THREE.Color("#181614"), []);
+  const moonHemiGround = useMemo(() => new THREE.Color("#080706"), []);
   const marsHemiGround = useMemo(() => new THREE.Color("#5C2E1B"), []);
-  const moonAmbColor = useMemo(() => new THREE.Color("#0D121D"), []);
+  const moonAmbColor = useMemo(() => new THREE.Color("#0B0A09"), []);
   const marsAmbColor = useMemo(() => new THREE.Color("#54301E"), []);
   const orbitalAmbColor = useMemo(() => new THREE.Color("#1A2644"), []);
 
@@ -177,12 +177,12 @@ function SceneChoreographer({
         shadowModeRef.current = targetMode;
         const sc = sunRef.current.shadow.camera;
         if (targetMode === "exhibit") {
-          sc.left = -12.0;
-          sc.right = 12.0;
-          sc.top = 12.0;
-          sc.bottom = -12.0;
+          sc.left = -13.5;
+          sc.right = 13.5;
+          sc.top = 13.5;
+          sc.bottom = -13.5;
           sc.near = 1;
-          sc.far = 48;
+          sc.far = 54;
         } else {
           sc.left = -24;
           sc.right = 26;
@@ -199,10 +199,10 @@ function SceneChoreographer({
         sunTarget.position.set(ax, ay + 0.35, az);
         sunTarget.updateMatrixWorld();
         if (inMoonHall) {
-          // One hard crisp low white lunar sun -> long sharp Apollo/Surveyor/GRAIL shadows
-          sunRef.current.position.set(ax - 8.8, ay + 3.1, az + 5.2);
+          // Single hard crisp low white lunar sun from right-front -> razor shadows & sunlit Mt Hadley face
+          sunRef.current.position.set(ax + 9.4, ay + 2.85, az + 4.3);
           sunRef.current.color.copy(moonSunColor);
-          sunRef.current.intensity = THREE.MathUtils.damp(sunRef.current.intensity, 4.6 * dim, 8, dt);
+          sunRef.current.intensity = THREE.MathUtils.damp(sunRef.current.intensity, 5.8 * dim, 8, dt);
         } else {
           // Warm low Martian sun across all 7 Mars landscapes
           const stormT = smoothstep(16.3, 16.85, p) * (1 - smoothstep(17.15, 17.7, p));
@@ -228,8 +228,8 @@ function SceneChoreographer({
     }
     if (rimRef.current) {
       if (inMoonHall) {
-        // Near-black lunar sky -> disable secondary rim fill so shadows stay sharp
-        rimRef.current.intensity = THREE.MathUtils.damp(rimRef.current.intensity, 0.14 * dim, 8, dt);
+        // Airless black lunar sky -> zero secondary rim fill
+        rimRef.current.intensity = THREE.MathUtils.damp(rimRef.current.intensity, 0.0, 8, dt);
       } else {
         rimRef.current.color.copy(duskRimColor).lerp(orbitalRimColor, orbitalT);
         const targetRim = (inMarsHall ? 0.55 : THREE.MathUtils.lerp(1.05, 0.85, orbitalT)) * dim;
@@ -239,7 +239,7 @@ function SceneChoreographer({
     if (ambRef.current) {
       if (inMoonHall) {
         ambRef.current.color.copy(moonAmbColor);
-        ambRef.current.intensity = THREE.MathUtils.damp(ambRef.current.intensity, 0.14 * dim, 8, dt);
+        ambRef.current.intensity = THREE.MathUtils.damp(ambRef.current.intensity, 0.014 * dim, 8, dt);
       } else if (inMarsHall) {
         ambRef.current.color.copy(marsAmbColor);
         ambRef.current.intensity = THREE.MathUtils.damp(ambRef.current.intensity, 0.38 * dim, 8, dt);
@@ -252,7 +252,7 @@ function SceneChoreographer({
       if (inMoonHall) {
         hemiRef.current.color.copy(moonHemiSky);
         hemiRef.current.groundColor.copy(moonHemiGround);
-        hemiRef.current.intensity = THREE.MathUtils.damp(hemiRef.current.intensity, 0.18 * dim, 8, dt);
+        hemiRef.current.intensity = THREE.MathUtils.damp(hemiRef.current.intensity, 0.024 * dim, 8, dt);
       } else if (inMarsHall) {
         hemiRef.current.color.copy(marsHemiSky);
         hemiRef.current.groundColor.copy(marsHemiGround);
@@ -286,8 +286,8 @@ function SceneChoreographer({
         shadow-camera-bottom={-14}
         shadow-camera-near={10}
         shadow-camera-far={165}
-        shadow-bias={-0.0003}
-        shadow-normalBias={0.02}
+        shadow-bias={-0.00025}
+        shadow-normalBias={0.01}
       />
       <directionalLight ref={rimRef} position={[48, 22, -45]} color="#5280EA" intensity={1.05} />
     </>

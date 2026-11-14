@@ -96,40 +96,40 @@ export const BEAT_POSES: BeatPose[] = [
   },
   // 8: moon-apollo-11 (SM-L-001) — Descending to Sea of Tranquility diorama (9.4 m Eagle descent stage, EASEP, LRRR + green laser)
   {
-    camPos: [9.8, 338.1, -160.2],
-    camLook: [5.2, 335.9, -172.0],
+    camPos: [9.4, 337.75, -161.2],
+    camLook: [4.85, 335.85, -172.0],
     rocketPos: [-18, 352, -182],
     rocketRot: [-0.3, 0.8, 0.15],
     rocketScale: 0.42,
   },
   // 9: moon-surveyor-3 (SM-L-002) — Ocean of Storms crater slope (3.0 m Surveyor + distant Apollo 12 LM on rim)
   {
-    camPos: [-6.8, 344.95, -169.1],
-    camLook: [-9.8, 343.65, -176.0],
+    camPos: [-7.1, 344.75, -170.0],
+    camLook: [-9.75, 343.62, -176.0],
     rocketPos: [-22, 356, -188],
     rocketRot: [-0.2, 0.9, 0.1],
     rocketScale: 0.4,
   },
   // 10: moon-apollo-15-lrv (SM-L-003) — Hadley–Apennine plain (3.1 m LRV, Mt Hadley massif, distant Falcon LM)
   {
-    camPos: [7.2, 353.85, -173.6],
-    camLook: [4.2, 352.6, -180.0],
+    camPos: [6.75, 353.45, -174.4],
+    camLook: [4.25, 352.58, -180.0],
     rocketPos: [-20, 364, -194],
     rocketRot: [-0.25, 1.0, 0.08],
     rocketScale: 0.4,
   },
   // 11: moon-apollo-17 (SM-L-004) — Taurus–Littrow valley massifs, Challenger 9.4 m descent stage + 3.1 m LRV + tracks
   {
-    camPos: [22.2, 364.4, -170.5],
-    camLook: [17.4, 361.95, -184.0],
+    camPos: [21.6, 364.15, -171.6],
+    camLook: [17.7, 361.95, -184.0],
     rocketPos: [-16, 370, -198],
     rocketRot: [-0.2, 1.1, 0.05],
     rocketScale: 0.4,
   },
   // 12: moon-grail (SM-L-005) — North polar Goldschmidt mountain slope, two ~5 m craters with dark ejecta & twin ghost holograms
   {
-    camPos: [2.85, 372.65, -180.8],
-    camLook: [0.85, 371.55, -188.2],
+    camPos: [2.95, 372.6, -181.1],
+    camLook: [0.85, 371.5, -188.25],
     rocketPos: [-18, 380, -204],
     rocketRot: [-0.4, 0.7, 0.1],
     rocketScale: 0.42,
@@ -142,58 +142,58 @@ export const BEAT_POSES: BeatPose[] = [
     rocketRot: [-0.95, 0.25, -0.2],
     rocketScale: 0.65,
   },
-  // 14: mars-viking-1 (SM-M-001) — Chryse Planitia (2.95 m Viking 1 Lander + trench + 1.8 m silhouette)
+  // 14: mars-viking-1 (SM-M-001) — Chryse Planitia (2.95 m Viking 1 Lander + trench)
   {
-    camPos: [8.85, 474.55, -362.1],
-    camLook: [6.85, 473.5, -368.0],
+    camPos: [8.65, 474.4, -362.8],
+    camLook: [6.65, 473.45, -368.0],
     rocketPos: [-20, 496, -384],
     rocketRot: [-0.2, 0.7, 0.12],
     rocketScale: 0.42,
   },
   // 15: mars-pathfinder (SM-M-002) — Ares Vallis flood plain (opened 2.75 m lander + deflated airbags + Sojourner/Yogi + Twin Peaks horizon)
   {
-    camPos: [-5.5, 481.65, -364.2],
-    camLook: [-7.85, 480.52, -370.9],
+    camPos: [-5.7, 481.55, -364.6],
+    camLook: [-8.15, 480.5, -370.9],
     rocketPos: [-24, 500, -388],
     rocketRot: [-0.25, 0.85, 0.1],
     rocketScale: 0.4,
   },
-  // 16: mars-spirit (SM-M-003) — Gusev Crater ("Troy" beside Home Plate, 2.3 m MER + 1.8 m silhouette)
+  // 16: mars-spirit (SM-M-003) — Gusev Crater ("Troy" beside Home Plate, 2.3 m MER)
   {
-    camPos: [-16.1, 488.55, -368.0],
-    camLook: [-18.2, 487.55, -374.0],
+    camPos: [-16.3, 488.45, -368.5],
+    camLook: [-18.25, 487.52, -374.0],
     rocketPos: [-28, 504, -392],
     rocketRot: [-0.3, 0.95, 0.05],
     rocketScale: 0.4,
   },
-  // 17: mars-opportunity (SM-M-004) — Meridiani Planum (Perseverance Valley rim of Endeavour Crater, 2.3 m MER + 1.8 m silhouette)
+  // 17: mars-opportunity (SM-M-004) — Meridiani Planum (Perseverance Valley rim of Endeavour Crater, 2.3 m MER)
   {
-    camPos: [-1.1, 495.55, -371.0],
-    camLook: [-3.2, 494.55, -377.0],
+    camPos: [-1.3, 495.45, -371.5],
+    camLook: [-3.25, 494.52, -377.0],
     rocketPos: [-22, 508, -396],
     rocketRot: [-0.2, 1.0, 0.08],
     rocketScale: 0.4,
   },
-  // 18: mars-phoenix (SM-M-005) — Vastitas Borealis north pole (5.52 m span lander + ice trench + 1.8 m silhouette)
+  // 18: mars-phoenix (SM-M-005) — Vastitas Borealis north pole (5.52 m span lander + ice trench)
   {
-    camPos: [12.8, 502.95, -371.6],
-    camLook: [10.0, 501.6, -380.0],
+    camPos: [12.35, 502.75, -372.4],
+    camLook: [9.65, 501.55, -380.0],
     rocketPos: [-18, 514, -400],
     rocketRot: [-0.35, 0.8, 0.1],
     rocketScale: 0.4,
   },
-  // 19: mars-insight (SM-M-006) — Elysium Planitia (6.0 m span InSight lander + SEIS/HP3 + 1.8 m silhouette)
+  // 19: mars-insight (SM-M-006) — Elysium Planitia (6.0 m span InSight lander + SEIS/HP3)
   {
-    camPos: [23.8, 510.2, -373.6],
-    camLook: [20.9, 508.65, -383.0],
+    camPos: [23.35, 509.95, -374.4],
+    camLook: [20.6, 508.6, -383.0],
     rocketPos: [-16, 518, -404],
     rocketRot: [-0.22, 0.9, 0.06],
     rocketScale: 0.4,
   },
-  // 20: mars-ingenuity (SM-M-007) — Jezero Crater ("Valinor Hills", true 0.49 m tall / 1.21 m rotor helicopter next to 1.80 m human)
+  // 20: mars-ingenuity (SM-M-007) — Jezero Crater ("Valinor Hills", true 0.49 m tall / 1.21 m rotor helicopter hero close-up)
   {
-    camPos: [9.8, 516.55, -381.4],
-    camLook: [7.85, 515.62, -386.0],
+    camPos: [9.15, 515.95, -382.9],
+    camLook: [7.82, 515.25, -386.0],
     rocketPos: [-18, 524, -408],
     rocketRot: [-0.28, 1.05, 0.08],
     rocketScale: 0.4,
