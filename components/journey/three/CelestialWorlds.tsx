@@ -4,10 +4,47 @@ import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Line, useTexture } from "@react-three/drei";
 import * as THREE from "three";
+import { exhibits } from "@/content/exhibits";
 import { scrollState, smoothstep } from "@/lib/scroll/progress";
 import { usePerfBudget } from "./perfTier";
 import { getCloudLayerTexture } from "./rocketTextures";
+import { applyExpeditionCamera } from "./expeditionCamera";
 import { EXHIBIT_PLINTH_ANCHORS, WORLD_ANCHORS, sampleTrajectory } from "./trajectory";
+
+/** Convert planetary lat/lon (deg) to 3D position on a default Three.js SphereGeometry(radius). */
+function latLonToSpherePos(latDeg: number, lonDeg: number, radius: number): [number, number, number] {
+  const phi = (0.5 + lonDeg / 360) * Math.PI * 2;
+  const theta = (0.5 - latDeg / 180) * Math.PI;
+  return [
+    -radius * Math.cos(phi) * Math.sin(theta),
+    radius * Math.cos(theta),
+    radius * Math.sin(phi) * Math.sin(theta),
+  ];
+}
+
+const FALLBACK_COORDS: Record<string, [number, number]> = {
+  "moon-grail": [75.6, -26.6],
+  "mars-viking-1": [22.5, -48.0],
+  "mars-pathfinder": [19.1, -33.2],
+  "mars-spirit": [-14.6, 175.5],
+  "mars-opportunity": [-2.0, -5.5],
+  "mars-phoenix": [68.2, -125.7],
+  "mars-ingenuity": [18.4, 77.5],
+};
+
+function getExhibitGlobePins(hall: "moon" | "mars", radius: number) {
+  return exhibits
+    .filter((ex) => ex.hall === hall)
+    .map((ex) => {
+      const fb = FALLBACK_COORDS[ex.slug] ?? [0, 0];
+      const lat = ex.location.lat ?? fb[0];
+      const lon = ex.location.lon ?? fb[1];
+      return {
+        slug: ex.slug,
+        pos: latLonToSpherePos(lat, lon, radius + 0.32),
+      };
+    });
+}
 
 /** Fresnel atmosphere / rim glow shader for Earth, Moon & Mars limbs. */
 function AtmosphereRim({
@@ -259,7 +296,7 @@ function MarsDaytimeSkyDome() {
 
   useFrame(({ camera }) => {
     const p = scrollState.current;
-    const vis = smoothstep(13.35, 13.85, p) * (1 - smoothstep(20.15, 20.65, p));
+    const vis = smoothstep(13.15, 13.48, p) * (1 - smoothstep(20.15, 20.65, p));
     if (!domeRef.current || !matRef.current) return;
     domeRef.current.visible = vis > 0.01;
     if (!domeRef.current.visible) return;
@@ -334,8 +371,8 @@ function SpaceBackdrop({ reducedMotion }: { reducedMotion: boolean }) {
 
   useFrame(({ camera }, delta) => {
     const p = scrollState.current;
-    // Hide stars during Martian daytime surface beats 14–20 (AG-2b #2)
-    const marsDayMask = 1 - smoothstep(13.35, 13.8, p) * (1 - smoothstep(20.2, 20.65, p));
+    // Hide stars during Mars atmospheric entry & daytime surface beats 14–20 (AG-2b #2 + AG-11 entry)
+    const marsDayMask = 1 - smoothstep(13.15, 13.48, p) * (1 - smoothstep(20.2, 20.65, p));
 
     if (skyRef.current) {
       skyRef.current.position.copy(camera.position);
@@ -390,6 +427,9 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
   const lunarApproachArcRef = useRef<THREE.Group>(null);
   const transitArcRef = useRef<THREE.Group>(null);
   const transitCruiseDotRef = useRef<THREE.Group>(null);
+
+  const moonPins = useMemo(() => getExhibitGlobePins("moon", WORLD_ANCHORS.moonRadius), []);
+  const marsPins = useMemo(() => getExhibitGlobePins("mars", WORLD_ANCHORS.marsRadius), []);
 
   const trajTmp = useMemo(
     () => ({
@@ -465,12 +505,12 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
     }
 
     if (lunarSkyEarthRef.current) {
-      // Near-side lunar sites (beats 8..11: Apollo 11, Surveyor 3, Apollo 15, Apollo 17) see Earth hanging in the black lunar sky;
-      // GRAIL polar impact site (beat 12) does not (AG-1b #2).
-      const skyVis = smoothstep(7.45, 7.8, p) * (1 - smoothstep(11.2, 11.55, p));
+      // Near-side lunar sites (beats 8..11) see Earth hanging in upper-right black lunar sky; hidden during polar beat 12 & during low-flight hops
+      const skyVis = smoothstep(7.72, 7.95, p) * (1 - smoothstep(11.15, 11.45, p));
       lunarSkyEarthRef.current.visible = skyVis > 0.02;
       if (lunarSkyEarthRef.current.visible) {
         sampleTrajectory(p, trajTmp);
+        applyExpeditionCamera(p, reducedMotion, trajTmp);
         lunarSkyEarthRef.current.position.set(
           trajTmp.camLook.x + 8.6,
           trajTmp.camLook.y + 3.4,
@@ -482,30 +522,31 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
     }
 
     if (moonRef.current) {
-      // Visible during orbital approach (beat 7) and departure (beat 13), hidden during ascent (<= 6.3) and on the lunar surface (beats 8..12)
-      const approachVis = smoothstep(6.35, 7.05, p) * (1 - smoothstep(7.2, 7.62, p));
-      const departVis = smoothstep(12.38, 12.75, p) * (1 - smoothstep(13.8, 15.0, p));
+      // Visible during lunar orbital approach & descent (6.25..7.52) and departure (beat 12.2..13.5)
+      const approachVis = smoothstep(6.25, 6.85, p) * (1 - smoothstep(7.24, 7.5, p));
+      const departVis = smoothstep(12.22, 12.6, p) * (1 - smoothstep(13.3, 14.2, p));
       const moonVis = Math.max(approachVis, departVis);
       moonRef.current.visible = moonVis > 0.02;
       if (moonRef.current.visible) {
-        moonRef.current.scale.setScalar(0.35 + 0.65 * moonVis);
-        moonRef.current.rotation.y += spin * 0.35;
+        moonRef.current.scale.setScalar(0.38 + 0.62 * moonVis);
+        // Keep sunlit near-side 5 pins facing Orion steadily during orbit (very slow rotation only)
+        moonRef.current.rotation.y += spin * 0.06;
       }
     }
 
     if (lunarApproachArcRef.current) {
-      lunarApproachArcRef.current.visible = p > 6.2 && p < 7.75;
+      lunarApproachArcRef.current.visible = p > 6.2 && p < 7.45;
     }
 
     if (marsRef.current) {
-      // Visible during Mars orbital approach (beat 13) and departure (beat 21), hidden while on the Martian surface dioramas (beats 14..20)
-      const approachVis = smoothstep(11.5, 12.6, p) * (1 - smoothstep(13.25, 13.68, p));
-      const departVis = smoothstep(20.35, 20.75, p) * (1 - smoothstep(21.6, 22.4, p));
+      // Visible during Mars orbital arrival (beat 12..13.48) and departure (beat 20.3..22.2)
+      const approachVis = smoothstep(11.6, 12.5, p) * (1 - smoothstep(13.2, 13.48, p));
+      const departVis = smoothstep(20.32, 20.72, p) * (1 - smoothstep(21.6, 22.4, p));
       const marsVis = Math.max(approachVis, departVis);
       marsRef.current.visible = marsVis > 0.02;
       if (marsRef.current.visible) {
-        marsRef.current.scale.setScalar(0.35 + 0.65 * marsVis);
-        marsRef.current.rotation.y += spin * 0.65;
+        marsRef.current.scale.setScalar(0.38 + 0.62 * marsVis);
+        marsRef.current.rotation.y += spin * 0.09;
       }
     }
 
@@ -584,8 +625,8 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
         <AtmosphereRim radius={1.35 * 1.055} color="#6AA8FF" intensity={0.95} power={2.8} />
       </group>
 
-      {/* ─── 3D MOON (Hall I — beats 7..13) ─── */}
-      <group ref={moonRef} position={WORLD_ANCHORS.moonCenter} rotation={[0.1, -1.35, 0]}>
+      {/* ─── 3D MOON (Orbital arrival with 5 glowing site pins + orbit ring — beats 6.5..7.5 & departure) ─── */}
+      <group ref={moonRef} position={WORLD_ANCHORS.moonCenter} rotation={[0.24, -1.55, 0]}>
         <mesh>
           <sphereGeometry args={[WORLD_ANCHORS.moonRadius, 72, 56]} />
           <meshStandardMaterial
@@ -597,6 +638,36 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
           />
         </mesh>
         <AtmosphereRim radius={WORLD_ANCHORS.moonRadius * 1.022} color="#B9BEC8" intensity={0.32} power={4.2} />
+        {/* Faint lunar orbital track */}
+        <mesh rotation={[Math.PI / 2 - 0.18, 0.2, 0]}>
+          <torusGeometry args={[WORLD_ANCHORS.moonRadius * 1.16, 0.09, 8, 96]} />
+          <meshBasicMaterial
+            color="#9DB8FF"
+            transparent
+            opacity={0.35}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+          />
+        </mesh>
+        {/* 5 small glowing target pins at real lunar coordinates (no 3D text/numbers) */}
+        {moonPins.map((pin) => (
+          <group key={pin.slug} position={pin.pos}>
+            <mesh>
+              <sphereGeometry args={[0.42, 10, 10]} />
+              <meshBasicMaterial color={[1.15, 1.5, 2.3]} toneMapped={false} />
+            </mesh>
+            <mesh>
+              <sphereGeometry args={[0.92, 10, 10]} />
+              <meshBasicMaterial
+                color="#9DB8FF"
+                transparent
+                opacity={0.32}
+                depthWrite={false}
+                blending={THREE.AdditiveBlending}
+              />
+            </mesh>
+          </group>
+        ))}
       </group>
 
       {/* ─── TRANSIT TRAJECTORY ARC + 7 MISSION TICK MARKERS (Moon -> Mars, beat 13, AG-5) ─── */}
@@ -648,13 +719,43 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
         </group>
       </group>
 
-      {/* ─── 3D MARS (Hall II — beats 13..21) ─── */}
-      <group ref={marsRef} position={WORLD_ANCHORS.marsCenter} rotation={[0.18, -0.7, 0.06]}>
+      {/* ─── 3D MARS (Mars orbital arrival with 7 glowing site pins + orbit ring — beat 13 & departure) ─── */}
+      <group ref={marsRef} position={WORLD_ANCHORS.marsCenter} rotation={[0.2, -1.65, 0.05]}>
         <mesh>
           <sphereGeometry args={[WORLD_ANCHORS.marsRadius, 72, 56]} />
           <meshStandardMaterial map={marsTex} roughness={0.86} metalness={0.05} />
         </mesh>
         <AtmosphereRim radius={WORLD_ANCHORS.marsRadius * 1.032} color="#C8603A" intensity={0.68} power={3.8} />
+        {/* Faint Mars orbital track */}
+        <mesh rotation={[Math.PI / 2 - 0.22, -0.15, 0]}>
+          <torusGeometry args={[WORLD_ANCHORS.marsRadius * 1.15, 0.1, 8, 96]} />
+          <meshBasicMaterial
+            color="#FF9466"
+            transparent
+            opacity={0.34}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+          />
+        </mesh>
+        {/* 7 small glowing target pins at real Martian coordinates (no 3D text/numbers) */}
+        {marsPins.map((pin) => (
+          <group key={pin.slug} position={pin.pos}>
+            <mesh>
+              <sphereGeometry args={[0.45, 10, 10]} />
+              <meshBasicMaterial color={[2.1, 1.1, 0.65]} toneMapped={false} />
+            </mesh>
+            <mesh>
+              <sphereGeometry args={[0.98, 10, 10]} />
+              <meshBasicMaterial
+                color="#FF8E5C"
+                transparent
+                opacity={0.3}
+                depthWrite={false}
+                blending={THREE.AdditiveBlending}
+              />
+            </mesh>
+          </group>
+        ))}
       </group>
 
       {/* ─── FINALE EARTHRISE (Artemis Era Earthrise: cratered Moon limb + rising blue Earth, beat 23) ─── */}

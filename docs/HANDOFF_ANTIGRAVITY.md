@@ -279,3 +279,40 @@ Merged into `main`; 0 console errors. Grid: `docs/antigravity/shots/review-AG10-
 - `components/journey/three/landscapeMaterials.tsx` (new)
 - `components/journey/three/GrailSimulation.tsx`, `PathfinderLandscape.tsx`, `MoonDioramas.tsx`, `MarsDioramas.tsx`, `MarsModels.tsx`, `ExhibitStage3D.tsx`, `CelestialWorlds.tsx`, `SpaceScene.tsx`
 - `docs/HANDOFF_ANTIGRAVITY.md`
+
+## AG-11 — "The Expedition" (Orbital Target Pins + Descent/Touchdown + Low Tracking + Scale Silhouettes) — branch `ag/11-expedition`
+**Done (branched from `origin/main` `3ec2203` with AG-9b landscapes merged):**
+1. **Orbital Coordinate Pins & Orbit Rings (`CelestialWorlds.tsx`)**:
+   - **Moon (`beat 7`, `deep-space`)**: Mounted 5 glowing `#9DB8FF` HDR surface pins at documented lunar lat/lon (`content/exhibits.ts` `location.lat/lon` for Apollo 11, Surveyor 3, Apollo 15, Apollo 17 + GRAIL polar Goldschmidt) + faint lunar orbital ring (`Zero text/numbers in 3D`).
+   - **Mars (`beat 13`, `transit`)**: Mounted 7 glowing `#FF8E5C` HDR surface pins at documented Martian lat/lon (InSight from `exhibits.ts` + Viking 1, Pathfinder, Spirit, Opportunity, Phoenix, Ingenuity) + faint Mars orbital ring.
+   - Adjusted `MarsDaytimeSkyDome` and `SpaceBackdrop` transition window earlier (`13.15 -> 13.48`) so atmospheric entry plasma streaks occur inside the butterscotch Martian sky.
+2. **Expedition Camera Trajectory (`expeditionCamera.ts`, `SpaceScene.tsx`)**:
+   - Kept the 24-beat array and IDs in `content/beats.ts` & `trajectory.ts` unchanged; overrode intermediate segments (`p ∈ [7, 20.5]`) inside `applyExpeditionCamera(p, reducedMotion, traj)`:
+     - **`7 → 8` (Moon Descent & Touchdown)**: Drops from lunar orbit onto Sea of Tranquility flat approach, performs brief low touchdown flare (`7.50..7.72`), then skims low toward `Apollo 11 Eagle` appearing on the horizon (`7.72..8.00`).
+     - **`8 → 9 → 10 → 11 → 12` (Moon Tracking)**: Low fast surface flights (`~8 m` altitude) streaming over terrain with a crisp transition dip behind `veilRef` (`0.41 < frac < 0.59`) onto the approaching machine's horizon.
+     - **`12 → 13 → 14` (Mars Entry & Touchdown)**: Polar liftoff → Mars orbital transit → butterscotch atmospheric entry dive (`13.12..13.52`) → Chryse Planitia touchdown (`13.52..13.72`) → low tracking across boulders to `Viking 1` (`13.72..14.00`).
+     - **`14 → 15..20` (Mars Tracking) & `20 → 21` (Mars Liftoff)**: Low fast flights between Mars sites, then liftoff into `Hall of Silence`.
+   - **Jump-Cut & Perf Guards (`SpaceScene.tsx`, `ExhibitStage3D.tsx`)**: Snap `scrollState.current = scrollState.target` if `|target - prev| > 1.5` in one frame; `reducedMotion` skips dust/streaks and cuts cleanly between rest shots; proactive `gl.compile(scene, camera)` triggered on entering Moon (`p >= 6.4`) and Mars (`p >= 12.4`) orbits; `Apollo 11` (`8`) and `Viking 1` (`14`) mount earlier (`7.34+` / `13.34+`) so landing sites are ready during touchdown.
+3. **Touchdown Dust & Mars Entry Plasma (`ExpeditionEffects.tsx`)**:
+   - **Moon (`7.48..7.82`)**: Radial ballistic vacuum grain ejecta (`MoonPoints`) falling parabolically to ground.
+   - **Mars Entry (`13.12..13.52`)**: View-locked HDR additive ionization plasma streaks rushing past the windshield (`Linear`, `toneMapped={false}`).
+   - **Mars Touchdown (`13.48..13.88`)**: Radial Martian surface dust wave across Chryse Planitia.
+4. **Minimalist 1.8 m Scale Silhouette (`ScaleSilhouette.tsx`, `ExhibitStage3D.tsx`)**:
+   - Built one reusable extruded `1.80 m` neutral human silhouette mesh (zero spacesuit/backpack/flags/text) placed flush on local terrain right beside all 12 exhibits at calibrated mission-proportional scales (`castShadow` & `receiveShadow` enabled).
+5. **Read-Only Proximity Telemetry API for Sonnet (`components/journey/three/expeditionState.ts`)**:
+   - Exported `expeditionState`:
+     ```ts
+     export type ExpeditionPhase = "space" | "orbit" | "descent" | "touchdown" | "tracking" | "arrived";
+     export const expeditionState: {
+       phase: ExpeditionPhase;
+       targetSlug: string | null;
+       proximity: number; // [0, 1] (0 = far / departing, 1 = arrived at beat)
+     };
+     ```
+   - Updated every frame from `scrollState.current` via `updateExpeditionState(p)` (zero allocations, no invented distances/numbers).
+6. **Guards & verification**: Only `components/journey/three/**` and `docs/HANDOFF_ANTIGRAVITY.md` modified; zero 3D text/numbers; zero edits to `public/media/three/posters/`. `npx tsc --noEmit`, `npx eslint components/journey/three`, and `npx next build --webpack` pass. **WebGL screenshot capture & live FPS profiling did not run in sandbox.**
+
+**Files changed:**
+- `components/journey/three/expeditionState.ts`, `expeditionCamera.ts`, `ScaleSilhouette.tsx`, `ExpeditionEffects.tsx` (new)
+- `components/journey/three/CelestialWorlds.tsx`, `ExhibitStage3D.tsx`, `SpaceScene.tsx`
+- `docs/HANDOFF_ANTIGRAVITY.md`

@@ -11,11 +11,30 @@ import type { Exhibit } from "@/content/types";
 import { useMuseum } from "@/lib/store";
 import { scrollState, smoothstep } from "@/lib/scroll/progress";
 import { EXHIBIT_PLINTH_ANCHORS } from "./trajectory";
-import { HallOneLunarDiorama } from "./MoonDioramas";
-import { HallTwoMarsDiorama } from "./MarsDioramas";
+import { getMoonTerrainHeight, HallOneLunarDiorama } from "./MoonDioramas";
+import { getMarsTerrainHeight, HallTwoMarsDiorama } from "./MarsDioramas";
+import { ScaleSilhouette } from "./ScaleSilhouette";
 import { usePerfBudget } from "./perfTier";
 
 const PLINTH_SURFACE_Y = 0.22;
+
+const SILHOUETTE_PLACEMENTS: Record<
+  string,
+  { dx: number; dz: number; scale: number; rotY: number }
+> = {
+  "moon-apollo-11": { dx: 1.95, dz: -0.3, scale: 0.62, rotY: -0.35 },
+  "moon-surveyor-3": { dx: 1.55, dz: -0.25, scale: 0.92, rotY: -0.28 },
+  "moon-apollo-15-lrv": { dx: 1.75, dz: -0.25, scale: 0.78, rotY: -0.4 },
+  "moon-apollo-17": { dx: 2.38, dz: -0.4, scale: 0.62, rotY: -0.45 },
+  "moon-grail": { dx: 2.1, dz: -0.55, scale: 0.68, rotY: -0.3 },
+  "mars-viking-1": { dx: 1.9, dz: -0.35, scale: 1.0, rotY: -0.32 },
+  "mars-pathfinder": { dx: 2.08, dz: -0.6, scale: 1.0, rotY: -0.25 },
+  "mars-spirit": { dx: 1.62, dz: -0.35, scale: 1.0, rotY: -0.3 },
+  "mars-opportunity": { dx: 1.62, dz: -0.35, scale: 1.0, rotY: -0.3 },
+  "mars-phoenix": { dx: 2.25, dz: -0.35, scale: 1.0, rotY: -0.35 },
+  "mars-insight": { dx: 2.45, dz: -0.45, scale: 0.85, rotY: -0.38 },
+  "mars-ingenuity": { dx: 1.65, dz: -0.5, scale: 1.45, rotY: -0.3 },
+};
 
 /**
  * Enables real PCFSoftShadowMap shadow casting/receiving on opaque artifact
@@ -230,21 +249,40 @@ function SingleExhibitPlinth({
 
   const isMoon = anchor?.planet === "moon";
 
+  const silhouettePos = useMemo<[number, number, number]>(() => {
+    const cfg = SILHOUETTE_PLACEMENTS[exhibit.slug] ?? { dx: 1.8, dz: -0.35, scale: 1, rotY: -0.3 };
+    let terrainY = 0;
+    if (exhibit.slug === "moon-grail") {
+      terrainY = -cfg.dz * 0.14;
+    } else if (exhibit.slug === "mars-pathfinder") {
+      terrainY = 0;
+    } else if (isMoon) {
+      terrainY = getMoonTerrainHeight(exhibit.slug, cfg.dx, cfg.dz);
+    } else {
+      terrainY = getMarsTerrainHeight(exhibit.slug, cfg.dx, cfg.dz);
+    }
+    return [cfg.dx, PLINTH_SURFACE_Y + terrainY, cfg.dz];
+  }, [exhibit.slug, isMoon]);
+
+  const silhouetteCfg = SILHOUETTE_PLACEMENTS[exhibit.slug] ?? { dx: 1.8, dz: -0.35, scale: 1, rotY: -0.3 };
+
   useFrame(() => {
     const p = scrollState.current;
     const dist = Math.abs(p - beatIndex);
-    const shouldMountGlb = dist <= budget.glbMountWindow;
+    const shouldMountGlb = dist <= budget.glbMountWindow + 0.5;
     if (shouldMountGlb && !inGlbRange) {
       setInGlbRange(true);
-    } else if (!shouldMountGlb && inGlbRange && budget.tier === "low" && dist > budget.glbMountWindow + 0.8) {
+    } else if (!shouldMountGlb && inGlbRange && budget.tier === "low" && dist > budget.glbMountWindow + 1.0) {
       setInGlbRange(false);
     }
 
-    // Strict non-overlapping horizon swap at midpoint dist = 0.50 behind SpaceScene transition veil
+    // Show target site slightly earlier for Moon/Mars orbital landings (beats 8 & 14) so touchdown dust
+    // and ground search see real terrain; strictly non-overlapping dist < 0.50 between surface exhibits
     if (!rootRef.current) return;
-    const inBeatWindow = dist < 0.5;
-    rootRef.current.visible = inBeatWindow;
-    if (!inBeatWindow) return;
+    const earlyArrival =
+      beatIndex === 8 ? p >= 7.34 && p < 8.5 : beatIndex === 14 ? p >= 13.34 && p < 14.5 : dist < 0.5;
+    rootRef.current.visible = earlyArrival;
+    if (!earlyArrival) return;
 
     rootRef.current.scale.setScalar(1);
 
@@ -303,6 +341,11 @@ function SingleExhibitPlinth({
             ) : null}
           </HallTwoMarsDiorama>
         )}
+        <ScaleSilhouette
+          position={silhouettePos}
+          scale={silhouetteCfg.scale}
+          rotationY={silhouetteCfg.rotY}
+        />
         <ShadowEnabler targetRef={spinRef} enabled={budget.tier !== "low"} />
       </group>
     </group>
