@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Component, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "lenis";
@@ -20,6 +20,33 @@ import { useMuseum } from "@/lib/store";
 import { ExhibitPanel } from "@/components/museum/ExhibitPanel";
 import { PassportSheet } from "@/components/museum/PassportSheet";
 import { BeatSection } from "./BeatOverlays";
+import { StaticPoster } from "./StaticPoster";
+
+function hasWebGL(): boolean {
+  try {
+    const c = document.createElement("canvas");
+    const gl = c.getContext("webgl2") || c.getContext("webgl");
+    if (!gl) return false;
+    (gl as WebGLRenderingContext).getExtension("WEBGL_lose_context")?.loseContext();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Catches a WebGL context-creation crash from the canvas and flips the site to static mode. */
+class SceneBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch() {
+    useMuseum.getState().setWebglFailed(true);
+  }
+  render() {
+    return this.state.failed ? null : this.props.children;
+  }
+}
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -44,6 +71,9 @@ function TopHudBar() {
   const beat = beats[beatIndex] ?? beats[0];
   const pad = String(beatIndex).padStart(2, "0");
   const [passportOpen, setPassportOpen] = useState(false);
+  const lightweight = useMuseum((s) => s.lightweight);
+  const forced = useMuseum((s) => s.reducedMotion || s.webglFailed);
+  const isStatic = lightweight || forced;
 
   return (
     <header className="pointer-events-none fixed inset-x-0 top-0 z-30 flex items-center justify-between px-5 py-4 sm:px-10">
@@ -73,6 +103,17 @@ function TopHudBar() {
           className="font-hud cursor-pointer text-[10px] text-mute transition-colors hover:text-text"
         >
           {journey.ui.stamps(visitedCount)}
+        </button>
+        <span aria-hidden className="text-line">|</span>
+        <button
+          type="button"
+          onClick={() => useMuseum.getState().setLightweight(!lightweight)}
+          aria-pressed={isStatic}
+          disabled={forced}
+          title={forced ? "Static mode is on for this device" : "Swap the live 3D scene for still images (faster on weak phones)"}
+          className={`font-hud cursor-pointer text-[10px] transition-colors hover:text-text disabled:cursor-default ${isStatic ? "text-starlight" : "text-mute"}`}
+        >
+          Lightweight: {isStatic ? "on" : "off"}
         </button>
         <span aria-hidden className="text-line">|</span>
         <Link href="/gallery" className="font-hud text-[10px] text-text transition-colors hover:text-starlight">
@@ -288,10 +329,22 @@ function VabEntrancePortal({ reducedMotion }: { reducedMotion: boolean }) {
 export default function Stage() {
   const trackRef = useRef<HTMLDivElement>(null);
   const reducedMotion = useMuseum((s) => s.reducedMotion);
+  const lightweight = useMuseum((s) => s.lightweight);
+  const webglFailed = useMuseum((s) => s.webglFailed);
+  const resolved = useMuseum((s) => s.modeResolved);
+  const isStatic = reducedMotion || lightweight || webglFailed;
+
+  // Resolve capabilities before first paint so the WebGL canvas never mounts when it should not.
+  useLayoutEffect(() => {
+    const mql = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const st = useMuseum.getState();
+    st.setReducedMotion(mql.matches);
+    st.hydrateVisited();
+    if (!hasWebGL()) st.setWebglFailed(true);
+  }, []);
 
   // Hydrate visited passport stamps + reduced-motion media query once on mount
   useEffect(() => {
-    useMuseum.getState().hydrateVisited();
     const mql = window.matchMedia("(prefers-reduced-motion: reduce)");
     const syncMql = () => useMuseum.getState().setReducedMotion(mql.matches);
     syncMql();
@@ -307,7 +360,7 @@ export default function Stage() {
     const maxIdx = beats.length - 1;
     let hashTimer = 0;
 
-    const lenis = reducedMotion
+    const lenis = isStatic
       ? null
       : new Lenis({
           lerp: 0.085,
@@ -453,15 +506,23 @@ export default function Stage() {
       lenis?.off("scroll", onLenisScroll);
       lenis?.destroy();
     };
-  }, [reducedMotion]);
+  }, [isStatic]);
 
   return (
     <div className="relative min-h-screen w-full bg-void">
       {/* Persistent 60fps 3D Rocket + Spaceflight Background */}
-      <SpaceScene />
+      {isStatic ? (
+        <div aria-hidden className="fixed inset-0 z-0 bg-void" />
+      ) : resolved ? (
+        <SceneBoundary>
+          <SpaceScene />
+        </SceneBoundary>
+      ) : (
+        <div aria-hidden className="fixed inset-0 z-0 bg-void" />
+      )}
 
       {/* VAB Sunrise Landing Page Backdrop + Scroll-1 Dolly Portal into 3D Launchpad */}
-      <VabEntrancePortal reducedMotion={reducedMotion} />
+      {!isStatic ? <VabEntrancePortal reducedMotion={reducedMotion} /> : null}
 
       {/* Subtle museum film grain & edge vignette layered softly over 3D & VAB Portal */}
       <div aria-hidden className="pointer-events-none fixed inset-0 z-[2] overflow-hidden">
@@ -471,8 +532,12 @@ export default function Stage() {
 
       {/* Lenis + GSAP ScrollTrigger story track (24 sections = 2400dvh) */}
       <div ref={trackRef} className="pointer-events-none relative z-10 flex flex-col">
-        {beats.map((beat) => (
-          <BeatSection key={beat.id} beat={beat} />
+        {beats.map((beat, i) => (
+          <BeatSection
+            key={beat.id}
+            beat={beat}
+            poster={isStatic ? <StaticPoster beat={beat} eager={i < 2} /> : undefined}
+          />
         ))}
       </div>
 

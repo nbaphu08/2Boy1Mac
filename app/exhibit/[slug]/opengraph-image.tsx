@@ -18,6 +18,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
     kicker: `${ex.catalogNo} · ${ex.hall === "moon" ? "HALL I — THE MOON" : "HALL II — MARS"}`,
     title: ex.name,
     sub: ex.location.site,
-    thenSrc: ex.media.then.src,
+    thenSrc: `/media/three/posters/${ex.slug}-1920x1080.jpg`,
+    note: "3D RECONSTRUCTION",
   });
 }

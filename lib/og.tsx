@@ -14,7 +14,7 @@ async function thenImage(src: string): Promise<string | null> {
   }
 }
 
-export async function renderOg(opts: { kicker: string; title: string; sub: string; thenSrc?: string }) {
+export async function renderOg(opts: { kicker: string; title: string; sub: string; thenSrc?: string; note?: string }) {
   const img = opts.thenSrc ? await thenImage(opts.thenSrc) : null;
   return new ImageResponse(
     (
@@ -31,7 +31,10 @@ export async function renderOg(opts: { kicker: string; title: string; sub: strin
             <div style={{ fontSize: opts.title.length > 22 ? 68 : 84, fontWeight: 700, lineHeight: 1.05 }}>{opts.title}</div>
             <div style={{ fontSize: 28, color: "#8089A0", marginTop: 24, lineHeight: 1.3 }}>{opts.sub}</div>
           </div>
-          <div style={{ fontSize: 20, color: "#8089A0", letterSpacing: 2 }}>NASA SPACE APPS CHALLENGE 2026</div>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            {opts.note ? <div style={{ fontSize: 18, color: "#9DB8FF", letterSpacing: 3, marginBottom: 8 }}>{opts.note}</div> : null}
+            <div style={{ fontSize: 20, color: "#8089A0", letterSpacing: 2 }}>NASA SPACE APPS CHALLENGE 2026</div>
+          </div>
         </div>
       </div>
     ),

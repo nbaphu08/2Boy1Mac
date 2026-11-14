@@ -24,6 +24,16 @@ function loadVisitedAt(): Record<string, string> {
   }
 }
 
+const KEY_LW = "spacemuse:lightweight";
+
+function loadLightweight(): boolean {
+  try {
+    return localStorage.getItem(KEY_LW) === "1";
+  } catch {
+    return false;
+  }
+}
+
 export type MuseumState = {
   beatIndex: number; // Fable writes
   beatId: string;
@@ -35,6 +45,11 @@ export type MuseumState = {
   visitedAt: Record<string, string>; // slug -> ISO date (YYYY-MM-DD)
   markVisited: (slug: string) => void;
   reducedMotion: boolean;
+  lightweight: boolean; // user-forced static (poster) mode, persisted
+  modeResolved: boolean; // reduced-motion / WebGL checks done (client)
+  webglFailed: boolean; // WebGL unavailable / context creation failed
+  setLightweight: (v: boolean) => void;
+  setWebglFailed: (v: boolean) => void;
   // setters (engine / providers)
   setBeat: (index: number, id: string) => void;
   setTransitioning: (v: boolean) => void;
@@ -69,5 +84,16 @@ export const useMuseum = create<MuseumState>((set, get) => ({
   setBeat: (beatIndex, beatId) => set({ beatIndex, beatId }),
   setTransitioning: (isTransitioning) => set({ isTransitioning }),
   setReducedMotion: (reducedMotion) => set({ reducedMotion }),
-  hydrateVisited: () => set({ visited: loadVisited(), visitedAt: loadVisitedAt() }),
+  lightweight: false,
+  webglFailed: false,
+  modeResolved: false,
+  setLightweight: (lightweight) => {
+    set({ lightweight });
+    try {
+      localStorage.setItem(KEY_LW, lightweight ? "1" : "0");
+    } catch {}
+  },
+  setWebglFailed: (webglFailed) => set({ webglFailed }),
+  hydrateVisited: () =>
+    set({ modeResolved: true, visited: loadVisited(), visitedAt: loadVisitedAt(), lightweight: loadLightweight() }),
 }));

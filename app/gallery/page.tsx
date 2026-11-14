@@ -23,8 +23,26 @@ export default function GalleryPage() {
             {exhibitsByHall(hall).map((ex) => (
               <li key={ex.slug}>
                 <Link href={`/exhibit/${ex.slug}`} className="group block overflow-hidden rounded-md border border-line bg-surface transition-colors hover:border-platinum">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={ex.media.then.src.replace("-1600.avif", "-800.avif")} alt={ex.media.then.alt} loading="lazy" className="aspect-[3/2] w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
+                  <div className="relative aspect-[3/2] w-full overflow-hidden">
+                    <picture>
+                      <source type="image/avif" srcSet={`/media/three/posters/${ex.slug}-1920x1080.avif`} />
+                      <img
+                        src={`/media/three/posters/${ex.slug}-1920x1080.jpg`}
+                        alt={`3D reconstruction of ${ex.name}`}
+                        loading="lazy"
+                        className="absolute inset-0 h-full w-full object-cover transition-opacity duration-500 group-hover:opacity-0 group-focus-visible:opacity-0"
+                      />
+                    </picture>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={ex.media.then.src.replace("-1600.avif", "-800.avif")}
+                      alt={ex.media.then.alt}
+                      loading="lazy"
+                      className="absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-500 group-hover:opacity-100 group-focus-visible:opacity-100"
+                    />
+                    <span className="font-hud absolute left-2 top-2 rounded-full border border-line/80 bg-void/70 px-2 py-0.5 text-[10px] text-starlight backdrop-blur-sm group-hover:hidden group-focus-visible:hidden">3D reconstruction</span>
+                    <span className="font-hud absolute left-2 top-2 hidden rounded-full border border-line/80 bg-void/70 px-2 py-0.5 text-[10px] text-platinum backdrop-blur-sm group-hover:inline group-focus-visible:inline">Archive photo</span>
+                  </div>
                   <div className="p-4">
                     <p className="font-hud text-[11px] text-mute">{ex.catalogNo} · <span className={ex.status === "still-active" ? "text-starlight" : "text-ignite"}>{statusLabel(ex)}</span></p>
                     <h3 className="font-display mt-1 text-lg">{ex.name}</h3>

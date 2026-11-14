@@ -540,7 +540,7 @@ function FinaleOverlay() {
   );
 }
 
-export function BeatSection({ beat }: { beat: Beat }) {
+export function BeatSection({ beat, poster }: { beat: Beat; poster?: React.ReactNode }) {
   const sectionRef = useRef<HTMLElement>(null);
 
   useLayoutEffect(() => {
@@ -590,6 +590,7 @@ export function BeatSection({ beat }: { beat: Beat }) {
       data-beat={beat.id}
       className="pointer-events-none relative h-dvh w-full shrink-0"
     >
+      {poster}
       {content}
       <Narration beat={beat} />
     </section>
