@@ -550,8 +550,8 @@ export function Viking1SiteProps({ baseY }: { baseY: number }) {
 export function InSightSurfaceInstruments({ baseY }: { baseY: number }) {
   return (
     <group position={[0, baseY, 0]}>
-      {/* 1. SEIS Wind and Thermal Shield (WTS) dome in front-left foreground (properly scaled smaller than the 6 m InSight lander, AG-2b #3) */}
-      <group position={[-0.42, 0, 1.18]}>
+      {/* 1. SEIS Wind and Thermal Shield (WTS) dome in front-left foreground (properly scaled smaller than the 6 m InSight lander) */}
+      <group position={[-0.48, 0, 1.56]}>
         {/* Hexagonal-skirted white/dusty thermal shield dome */}
         <mesh position={[0, 0.075, 0]}>
           <cylinderGeometry args={[0.13, 0.17, 0.13, 12]} />
@@ -570,13 +570,13 @@ export function InSightSurfaceInstruments({ baseY }: { baseY: number }) {
       </group>
 
       {/* Flat umbilical tether from lander to SEIS dome */}
-      <mesh position={[-0.24, 0.024, 0.72]} rotation={[-Math.PI / 2, 0, -0.34]}>
-        <planeGeometry args={[0.048, 0.98]} />
+      <mesh position={[-0.27, 0.024, 0.92]} rotation={[-Math.PI / 2, 0, -0.3]}>
+        <planeGeometry args={[0.048, 1.38]} />
         <meshStandardMaterial color="#B87E38" roughness={0.52} metalness={0.62} />
       </mesh>
 
       {/* 2. HP3 ("The Mole") Support Structure Housing in front-right foreground */}
-      <group position={[0.38, 0, 1.24]} rotation={[0, 0.25, 0]}>
+      <group position={[0.42, 0, 1.64]} rotation={[0, 0.25, 0]}>
         {/* 3-foot base frame */}
         <mesh position={[0, 0.012, 0]}>
           <cylinderGeometry args={[0.095, 0.11, 0.02, 6]} />
@@ -590,8 +590,8 @@ export function InSightSurfaceInstruments({ baseY }: { baseY: number }) {
       </group>
 
       {/* Flat umbilical tether from lander to HP3 mole */}
-      <mesh position={[0.21, 0.024, 0.76]} rotation={[-Math.PI / 2, 0, 0.3]}>
-        <planeGeometry args={[0.042, 1.04]} />
+      <mesh position={[0.24, 0.024, 0.96]} rotation={[-Math.PI / 2, 0, 0.28]}>
+        <planeGeometry args={[0.042, 1.44]} />
         <meshStandardMaterial color="#B87E38" roughness={0.52} metalness={0.62} />
       </mesh>
     </group>
@@ -606,8 +606,8 @@ export function IngenuityAndBackshellProps({ baseY }: { baseY: number }) {
   return (
     <group position={[0, baseY, 0]}>
       {/* Detached carbon-fiber rotor blade tip lying on the sand ripple beside Ingenuity (Flight 72 damage) */}
-      <mesh position={[0.72, 0.045, 0.42]} rotation={[0.08, 0.58, 0.14]}>
-        <boxGeometry args={[0.28, 0.008, 0.065]} />
+      <mesh position={[0.48, 0.036, 0.36]} rotation={[0.08, 0.58, 0.14]}>
+        <boxGeometry args={[0.22, 0.008, 0.052]} />
         <meshStandardMaterial color="#1E2026" roughness={0.42} metalness={0.68} />
       </mesh>
 

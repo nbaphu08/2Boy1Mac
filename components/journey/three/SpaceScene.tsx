@@ -177,12 +177,12 @@ function SceneChoreographer({
         shadowModeRef.current = targetMode;
         const sc = sunRef.current.shadow.camera;
         if (targetMode === "exhibit") {
-          sc.left = -9.5;
-          sc.right = 9.5;
-          sc.top = 9.5;
-          sc.bottom = -9.5;
+          sc.left = -12.0;
+          sc.right = 12.0;
+          sc.top = 12.0;
+          sc.bottom = -12.0;
           sc.near = 1;
-          sc.far = 42;
+          sc.far = 48;
         } else {
           sc.left = -24;
           sc.right = 26;

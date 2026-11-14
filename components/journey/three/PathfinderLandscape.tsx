@@ -5,89 +5,13 @@ import * as THREE from "three";
 import { usePerfBudget } from "./perfTier";
 import { getKaptonBumpMap } from "./rocketTextures";
 import { getMarsRoverTrackTexture } from "./MarsModels";
-import { createFracturedBasaltGeometry } from "./landscapeMaterials";
+import { applyWorldTerrainShader, createFracturedBasaltGeometry } from "./landscapeMaterials";
 
 const SURFACE_Y = 0.22;
 
-let cachedAresSoilMap: THREE.CanvasTexture | null = null;
-let cachedAresSoilBump: THREE.CanvasTexture | null = null;
 let cachedSolarPanelMap: THREE.CanvasTexture | null = null;
 let cachedAirbagMap: THREE.CanvasTexture | null = null;
 let cachedAirbagBump: THREE.CanvasTexture | null = null;
-
-/** Procedural 1024px fine reddish-brown Ares Vallis flood plain soil & micro-gravel (zero dot grid). */
-function getAresSoilTextures(): { map: THREE.CanvasTexture; bumpMap: THREE.CanvasTexture } {
-  if (cachedAresSoilMap && cachedAresSoilBump) {
-    return { map: cachedAresSoilMap, bumpMap: cachedAresSoilBump };
-  }
-
-  const size = 512;
-  const cCanvas = document.createElement("canvas");
-  cCanvas.width = size;
-  cCanvas.height = size;
-  const cCtx = cCanvas.getContext("2d")!;
-
-  const bCanvas = document.createElement("canvas");
-  bCanvas.width = size;
-  bCanvas.height = size;
-  const bCtx = bCanvas.getContext("2d")!;
-
-  // Rich iron-oxide dusty soil matching mars_color_4k & PIA00614
-  cCtx.fillStyle = "#8C472A";
-  cCtx.fillRect(0, 0, size, size);
-  bCtx.fillStyle = "#808080";
-  bCtx.fillRect(0, 0, size, size);
-
-  // Subtle wind-blown silt bands
-  for (let y = 0; y < size; y += 3) {
-    const wave = Math.sin(y * 0.08) * 0.5 + 0.5;
-    cCtx.fillStyle = `rgba(176, 102, 62, ${(0.04 + wave * 0.05).toFixed(3)})`;
-    cCtx.fillRect(0, y, size, 2);
-  }
-
-  // Organic multi-scale mineral grain & tiny grit pebbles (using pseudo-random LCG so no repeating grid!)
-  let seed = 1337;
-  const rand = () => {
-    seed = (seed * 1664525 + 1013904223) >>> 0;
-    return seed / 4294967296;
-  };
-
-  for (let i = 0; i < 16000; i++) {
-    const x = rand() * size;
-    const y = rand() * size;
-    const r = 0.7 + rand() * 2.1;
-    const t = rand();
-    if (t < 0.42) {
-      cCtx.fillStyle = "rgba(196, 118, 72, 0.24)";
-      bCtx.fillStyle = "rgba(182, 182, 182, 0.26)";
-    } else if (t < 0.85) {
-      cCtx.fillStyle = "rgba(74, 34, 19, 0.26)";
-      bCtx.fillStyle = "rgba(68, 68, 68, 0.26)";
-    } else {
-      // Scattered angular basalt grit flecks
-      cCtx.fillStyle = "rgba(44, 24, 18, 0.38)";
-      bCtx.fillStyle = "rgba(224, 224, 224, 0.38)";
-    }
-    cCtx.fillRect(x, y, r, r);
-    bCtx.fillRect(x, y, r, r);
-  }
-
-  const map = new THREE.CanvasTexture(cCanvas);
-  map.wrapS = THREE.RepeatWrapping;
-  map.wrapT = THREE.RepeatWrapping;
-  map.repeat.set(34, 34);
-  map.colorSpace = THREE.SRGBColorSpace;
-  map.anisotropy = 4;
-
-  const bumpMap = new THREE.CanvasTexture(bCanvas);
-  bumpMap.wrapS = THREE.RepeatWrapping;
-  bumpMap.wrapT = THREE.RepeatWrapping;
-  bumpMap.repeat.set(34, 34);
-
-  cachedAresSoilMap = map;
-  cachedAresSoilBump = bumpMap;
-  return { map, bumpMap };
-}
 
 /** High-detail dark blue-black GaAs solar array with crisp silver grid lines & busbars (PIA00614). */
 function getCrispSolarCellTextures(): THREE.CanvasTexture {
@@ -317,11 +241,25 @@ export function PathfinderLandscape({ reducedMotion: _reducedMotion }: { reduced
   void _reducedMotion;
   const budget = usePerfBudget();
 
-  const { map: soilMap, bumpMap: soilBump } = useMemo(() => getAresSoilTextures(), []);
   const solarTex = useMemo(() => getCrispSolarCellTextures(), []);
   const { map: airbagMap, bumpMap: airbagBump } = useMemo(() => getDeflatedAirbagTextures(), []);
   const kaptonBump = useMemo(() => getKaptonBumpMap(), []);
   const trackTex = useMemo(() => getMarsRoverTrackTexture(), []);
+
+  const terrainMat = useMemo(() => {
+    const mat = new THREE.MeshStandardMaterial({
+      color: "#FFFFFF",
+      roughness: 0.95,
+      metalness: 0.02,
+    });
+    applyWorldTerrainShader(mat, {
+      planet: "mars",
+      anchorXZ: [-8.0, -371.0],
+      fadeStart: 28,
+      fadeEnd: 68,
+    });
+    return mat;
+  }, []);
 
   const terrainGeo = useMemo(() => createAresVallisLandscapeGeometry(), []);
   const rockGeoA = useMemo(() => createFracturedBasaltGeometry(1), []);
@@ -410,33 +348,6 @@ export function PathfinderLandscape({ reducedMotion: _reducedMotion }: { reduced
     populate(rockInstancesRefB.current, rockCountB, 2);
   }, [rockCountA, rockCountB]);
 
-  // Custom soil material fading horizon smoothly into Martian butterscotch sky (#C98659 in Linear prior to ACES)
-  const applyHorizonFade = (shader: THREE.WebGLProgramParametersWithUniforms) => {
-    shader.vertexShader = shader.vertexShader
-      .replace(
-        "#include <common>",
-        "#include <common>\nvarying vec3 vWorldPos;",
-      )
-      .replace(
-        "#include <worldpos_vertex>",
-        "#include <worldpos_vertex>\nvWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;",
-      );
-    shader.fragmentShader = shader.fragmentShader
-      .replace(
-        "#include <common>",
-        "#include <common>\nvarying vec3 vWorldPos;",
-      )
-      .replace(
-        "#include <tonemapping_fragment>",
-        `
-        float horizonDist = length(vWorldPos.xz - vec2(-8.35, -371.0));
-        float haze = smoothstep(24.0, 68.0, horizonDist);
-        gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.584, 0.238, 0.0998), haze * 0.98);
-        #include <tonemapping_fragment>
-        `,
-      );
-  };
-
   // Custom rock shader putting bright rusty ochre dust onto upward-facing rock surfaces
   const applyRockDustShader = (shader: THREE.WebGLProgramParametersWithUniforms) => {
     shader.vertexShader = shader.vertexShader
@@ -480,19 +391,10 @@ export function PathfinderLandscape({ reducedMotion: _reducedMotion }: { reduced
       <mesh
         name="diorama-terrain"
         geometry={terrainGeo}
+        material={terrainMat}
         position={[0, SURFACE_Y, 0]}
         receiveShadow
-      >
-        <meshStandardMaterial
-          map={soilMap}
-          bumpMap={soilBump}
-          bumpScale={0.055}
-          roughness={0.95}
-          metalness={0.03}
-          onBeforeCompile={applyHorizonFade}
-          customProgramCacheKey={() => "ares-vallis-terrain-v2"}
-        />
-      </mesh>
+      />
 
       {/* Dense Instanced Angular Flood Rocks with Dusty Top Faces */}
       <instancedMesh ref={rockInstancesRefA} args={[rockGeoA, undefined, rockCountA]} castShadow receiveShadow>

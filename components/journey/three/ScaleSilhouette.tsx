@@ -13,52 +13,50 @@ let cachedSilhouetteMat: THREE.MeshStandardMaterial | null = null;
 function getSilhouetteBodyGeometry(): THREE.BufferGeometry {
   if (cachedBodyGeo) return cachedBodyGeo;
 
-  // Profile curves along height 0.00..1.80 m built smoothly from merged primitives
+  // Standing neutral human figure (0.00..1.80 m height, feet at y = 0, realistic ~0.42 m shoulder width)
   const shape = new THREE.Shape();
-  // Standing silhouette front-on profile (total height = 1.80 m exactly, feet at y = 0)
-  // Right half mirrored cleanly via extruded gentle bevel -> readable from any horizontal angle
-  shape.moveTo(-0.08, 0.0);
+  shape.moveTo(-0.072, 0.0);
   // Left leg outer -> hip
-  shape.lineTo(-0.145, 0.0);
-  shape.lineTo(-0.125, 0.44);
-  shape.lineTo(-0.14, 0.88);
-  // Left arm hanging calmly beside torso
-  shape.lineTo(-0.225, 0.84);
-  shape.lineTo(-0.245, 1.12);
-  shape.lineTo(-0.22, 1.38);
+  shape.lineTo(-0.115, 0.0);
+  shape.lineTo(-0.105, 0.45);
+  shape.lineTo(-0.125, 0.88);
+  shape.lineTo(-0.135, 1.08);
+  // Left arm hanging naturally beside hip
+  shape.lineTo(-0.195, 0.86);
+  shape.lineTo(-0.215, 1.15);
+  shape.lineTo(-0.2, 1.38);
   // Left shoulder -> neck
-  shape.quadraticCurveTo(-0.21, 1.47, -0.055, 1.5);
-  shape.lineTo(-0.048, 1.56);
-  // Head oval left
-  shape.bezierCurveTo(-0.11, 1.58, -0.108, 1.8, 0.0, 1.8);
-  // Head oval right
-  shape.bezierCurveTo(0.108, 1.8, 0.11, 1.58, 0.048, 1.56);
-  shape.lineTo(0.055, 1.5);
+  shape.quadraticCurveTo(-0.185, 1.46, -0.048, 1.49);
+  shape.lineTo(-0.042, 1.56);
+  // Head oval
+  shape.bezierCurveTo(-0.092, 1.58, -0.09, 1.8, 0.0, 1.8);
+  shape.bezierCurveTo(0.09, 1.8, 0.092, 1.58, 0.042, 1.56);
+  shape.lineTo(0.048, 1.49);
   // Right shoulder -> right arm
-  shape.quadraticCurveTo(0.21, 1.47, 0.22, 1.38);
-  shape.lineTo(0.245, 1.12);
-  shape.lineTo(0.225, 0.84);
-  // Right hip -> right leg outer -> right foot
-  shape.lineTo(0.14, 0.88);
-  shape.lineTo(0.125, 0.44);
-  shape.lineTo(0.145, 0.0);
-  shape.lineTo(0.08, 0.0);
+  shape.quadraticCurveTo(0.185, 1.46, 0.2, 1.38);
+  shape.lineTo(0.215, 1.15);
+  shape.lineTo(0.195, 0.86);
+  // Right hip -> right leg outer -> foot
+  shape.lineTo(0.135, 1.08);
+  shape.lineTo(0.125, 0.88);
+  shape.lineTo(0.105, 0.45);
+  shape.lineTo(0.115, 0.0);
+  shape.lineTo(0.072, 0.0);
   // Inner leg gap up to stride crotch
-  shape.lineTo(0.04, 0.45);
-  shape.lineTo(0.0, 0.82);
-  shape.lineTo(-0.04, 0.45);
+  shape.lineTo(0.036, 0.46);
+  shape.lineTo(0.0, 0.84);
+  shape.lineTo(-0.036, 0.46);
   shape.closePath();
 
   const geo = new THREE.ExtrudeGeometry(shape, {
-    depth: 0.11,
+    depth: 0.058,
     bevelEnabled: true,
-    bevelThickness: 0.032,
-    bevelSize: 0.022,
+    bevelThickness: 0.018,
+    bevelSize: 0.012,
     bevelSegments: 2,
-    curveSegments: 10,
+    curveSegments: 14,
   });
-  geo.translate(0, 0, -0.055);
-  // Clamp vertical bounds cleanly to [0, 1.80]
+  geo.translate(0, 0, -0.029);
   geo.computeBoundingBox();
   if (geo.boundingBox) {
     const h = geo.boundingBox.max.y - geo.boundingBox.min.y || 1.8;
@@ -84,16 +82,14 @@ function getSilhouetteMaterial(): THREE.MeshStandardMaterial {
 
 /**
  * Reusable neutral 1.8 m standing human silhouette for visual scale next to each exhibit.
- * Casts a soft real shadow to anchor human scale against lunar and Martian machinery.
+ * Always rendered at exact 1:1 world meter height (1.80 m) at equal camera distance.
  */
 export function ScaleSilhouette({
   position,
-  rotationY = 0.25,
-  scale = 1,
+  rotationY = 0,
 }: {
   position: [number, number, number];
   rotationY?: number;
-  scale?: number;
 }) {
   const geo = useMemo(() => getSilhouetteBodyGeometry(), []);
   const mat = useMemo(() => getSilhouetteMaterial(), []);
@@ -105,7 +101,6 @@ export function ScaleSilhouette({
       material={mat}
       position={position}
       rotation={[0, rotationY, 0]}
-      scale={scale}
       castShadow
       receiveShadow
     />

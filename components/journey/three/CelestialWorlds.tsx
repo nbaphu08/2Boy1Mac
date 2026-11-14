@@ -682,21 +682,12 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
           transparent
           opacity={0.68}
         />
-        {/* 7 subtle orbital tick markers along the Moon->Mars arc (1976..2021) */}
+        {/* 7 subtle pinpoint mission markers along the Moon->Mars orbital arc (no ring halos) */}
         {transitTicks.map((tick, idx) => (
-          <group key={idx} position={tick.pos} rotation={tick.rot}>
+          <group key={idx} position={tick.pos}>
             <mesh>
-              <ringGeometry args={[0.52, 0.68, 24]} />
-              <meshBasicMaterial
-                color={idx >= 4 ? "#C8603A" : "#9DB8FF"}
-                transparent
-                opacity={0.72}
-                side={THREE.DoubleSide}
-              />
-            </mesh>
-            <mesh>
-              <sphereGeometry args={[0.18, 12, 10]} />
-              <meshBasicMaterial color="#DCE6FF" transparent opacity={0.9} />
+              <sphereGeometry args={[0.11, 10, 8]} />
+              <meshBasicMaterial color={idx >= 4 ? "#E8A07A" : "#DCE6FF"} transparent opacity={0.78} />
             </mesh>
           </group>
         ))}

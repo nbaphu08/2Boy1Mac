@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
-import { useGLTF } from "@react-three/drei";
+import { useGLTF, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import { beats } from "@/content/beats";
 import { exhibitBySlug } from "@/content/exhibits";
@@ -10,31 +10,69 @@ import { teaserItems } from "@/content/teaser";
 import type { Exhibit } from "@/content/types";
 import { useMuseum } from "@/lib/store";
 import { scrollState, smoothstep } from "@/lib/scroll/progress";
-import { EXHIBIT_PLINTH_ANCHORS } from "./trajectory";
+import { BEAT_POSES, EXHIBIT_PLINTH_ANCHORS } from "./trajectory";
 import { getMoonTerrainHeight, HallOneLunarDiorama } from "./MoonDioramas";
 import { getMarsTerrainHeight, HallTwoMarsDiorama } from "./MarsDioramas";
+import { GrailSimulation } from "./GrailSimulation";
+import { PathfinderLandscape } from "./PathfinderLandscape";
 import { ScaleSilhouette } from "./ScaleSilhouette";
 import { usePerfBudget } from "./perfTier";
 
 const PLINTH_SURFACE_Y = 0.22;
 
-const SILHOUETTE_PLACEMENTS: Record<
-  string,
-  { dx: number; dz: number; scale: number; rotY: number }
-> = {
-  "moon-apollo-11": { dx: 1.95, dz: -0.3, scale: 0.62, rotY: -0.35 },
-  "moon-surveyor-3": { dx: 1.55, dz: -0.25, scale: 0.92, rotY: -0.28 },
-  "moon-apollo-15-lrv": { dx: 1.75, dz: -0.25, scale: 0.78, rotY: -0.4 },
-  "moon-apollo-17": { dx: 2.38, dz: -0.4, scale: 0.62, rotY: -0.45 },
-  "moon-grail": { dx: 2.1, dz: -0.55, scale: 0.68, rotY: -0.3 },
-  "mars-viking-1": { dx: 1.9, dz: -0.35, scale: 1.0, rotY: -0.32 },
-  "mars-pathfinder": { dx: 2.08, dz: -0.6, scale: 1.0, rotY: -0.25 },
-  "mars-spirit": { dx: 1.62, dz: -0.35, scale: 1.0, rotY: -0.3 },
-  "mars-opportunity": { dx: 1.62, dz: -0.35, scale: 1.0, rotY: -0.3 },
-  "mars-phoenix": { dx: 2.25, dz: -0.35, scale: 1.0, rotY: -0.35 },
-  "mars-insight": { dx: 2.45, dz: -0.45, scale: 0.85, rotY: -0.38 },
-  "mars-ingenuity": { dx: 1.65, dz: -0.5, scale: 1.45, rotY: -0.3 },
+/**
+ * Lateral distance (in world meters, strict 1:1 scale) from exhibit center to the 1.80 m
+ * scale silhouette along the camera's horizontal screen-right axis so every silhouette
+ * stands beside its exhibit at exact equal distance from the camera.
+ */
+const SILHOUETTE_SIDE_DIST: Record<string, number> = {
+  "moon-apollo-11": 4.25,
+  "moon-surveyor-3": 2.55,
+  "moon-apollo-15-lrv": 2.35,
+  "moon-apollo-17": 6.25,
+  "moon-grail": 3.35,
+  "mars-viking-1": 2.15,
+  "mars-pathfinder": 2.45,
+  "mars-spirit": 2.15,
+  "mars-opportunity": 2.15,
+  "mars-phoenix": 3.25,
+  "mars-insight": 3.65,
+  "mars-ingenuity": 1.35,
 };
+
+function computeEqualDistanceSilhouettePlacement(
+  slug: string,
+  beatIndex: number,
+  anchorPos: [number, number, number],
+  anchorRotY: number,
+): { dx: number; dz: number; rotY: number } {
+  const pose = BEAT_POSES[beatIndex];
+  const sideDist = SILHOUETTE_SIDE_DIST[slug] ?? 2.2;
+  if (!pose) return { dx: sideDist, dz: 0, rotY: 0 };
+
+  const fx = anchorPos[0] - pose.camPos[0];
+  const fz = anchorPos[2] - pose.camPos[2];
+  const fLen = Math.hypot(fx, fz) || 1;
+  // Screen-right unit vector in world XZ orthogonal to camera-to-exhibit ray
+  const rxWorld = -fz / fLen;
+  const rzWorld = fx / fLen;
+
+  // Transform screen-right direction from world XZ into plinth local XZ (inverse Y-rotation)
+  const cos = Math.cos(anchorRotY);
+  const sin = Math.sin(anchorRotY);
+  const rxLocal = rxWorld * cos - rzWorld * sin;
+  const rzLocal = rxWorld * sin + rzWorld * cos;
+
+  // Orient the flat silhouette face directly toward the camera (forward normal = -viewRay)
+  const camWorldYaw = Math.atan2(pose.camPos[0] - anchorPos[0], pose.camPos[2] - anchorPos[2]);
+  const rotY = camWorldYaw - anchorRotY;
+
+  return {
+    dx: rxLocal * sideDist,
+    dz: rzLocal * sideDist,
+    rotY,
+  };
+}
 
 /**
  * Enables real PCFSoftShadowMap shadow casting/receiving on opaque artifact
@@ -99,15 +137,15 @@ function GlbExhibitMesh({
     box.getCenter(center);
     const maxDim = Math.max(size.x, size.y, size.z, 0.001);
     const targetSize = isApolloLm
-      ? 2.8
+      ? 9.2
       : slug === "mars-insight"
-        ? 3.85
+        ? 6.0
         : slug === "mars-viking-1"
-          ? 3.3
+          ? 2.95
           : slug === "mars-spirit" || slug === "mars-opportunity"
-            ? 2.65
+            ? 2.3
             : slug === "mars-ingenuity"
-              ? 2.45
+              ? 1.21
               : 2.4;
     const s = targetSize / maxDim;
 
@@ -248,23 +286,27 @@ function SingleExhibitPlinth({
   }, [hovered]);
 
   const isMoon = anchor?.planet === "moon";
+  const isGrail = exhibit.slug === "moon-grail";
+  const isPathfinder = exhibit.slug === "mars-pathfinder";
+
+  const silhouetteCfg = useMemo(() => {
+    if (!anchor) return { dx: 2.2, dz: 0, rotY: 0 };
+    return computeEqualDistanceSilhouettePlacement(exhibit.slug, beatIndex, anchor.pos, anchor.rotY);
+  }, [exhibit.slug, beatIndex, anchor]);
 
   const silhouettePos = useMemo<[number, number, number]>(() => {
-    const cfg = SILHOUETTE_PLACEMENTS[exhibit.slug] ?? { dx: 1.8, dz: -0.35, scale: 1, rotY: -0.3 };
     let terrainY = 0;
-    if (exhibit.slug === "moon-grail") {
-      terrainY = -cfg.dz * 0.14;
-    } else if (exhibit.slug === "mars-pathfinder") {
+    if (isGrail) {
+      terrainY = Math.max(-0.4, -silhouetteCfg.dz * 0.16);
+    } else if (isPathfinder) {
       terrainY = 0;
     } else if (isMoon) {
-      terrainY = getMoonTerrainHeight(exhibit.slug, cfg.dx, cfg.dz);
+      terrainY = getMoonTerrainHeight(exhibit.slug, silhouetteCfg.dx, silhouetteCfg.dz);
     } else {
-      terrainY = getMarsTerrainHeight(exhibit.slug, cfg.dx, cfg.dz);
+      terrainY = getMarsTerrainHeight(exhibit.slug, silhouetteCfg.dx, silhouetteCfg.dz);
     }
-    return [cfg.dx, PLINTH_SURFACE_Y + terrainY, cfg.dz];
-  }, [exhibit.slug, isMoon]);
-
-  const silhouetteCfg = SILHOUETTE_PLACEMENTS[exhibit.slug] ?? { dx: 1.8, dz: -0.35, scale: 1, rotY: -0.3 };
+    return [silhouetteCfg.dx, PLINTH_SURFACE_Y + terrainY, silhouetteCfg.dz];
+  }, [exhibit.slug, isMoon, isGrail, isPathfinder, silhouetteCfg]);
 
   useFrame(() => {
     const p = scrollState.current;
@@ -322,7 +364,15 @@ function SingleExhibitPlinth({
       />
 
       <group ref={spinRef}>
-        {isMoon ? (
+        {isGrail ? (
+          <Suspense fallback={<PlinthFallback />}>
+            <GrailSimulation reducedMotion={reducedMotion} />
+          </Suspense>
+        ) : isPathfinder ? (
+          <Suspense fallback={<PlinthFallback />}>
+            <PathfinderLandscape reducedMotion={reducedMotion} />
+          </Suspense>
+        ) : isMoon ? (
           <HallOneLunarDiorama slug={exhibit.slug} reducedMotion={reducedMotion}>
             {exhibit.media.model && inGlbRange ? (
               <Suspense fallback={<PlinthFallback />}>
@@ -343,7 +393,6 @@ function SingleExhibitPlinth({
         )}
         <ScaleSilhouette
           position={silhouettePos}
-          scale={silhouetteCfg.scale}
           rotationY={silhouetteCfg.rotY}
         />
         <ShadowEnabler targetRef={spinRef} enabled={budget.tier !== "low"} />
@@ -763,6 +812,8 @@ export function ExhibitStage3D({ reducedMotion }: { reducedMotion: boolean }) {
     teaserItems.forEach((t) => urls.add(t.model));
     const timer = window.setTimeout(() => {
       urls.forEach((u) => useGLTF.preload(u, false, true));
+      useTexture.preload("/media/three/grail/grail_gravity_2k.webp");
+      useTexture.preload("/media/three/grail/grail_gravity_4k.webp");
     }, 1200);
     return () => window.clearTimeout(timer);
   }, [exhibitBeats]);

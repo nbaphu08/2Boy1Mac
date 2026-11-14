@@ -287,9 +287,9 @@ export function DistantApolloLmSilhouette({
  * Clean flat octagonal interstage deck cap + gold Kapton foil rim for the clipped Apollo LM
  * descent stage (shared by SM-L-001 Apollo 11 Eagle and SM-L-004 Apollo 17 Challenger).
  */
-export function ClippedLmTopCap({ baseY }: { baseY: number }) {
+export function ClippedLmTopCap({ baseY, scale = 1 }: { baseY: number; scale?: number }) {
   return (
-    <group position={[0, baseY + 0.765, 0]}>
+    <group position={[0, baseY + 0.765 * scale, 0]} scale={scale}>
       {/* Outer gold Kapton octagonal collar rim */}
       <mesh rotation={[0, Math.PI / 8, 0]}>
         <cylinderGeometry args={[0.86, 0.88, 0.045, 8]} />
@@ -331,7 +331,7 @@ export function ClippedLmTopCap({ baseY }: { baseY: number }) {
  * 3. EASEP package (~17 m south, scaled into diorama foreground): square gold-Kapton body, two canted east/west solar panels, short cylindrical antenna mast
  * 4. LRRR (~5 m NNW of EASEP): flat tilted stand with 10×10 corner-cube prism array (no power, no cables) + faint 532 nm green laser line from the sky
  */
-export function Apollo11SiteProps({ baseY }: { baseY: number }) {
+export function Apollo11SiteProps({ baseY, lmScale = 1 }: { baseY: number; lmScale?: number }) {
   const prismTex = useMemo(() => getLrrrPrismTexture(), []);
   const laserRef = useRef<THREE.Mesh>(null);
   const elapsedRef = useRef(0);
@@ -346,10 +346,10 @@ export function Apollo11SiteProps({ baseY }: { baseY: number }) {
   return (
     <group position={[0, baseY, 0]}>
       {/* 1. Clipped LM Descent Stage Top-Deck Structural Cap & Gold Kapton Thermal Foil Rim */}
-      <ClippedLmTopCap baseY={0} />
+      <ClippedLmTopCap baseY={0} scale={lmScale} />
 
       {/* 2. Forward Leg Egress Platform, 9-Rung Ladder & Commemorative Plaque Plate */}
-      <group position={[0, 0, 0.95]}>
+      <group position={[0, 0, 0.95 * lmScale]} scale={lmScale}>
         {/* Small egress porch platform at top of forward leg */}
         <mesh position={[0, 0.96, -0.08]}>
           <boxGeometry args={[0.26, 0.03, 0.28]} />
@@ -382,7 +382,7 @@ export function Apollo11SiteProps({ baseY }: { baseY: number }) {
       </group>
 
       {/* 3. EASEP Package (Passive Seismic Experiment — south of LM) */}
-      <group position={[-0.78, 0.02, 1.72]} rotation={[0, 0.25, 0]}>
+      <group position={[-1.05, 0.02, 3.85]} rotation={[0, 0.25, 0]} scale={1.35}>
         {/* Square thermal base skirt */}
         <mesh position={[0, 0.025, 0]}>
           <boxGeometry args={[0.38, 0.04, 0.38]} />
@@ -418,7 +418,7 @@ export function Apollo11SiteProps({ baseY }: { baseY: number }) {
       </group>
 
       {/* 4. LRRR (Laser Ranging Retroreflector — ~5 m NNW of EASEP, 10×10 corner-cube array, no cables) */}
-      <group position={[-1.25, 0.02, 1.18]} rotation={[0, 0.42, 0]}>
+      <group position={[-2.15, 0.02, 3.15]} rotation={[0, 0.42, 0]} scale={1.35}>
         {/* Compact stand & white thermal pallet base */}
         <mesh position={[0, 0.045, 0]}>
           <boxGeometry args={[0.34, 0.07, 0.32]} />

@@ -223,7 +223,7 @@ export function HallOneLunarDiorama({
         count={rockCount}
         seed={rockSeed}
         maxRadius={36}
-        clearRadius={slug === "moon-apollo-15-lrv" ? 2.4 : 2.1}
+        clearRadius={slug === "moon-apollo-11" || slug === "moon-apollo-17" ? 5.0 : 2.6}
         scaleRange={slug === "moon-apollo-17" ? [0.07, 0.42] : [0.05, 0.28]}
         surfaceY={DIORAMA_SURFACE_Y}
         heightFn={(vx, vz) => getMoonTerrainHeight(slug, vx, vz)}
@@ -232,16 +232,15 @@ export function HallOneLunarDiorama({
       {/* GLB Exhibit Model (Apollo 11 & 17 clipped LM descent stage) passed from ExhibitStage3D */}
       {children}
 
-      {/* ─── Beat 8: Apollo 11 · Sea of Tranquility (Eagle + Top Cap + EASEP + LRRR + Bootprints) ─── */}
+      {/* ─── Beat 8: Apollo 11 · Sea of Tranquility (Eagle 9.2 m leg span + Top Cap + EASEP + LRRR + Bootprints) ─── */}
       {slug === "moon-apollo-11" && (
         <group>
-          <ClippedLmTopCap baseY={DIORAMA_SURFACE_Y} />
-          <Apollo11SiteProps baseY={DIORAMA_SURFACE_Y} />
+          <Apollo11SiteProps baseY={DIORAMA_SURFACE_Y} lmScale={9.2 / 2.8} />
           <mesh
-            position={[0.35, DIORAMA_SURFACE_Y + 0.012, 1.1]}
+            position={[0.65, DIORAMA_SURFACE_Y + 0.014, 3.35]}
             rotation={[-Math.PI / 2, 0, -0.35]}
           >
-            <planeGeometry args={[2.8, 0.9]} />
+            <planeGeometry args={[3.4, 1.0]} />
             <meshBasicMaterial
               map={bootTex}
               transparent
@@ -254,21 +253,21 @@ export function HallOneLunarDiorama({
         </group>
       )}
 
-      {/* ─── Beat 9: Surveyor 3 · Ocean of Storms Inner Crater Slope + Distant Apollo 12 LM on Rim ─── */}
+      {/* ─── Beat 9: Surveyor 3 (~3.0 m tall) · Ocean of Storms Inner Crater Slope + Distant Apollo 12 LM on Rim ─── */}
       {slug === "moon-surveyor-3" && (
         <group>
           <group position={[0, DIORAMA_SURFACE_Y, 0]} rotation={[0.1, 0.28, -0.08]}>
-            <Surveyor3Model scale={0.62} />
+            <Surveyor3Model scale={0.92} />
           </group>
           <DistantApolloLmSilhouette
             position={[4.6, apollo12LmY + 0.05, -15.5]}
             scale={0.34}
           />
           <mesh
-            position={[-0.65, DIORAMA_SURFACE_Y + 0.025, 0.95]}
+            position={[-0.65, DIORAMA_SURFACE_Y + 0.025, 1.35]}
             rotation={[-Math.PI / 2 + 0.09, 0, 0.42]}
           >
-            <planeGeometry args={[2.4, 0.85]} />
+            <planeGeometry args={[2.6, 0.9]} />
             <meshBasicMaterial
               map={bootTex}
               transparent
@@ -281,21 +280,21 @@ export function HallOneLunarDiorama({
         </group>
       )}
 
-      {/* ─── Beat 10: Apollo 15 · Hadley–Apennine Plain + Parked LRV + Falcon LM Silhouette ─── */}
+      {/* ─── Beat 10: Apollo 15 · Hadley–Apennine Plain + Parked LRV (3.1 m long) + Falcon LM Silhouette ─── */}
       {slug === "moon-apollo-15-lrv" && (
         <group>
           <group position={[0.1, DIORAMA_SURFACE_Y, 0]} rotation={[0, -0.25, 0]}>
-            <LunarRovingVehicleModel scale={0.72} />
+            <LunarRovingVehicleModel scale={1.0} />
           </group>
           <DistantApolloLmSilhouette
             position={[-5.2, apollo15LmY + 0.05, -16.8]}
             scale={0.38}
           />
           <mesh
-            position={[-0.45, DIORAMA_SURFACE_Y + 0.014, 1.3]}
+            position={[-0.45, DIORAMA_SURFACE_Y + 0.014, 1.45]}
             rotation={[-Math.PI / 2, 0, 0.22]}
           >
-            <planeGeometry args={[4.4, 1.15]} />
+            <planeGeometry args={[4.6, 1.2]} />
             <meshBasicMaterial
               map={trackTex}
               transparent
@@ -308,18 +307,18 @@ export function HallOneLunarDiorama({
         </group>
       )}
 
-      {/* ─── Beat 11: Apollo 17 · Taurus–Littrow Valley Floor + Challenger Top Cap + Parked LRV + Tracks ─── */}
+      {/* ─── Beat 11: Apollo 17 · Taurus–Littrow Valley Floor + Challenger Top Cap + Parked LRV (3.1 m) + Tracks ─── */}
       {slug === "moon-apollo-17" && (
         <group>
-          <ClippedLmTopCap baseY={DIORAMA_SURFACE_Y} />
-          <group position={[1.75, DIORAMA_SURFACE_Y, -0.82]} rotation={[0, 0.65, 0]}>
-            <LunarRovingVehicleModel scale={0.44} />
+          <ClippedLmTopCap baseY={DIORAMA_SURFACE_Y} scale={9.2 / 2.8} />
+          <group position={[4.15, DIORAMA_SURFACE_Y, -0.85]} rotation={[0, 0.65, 0]}>
+            <LunarRovingVehicleModel scale={1.0} />
           </group>
           <mesh
-            position={[0.75, DIORAMA_SURFACE_Y + 0.012, 1.05]}
+            position={[1.95, DIORAMA_SURFACE_Y + 0.014, 2.35]}
             rotation={[-Math.PI / 2, 0, -0.42]}
           >
-            <planeGeometry args={[3.6, 1.0]} />
+            <planeGeometry args={[4.2, 1.1]} />
             <meshBasicMaterial
               map={trackTex}
               transparent
@@ -330,10 +329,10 @@ export function HallOneLunarDiorama({
             />
           </mesh>
           <mesh
-            position={[-0.75, DIORAMA_SURFACE_Y + 0.014, 0.85]}
+            position={[-1.4, DIORAMA_SURFACE_Y + 0.014, 2.85]}
             rotation={[-Math.PI / 2, 0, 0.28]}
           >
-            <planeGeometry args={[2.2, 0.8]} />
+            <planeGeometry args={[2.6, 0.9]} />
             <meshBasicMaterial
               map={bootTex}
               transparent

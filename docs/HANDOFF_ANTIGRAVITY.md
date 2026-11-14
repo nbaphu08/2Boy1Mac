@@ -325,3 +325,26 @@ The story now reads clearly: orbit pins → touchdown → low search → machine
 3. **GRAIL rest (beat 12):** the rest shot shows only flat ground and the silhouette — the mountain slope and the **two impact craters with dark ejecta** must be the clear subject, and the AG-10 simulation must still auto-play when settled (it did not start within 3.5 s in my capture at p = 12).
 4. **Mars orbit (p ≈ 13):** two large white ring halos near Mars' upper-left limb look like artifacts — remove or make them subtle pins like the Moon's.
 Do NOT generate posters.
+
+---
+
+## AG-11b — True 1:1 Scale Silhouettes, Streak-Free Soils, GRAIL & Pathfinder Mount + Simulation Fix, Clean Mars Orbit (15/11)
+
+**Branch:** `ag/11b-fixes` (from `origin/main` `247d503`)
+
+1. **One True `1.80 m` Scale Silhouette + 1:1 Meter Exhibit Scales (`ScaleSilhouette.tsx`, `ExhibitStage3D.tsx`, `MoonDioramas.tsx`, `MoonModels.tsx`, `MarsDioramas.tsx`, `MarsModels.tsx`, `trajectory.ts`, `SpaceScene.tsx`)**:
+   - Removed all per-mission `scale` calibration overrides from `ScaleSilhouette`; every site now renders the exact same **`1.80 m`** figure (thinner, cleaner `0.058 m` extruded neutral anatomy) at equal horizontal camera distance beside each exhibit (computed perpendicular to `camPos -> anchor` in plinth local XZ, rotated to face the camera).
+   - Aligned every exhibit's world scale to `1 scene unit = 1 real meter` per `REF_MOON.md` / `REF_MARS.md` and adjusted `BEAT_POSES[8..12, 14..20]` + shadow frustum (`±12 m`) so full silhouettes + wide exhibits frame cleanly:
+     - Apollo 11 & 17 LM descent stage (`9.2 m` footpads, `ClippedLmTopCap` + ladder scaled `9.2 / 2.8`), Surveyor 3 (`scale={0.92}`, `~3.0 m` tall), Apollo 15 & 17 LRV (`scale={1.0}`, `3.10 m` long), Viking 1 (`2.95 m`), Pathfinder (`2.75 m` petals, `1.5 m` mast, `0.65 m` Sojourner), Spirit & Opportunity (`2.30 m` wide, `1.5 m` tall), Phoenix (`scale={1.06}`, `5.52 m` wingspan), InSight (`6.0 m` span, `SEIS`/`HP3` shifted to `z ≈ 1.6 m`), Ingenuity (`1.21 m` rotor span, `0.49 m` tall).
+   - Fixed orphaned **`mars-pathfinder`** mount in `ExhibitStage3D.tsx` so `<PathfinderLandscape />` renders cleanly on Beat 15.
+2. **Eliminated Radial Ground Streaks (`landscapeMaterials.tsx`, `PathfinderLandscape.tsx`)**:
+   - Replaced white-noise `DataTexture` lookups & the world/view-space normal offset bug in `applyWorldTerrainShader` with **pure analytic C1 isotropic 2D value noise + FBM** (golden-angle octave rotation, zero tiling/streaks) and view-space-transformed, distance-faded surface grain normals (`viewMatrix * vec4(worldGrad)`).
+   - Switched `PathfinderLandscape.tsx` ground from tiled `34×34` `soilMap`/`soilBump` to `applyWorldTerrainShader` (`anisotropy = 8` on remaining fallback noise tex).
+3. **GRAIL Rest (`beat 12`) & Auto-Play Mount (`ExhibitStage3D.tsx`, `GrailSimulation.tsx`, `simulationBus.ts`, `trajectory.ts`)**:
+   - Mounted `<GrailSimulation />` inside `ExhibitStage3D.tsx` for `moon-grail` (wrapped in `<Suspense>` with preloaded GRAIL gravity maps).
+   - Moved craters A & B (`radius: 1.22 m`, `depth: 0.40 m`, `2.95 m` dark starburst ejecta) and twin translucent wireframe ghost holograms (`scale = 0.62`) + bolder polar Goldschmidt mountain massif (`8.2 m` crest behind `-Z`) cleanly into upper/center-right clear of the HUD card; widened auto-play settle trigger (`distFromBeat < 0.08`, `settleTimer >= 0.12 s`) and synchronized rest camera across `BEAT_POSES[12]`, `GrailSimulation`, and `simulationBus.ts`.
+4. **Mars Orbit Halo Artifacts Removed (`CelestialWorlds.tsx`)**:
+   - Removed the large `<ringGeometry args={[0.52, 0.68, 24]} />` halos from `transitTicks`, leaving only subtle pinpoint orbital track dots (`radius: 0.11`).
+5. **Verification**: Verified `npx tsc --noEmit`, `npx eslint components/journey/three`, and `npx next build --webpack` pass cleanly; zero posters generated or modified. **Live WebGL capture was not run in sandbox.**
+
+**Files changed:** `CelestialWorlds.tsx`, `ExhibitStage3D.tsx`, `GrailSimulation.tsx`, `MarsDioramas.tsx`, `MarsModels.tsx`, `MoonDioramas.tsx`, `MoonModels.tsx`, `PathfinderLandscape.tsx`, `ScaleSilhouette.tsx`, `SpaceScene.tsx`, `landscapeMaterials.tsx`, `simulationBus.ts`, `trajectory.ts`, `docs/HANDOFF_ANTIGRAVITY.md`.
