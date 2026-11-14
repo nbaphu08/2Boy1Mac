@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useLayoutEffect, useRef, useState } from "react";
 import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { beatIndexById, beats } from "@/content/beats";
 import { journey, narration, transitTimeline } from "@/content/journey";
 import { exhibitBySlug } from "@/content/exhibits";
@@ -13,8 +12,6 @@ import { teaser, teaserItems } from "@/content/teaser";
 import type { Beat } from "@/content/types";
 import { scrollState, scrollToBeat } from "@/lib/scroll/progress";
 import { useMuseum } from "@/lib/store";
-
-gsap.registerPlugin(ScrollTrigger);
 
 
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
@@ -78,7 +75,7 @@ function TransitTimeline({ index }: { index: number }) {
     const items = Array.from(list.querySelectorAll<HTMLElement>("[data-year]"));
     const n = items.length;
     const apply = () => {
-      const t = reducedMotion ? 1 : clamp01((scrollState.current - (index - 0.7)) / 0.6);
+      const t = reducedMotion ? 1 : clamp01((scrollState.current - (index - 0.36)) / 0.36);
       line.style.transform = `scaleX(${t.toFixed(3)})`;
       items.forEach((el, i) => {
         const r = clamp01(t * (n + 0.5) - i);
@@ -119,10 +116,6 @@ function TransitTimeline({ index }: { index: number }) {
 function EnterOverlay({ beat }: { beat: Beat }) {
   return (
     <div className="relative flex h-full w-full items-end px-6 pb-14 pr-14 sm:px-12 sm:pb-16 sm:pr-36">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-void/90 to-transparent"
-      />
       <div data-hud-card className="relative z-10 max-w-2xl">
         <div className="font-hud text-shadow-copy mb-3 flex flex-wrap items-center gap-2.5 text-[11px] text-platinum">
           <span>{beat.sub}</span>
@@ -138,10 +131,6 @@ function EnterOverlay({ beat }: { beat: Beat }) {
 function IgnitionOverlay({ beat }: { beat: Beat }) {
   return (
     <div className="relative flex h-full w-full flex-col justify-end px-6 pb-14 pr-14 sm:px-12 sm:pb-16 sm:pr-36">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-void/90 to-transparent"
-      />
 
       <div
         data-hud-card
@@ -176,10 +165,6 @@ function AscentOverlay({ beat }: { beat: Beat }) {
   return (
     <div className="relative flex h-full w-full items-end justify-between px-6 pb-14 pr-14 sm:px-12 sm:pb-16 sm:pr-36">
       <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-void/90 to-transparent"
-      />
-      <div
         data-hud-card
         className="relative z-10 flex w-full flex-col gap-6 sm:flex-row sm:items-end sm:justify-between"
       >
@@ -205,10 +190,6 @@ function HallTitleOverlay({ beat }: { beat: Beat }) {
   const isMars = beat.rail === "MARS";
   return (
     <div className="relative flex h-full w-full items-end px-6 pb-16 pr-14 sm:px-12 sm:pb-20 sm:pr-36">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-void/90 to-transparent"
-      />
       <div data-hud-card className="relative z-10 max-w-2xl">
         <div
           className="font-hud text-shadow-copy mb-3 flex flex-wrap items-center gap-2.5 text-xs"
@@ -247,10 +228,6 @@ function ExhibitBeatOverlay({ beat }: { beat: Beat }) {
 
   return (
     <div className="relative flex h-full w-full items-end px-6 pb-12 pr-14 sm:px-12 sm:pb-14 sm:pr-36">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-void/90 via-void/35 to-transparent"
-      />
       <div
         data-hud-card
         className="pointer-events-auto relative z-10 max-w-lg rounded-lg border border-line bg-surface/75 p-5 backdrop-blur-md sm:p-6"
@@ -300,9 +277,9 @@ function SilenceOverlay() {
     if (!list) return;
     const items = Array.from(list.querySelectorAll<HTMLElement>("[data-wall-row]"));
     const n = items.length;
-    // Reveal window: from 0.55 beat before the silence beat until the beat itself.
-    const START = SILENCE_INDEX - 0.55;
-    const SPAN = 0.55;
+    // Reveal window (inside the beat cross-fade): from 0.36 beat before the silence beat until the beat itself.
+    const START = SILENCE_INDEX - 0.36;
+    const SPAN = 0.36;
     const apply = () => {
       const t = reducedMotion ? 1 : (scrollState.current - START) / SPAN;
       items.forEach((el, i) => {
@@ -441,12 +418,8 @@ function BeyondOverlay() {
 function FinaleOverlay() {
   return (
     <div className="relative flex h-full w-full items-end px-6 pb-14 pr-14 sm:px-12 sm:pb-20 sm:pr-32">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-void/90 to-transparent"
-      />
       <div data-hud-card className="pointer-events-auto relative z-10 max-w-2xl">
-        <p className="font-hud mb-3 text-[11px] text-platinum">{journey.finale.eyebrow}</p>
+        <p className="font-hud text-shadow-copy mb-3 text-[11px] text-platinum">{journey.finale.eyebrow}</p>
         <div className="mt-6 flex flex-wrap items-center gap-4">
           <Link
             href="/collection"
@@ -473,37 +446,50 @@ function FinaleOverlay() {
   );
 }
 
-export function BeatSection({ beat, poster }: { beat: Beat; poster?: React.ReactNode }) {
-  const sectionRef = useRef<HTMLElement>(null);
+/** Fixed, stationary overlay for one beat: cross-fades in place from the scroll distance to the beat. */
+function FadeLayer({ index, children }: { index: number; children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
-    const el = sectionRef.current;
+    const el = ref.current;
     if (!el) return;
-    const cards = el.querySelectorAll<HTMLElement>("[data-hud-card]");
-    if (!cards.length) return;
+    let last = -1;
+    const apply = () => {
+      const d = Math.abs(scrollState.current - index);
+      const r = clamp01((0.38 - d) / 0.2);
+      if (r === last) return;
+      last = r;
+      const off = r < 0.01;
+      el.style.opacity = r.toFixed(3);
+      el.style.transform = `translateY(${((1 - r) * 6).toFixed(2)}px)`;
+      el.style.visibility = off ? "hidden" : "visible";
+      el.inert = off;
+    };
+    apply();
+    gsap.ticker.add(apply);
+    return () => {
+      gsap.ticker.remove(apply);
+    };
+  }, [index]);
 
-    const ctx = gsap.context(() => {
-      gsap.fromTo(
-        cards,
-        { autoAlpha: 0, y: 24 },
-        {
-          autoAlpha: 1,
-          y: 0,
-          duration: 0.75,
-          stagger: 0.08,
-          ease: "expo.out",
-          scrollTrigger: {
-            trigger: el,
-            start: "top 78%",
-            end: "bottom 22%",
-            toggleActions: "play reverse play reverse",
-          },
-        },
-      );
-    }, el);
+  return (
+    <div
+      ref={ref}
+      className="pointer-events-none fixed inset-0 z-10 will-change-[opacity]"
+      style={{ opacity: 0, visibility: "hidden" }}
+      inert
+    >
+      {children}
+    </div>
+  );
+}
 
-    return () => ctx.revert();
-  }, []);
+export function BeatSection({ beat, poster }: { beat: Beat; poster?: React.ReactNode }) {
+  const reducedMotion = useMuseum((s) => s.reducedMotion);
+  const lightweight = useMuseum((s) => s.lightweight);
+  const webglFailed = useMuseum((s) => s.webglFailed);
+  const isStatic = reducedMotion || lightweight || webglFailed;
+  const index = beatIndexById(beat.id);
 
   let content: React.ReactNode = null;
   if (beat.id === "enter") content = <EnterOverlay beat={beat} />;
@@ -515,16 +501,40 @@ export function BeatSection({ beat, poster }: { beat: Beat; poster?: React.React
   else if (beat.id === "beyond") content = <BeyondOverlay />;
   else if (beat.id === "finale") content = <FinaleOverlay />;
 
+  const body = (
+    <>
+      {content}
+      <Narration beat={beat} />
+    </>
+  );
+
+  // Static / reduced-motion: posters scroll in flow, overlays stay with their poster (no fade needed).
+  if (isStatic) {
+    return (
+      <section
+        id={beat.id}
+        data-beat={beat.id}
+        className="pointer-events-none relative h-dvh w-full shrink-0"
+      >
+        {poster}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-void/90 to-transparent"
+        />
+        <div className="absolute inset-0">{body}</div>
+      </section>
+    );
+  }
+
+  // Live 3D: the section is an invisible height spacer (ScrollTrigger / Lenis / hash anchors);
+  // its content lives in a fixed layer that cross-fades in place.
   return (
     <section
-      ref={sectionRef}
       id={beat.id}
       data-beat={beat.id}
       className="pointer-events-none relative h-dvh w-full shrink-0"
     >
-      {poster}
-      {content}
-      <Narration beat={beat} />
+      <FadeLayer index={index}>{body}</FadeLayer>
     </section>
   );
 }
