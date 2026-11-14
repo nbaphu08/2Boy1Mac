@@ -41,9 +41,6 @@ export const expedition = {
     touchdown: "TOUCHDOWN · CHRYSE PLANITIA",
   },
 
-  // Scale figure caption (3D silhouette next to each exhibit).
-  scale: "Silhouette: a person 1.8 m tall, for scale",
-
   // Exhibit card headings — the four questions a newcomer actually asks.
   questions: {
     what: "WHAT IS IT?",

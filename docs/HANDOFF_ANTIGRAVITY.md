@@ -348,3 +348,6 @@ Do NOT generate posters.
 5. **Verification**: Verified `npx tsc --noEmit`, `npx eslint components/journey/three`, and `npx next build --webpack` pass cleanly; zero posters generated or modified. **Live WebGL capture was not run in sandbox.**
 
 **Files changed:** `CelestialWorlds.tsx`, `ExhibitStage3D.tsx`, `GrailSimulation.tsx`, `MarsDioramas.tsx`, `MarsModels.tsx`, `MoonDioramas.tsx`, `MoonModels.tsx`, `PathfinderLandscape.tsx`, `ScaleSilhouette.tsx`, `SpaceScene.tsx`, `landscapeMaterials.tsx`, `simulationBus.ts`, `trajectory.ts`, `docs/HANDOFF_ANTIGRAVITY.md`.
+
+## Opus review — AG-11b accepted (15/11)
+- Merged. Streaks gone, GRAIL autoplay works, Pathfinder mounts, Mars halos removed. Next: AG-12 (remove scale figures per humans, photo-real lunar surface).

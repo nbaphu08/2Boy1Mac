@@ -303,7 +303,6 @@ function ExhibitBeatOverlay({ beat }: { beat: Beat }) {
             </div>
           </div>
         ) : null}
-        <p className="font-hud mt-2.5 text-[9px] text-mute">{expedition.scale}</p>
 
         <div className="mt-4 flex flex-wrap items-center gap-4">
           <button
