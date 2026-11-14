@@ -9,6 +9,42 @@ let cachedBootprintTex: THREE.CanvasTexture | null = null;
 let cachedRoverTrackTex: THREE.CanvasTexture | null = null;
 let cachedDarkEjectaTex: THREE.CanvasTexture | null = null;
 let cachedWireMeshTex: THREE.CanvasTexture | null = null;
+let cachedSurveyorSolarTex: THREE.CanvasTexture | null = null;
+let cachedSurveyorPlanarTex: THREE.CanvasTexture | null = null;
+let cachedSurveyorBoxTex: THREE.CanvasTexture | null = null;
+
+const SURVEYOR_UP = new THREE.Vector3(0, 1, 0);
+const UNIT_STRUT_GEO = new THREE.CylinderGeometry(1, 1, 1, 8, 1, false);
+
+type StrutTransform = {
+  mid: [number, number, number];
+  quat: [number, number, number, number];
+  len: number;
+  r: number;
+};
+
+/** Compute exact midpoint, quaternion, and length connecting vertex `a` to vertex `b`. */
+function computeStrut(
+  a: readonly [number, number, number],
+  b: readonly [number, number, number],
+  r: number,
+): StrutTransform {
+  const va = new THREE.Vector3(a[0], a[1], a[2]);
+  const vb = new THREE.Vector3(b[0], b[1], b[2]);
+  const dir = vb.clone().sub(va);
+  const len = dir.length();
+  const mid = va.clone().addScaledVector(dir, 0.5);
+  const q = new THREE.Quaternion();
+  if (len > 1e-5) {
+    q.setFromUnitVectors(SURVEYOR_UP, dir.divideScalar(len));
+  }
+  return {
+    mid: [mid.x, mid.y, mid.z],
+    quat: [q.x, q.y, q.z, q.w],
+    len: Math.max(len, 1e-4),
+    r,
+  };
+}
 
 /** 10×10 corner-cube prism array texture for the Apollo 11 LRRR. */
 export function getLrrrPrismTexture(): THREE.CanvasTexture {
@@ -224,6 +260,130 @@ function getLrvWheelTexture(): THREE.CanvasTexture {
   tex.wrapS = THREE.RepeatWrapping;
   tex.wrapT = THREE.ClampToEdgeWrapping;
   cachedWireMeshTex = tex;
+  return tex;
+}
+
+/** 792-cell photovoltaic grid texture with silver busbars and 2.5-year lunar dust-tan weathering for Surveyor 3. */
+function getSurveyorSolarTexture(): THREE.CanvasTexture {
+  if (cachedSurveyorSolarTex) return cachedSurveyorSolarTex;
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext("2d")!;
+
+  ctx.fillStyle = "#161E2E";
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Subtle module sectors (6 × 4 sub-panels) + cell grid
+  const cols = 24;
+  const rows = 33;
+  const pad = 14;
+  const cw = (512 - pad * 2) / cols;
+  const ch = (512 - pad * 2) / rows;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const shade = 22 + ((r * 7 + c * 13) % 10);
+      ctx.fillStyle = `rgb(${shade}, ${shade + 10}, ${shade + 28})`;
+      ctx.fillRect(pad + c * cw + 0.8, pad + r * ch + 0.8, cw - 1.6, ch - 1.6);
+    }
+  }
+
+  // Silver collector busbars every 6 columns / 11 rows
+  ctx.fillStyle = "rgba(195, 202, 212, 0.55)";
+  for (let c = 0; c <= cols; c += 6) {
+    ctx.fillRect(pad + c * cw - 1, pad, 2, 512 - pad * 2);
+  }
+  for (let r = 0; r <= rows; r += 11) {
+    ctx.fillRect(pad, pad + r * ch - 1, 512 - pad * 2, 2);
+  }
+
+  // Aluminum anodized border + light dust-tan film on exposed edges
+  ctx.strokeStyle = "#C6C0B4";
+  ctx.lineWidth = 14;
+  ctx.strokeRect(7, 7, 498, 498);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  cachedSurveyorSolarTex = tex;
+  return tex;
+}
+
+/** Slotted planar high-gain antenna waveguide array texture with dust-tan aging for Surveyor 3. */
+function getSurveyorPlanarTexture(): THREE.CanvasTexture {
+  if (cachedSurveyorPlanarTex) return cachedSurveyorPlanarTex;
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext("2d")!;
+
+  ctx.fillStyle = "#DDD6C8";
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Fine waveguide slot grid
+  ctx.strokeStyle = "rgba(115, 108, 96, 0.36)";
+  ctx.lineWidth = 1.2;
+  for (let i = 28; i < 484; i += 14) {
+    ctx.beginPath();
+    ctx.moveTo(i, 24);
+    ctx.lineTo(i, 488);
+    ctx.stroke();
+  }
+  ctx.fillStyle = "rgba(92, 86, 76, 0.42)";
+  for (let y = 30; y < 482; y += 22) {
+    for (let x = 32; x < 480; x += 28) {
+      ctx.fillRect(x, y, 10, 3);
+    }
+  }
+
+  // Sun-baked dust-tan outer vignette
+  const grad = ctx.createRadialGradient(256, 256, 110, 256, 256, 330);
+  grad.addColorStop(0, "rgba(182, 168, 146, 0)");
+  grad.addColorStop(1, "rgba(168, 152, 128, 0.35)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 512, 512);
+
+  ctx.strokeStyle = "#B8B0A2";
+  ctx.lineWidth = 12;
+  ctx.strokeRect(6, 6, 500, 500);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  cachedSurveyorPlanarTex = tex;
+  return tex;
+}
+
+/** Thermal compartment white/dust-tan painted finish with diamond radiator louvers (per AS12-48-7121). */
+function getSurveyorCompartmentTexture(): THREE.CanvasTexture {
+  if (cachedSurveyorBoxTex) return cachedSurveyorBoxTex;
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext("2d")!;
+
+  ctx.fillStyle = "#DFD8CA";
+  ctx.fillRect(0, 0, 256, 256);
+
+  // Embossed diagonal stiffening lines & radiator louvers
+  ctx.strokeStyle = "rgba(130, 122, 108, 0.42)";
+  ctx.lineWidth = 2;
+  for (let i = -256; i < 512; i += 32) {
+    ctx.beginPath();
+    ctx.moveTo(i, 0);
+    ctx.lineTo(i + 256, 256);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(i + 256, 0);
+    ctx.lineTo(i, 256);
+    ctx.stroke();
+  }
+
+  ctx.strokeStyle = "rgba(105, 98, 86, 0.55)";
+  ctx.lineWidth = 3;
+  ctx.strokeRect(8, 8, 240, 240);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  cachedSurveyorBoxTex = tex;
   return tex;
 }
 
@@ -472,160 +632,520 @@ export function Apollo11SiteProps({ baseY, lmScale = 1 }: { baseY: number; lmSca
 }
 
 /**
- * SM-L-002 · Surveyor 3 procedural 3D model per REF_MOON.md & AG-3a:
- * - ~3 m tall tripod of thin-walled aluminum tubing with dust-tan weathered white finish
- * - Central mast (~1 m above apex) with flat solar panel (792 cells) + flat planar high-gain antenna
- * - 3 hinged landing legs with shock absorbers + crushable honeycomb blocks + round footpads
- * - 2 omnidirectional conical antennas on folding booms
- * - Spherical vernier propellant tanks & electronics compartments (no retrorocket case)
- * - Camera mount WITHOUT camera head & pantograph surface sampler arm WITHOUT scoop (removed by Apollo 12)
+ * SM-L-002 · Surveyor 3 procedural 3D model per REF_MOON.md, NSSDCA 1967-035A, & AS12-48-7133 / 7121:
+ * - ~3.0 m tall tetrahedral aluminum space-frame with exact vertex-jointed lower/mid triangles & diagonal braces
+ * - Continuous central mast rising through machined apex collar & guy-strut sleeve to AOPP masthead gimbal
+ * - Dual top flat panels hinged directly onto AOPP yoke: 0.855 m² (792-cell) solar panel + slotted planar HGA
+ * - 3 splayed hinged A-frame landing legs with telescoping shock absorbers, crush blocks & compact (~0.32 m) footpads
+ * - Grounded accurately onto crater slope (`groundHeightFn`) so all 3 footpads sit flush on regolith
+ * - Thermal Compartments A & B with louvered covers, 3 internal propellant spheres, 2 hinged omni booms
+ * - Empty TV camera pedestal mount (camera head removed by Apollo 12) + 5-bay pantograph sampler arm WITHOUT scoop
  */
-export function Surveyor3Model({ scale = 0.62 }: { scale?: number }) {
-  const legAngles = [0, (Math.PI * 2) / 3, (Math.PI * 4) / 3];
+export function Surveyor3Model({
+  scale = 0.92,
+  groundHeightFn,
+}: {
+  scale?: number;
+  groundHeightFn?: (localX: number, localZ: number) => number;
+}) {
+  const solarTex = useMemo(() => getSurveyorSolarTexture(), []);
+  const planarTex = useMemo(() => getSurveyorPlanarTexture(), []);
+  const boxTex = useMemo(() => getSurveyorCompartmentTexture(), []);
+
+  // Crater inner slope matches getMoonTerrainHeight("moon-surveyor-3") near origin: dy/dx = +0.0741, dy/dz = -0.0855
+  const slopeRx = 0.0855;
+  const slopeRz = 0.0741;
+
+  const rig = useMemo(() => {
+    const legAngles = [
+      (62 * Math.PI) / 180,  // Leg 0: foreground-right (AS12-48-7133 foreground leg)
+      (182 * Math.PI) / 180, // Leg 1: far-left
+      (302 * Math.PI) / 180, // Leg 2: back-right
+    ];
+
+    const rBase = 0.66;
+    const yBase = 0.56;
+    const apex: [number, number, number] = [0, 1.82, 0];
+    const mastBottom: [number, number, number] = [0, yBase, 0];
+    const mastTop: [number, number, number] = [0, 2.78, 0];
+    const mastGuyCollar: [number, number, number] = [0, 2.12, 0];
+
+    const baseVerts: [number, number, number][] = legAngles.map((a) => [
+      Math.cos(a) * rBase,
+      yBase,
+      Math.sin(a) * rBase,
+    ]);
+    const lerp3 = (
+      p0: readonly [number, number, number],
+      p1: readonly [number, number, number],
+      t: number,
+    ): [number, number, number] => [
+      p0[0] + (p1[0] - p0[0]) * t,
+      p0[1] + (p1[1] - p0[1]) * t,
+      p0[2] + (p1[2] - p0[2]) * t,
+    ];
+
+    const midVerts = baseVerts.map((b) => lerp3(b, apex, 0.54));
+    const guyNodes = baseVerts.map((b) => lerp3(b, apex, 0.68));
+    const upperShockNodes = baseVerts.map((b) => lerp3(b, apex, 0.44));
+
+    // Transform helper to align footpads flush on actual curved lunar terrain
+    const bodyEuler = new THREE.Euler(slopeRx, 0, slopeRz, "XYZ");
+    const bodyQuat = new THREE.Quaternion().setFromEuler(bodyEuler);
+    const bodyMat = new THREE.Matrix4().compose(
+      new THREE.Vector3(0, 0, 0),
+      bodyQuat,
+      new THREE.Vector3(scale, scale, scale),
+    );
+    const invBodyMat = bodyMat.clone().invert();
+    const rPad = 1.84;
+
+    const padData = legAngles.map((a, idx) => {
+      const fx = Math.cos(a) * rPad;
+      const fz = Math.sin(a) * rPad;
+      const prelimWorld = new THREE.Vector3(fx, 0, fz).applyMatrix4(bodyMat);
+      const terrainY = groundHeightFn ? groundHeightFn(prelimWorld.x, prelimWorld.z) : prelimWorld.y;
+      const localContact = new THREE.Vector3(prelimWorld.x, terrainY + 0.004, prelimWorld.z).applyMatrix4(invBodyMat);
+
+      const padCenter: [number, number, number] = [localContact.x, localContact.y + 0.044, localContact.z];
+      const ankle: [number, number, number] = [localContact.x, localContact.y + 0.1, localContact.z];
+      const b = baseVerts[idx];
+      const tx = -Math.sin(a);
+      const tz = Math.cos(a);
+      const bLeft: [number, number, number] = [b[0] - tx * 0.11, b[1], b[2] - tz * 0.11];
+      const bRight: [number, number, number] = [b[0] + tx * 0.11, b[1], b[2] + tz * 0.11];
+      const aLeft: [number, number, number] = [ankle[0] - tx * 0.032, ankle[1], ankle[2] - tz * 0.032];
+      const aRight: [number, number, number] = [ankle[0] + tx * 0.032, ankle[1], ankle[2] + tz * 0.032];
+      const shockLow = lerp3(b, ankle, 0.65);
+
+      return { a, padCenter, ankle, bLeft, bRight, aLeft, aRight, shockLow };
+    });
+
+    // Primary aluminum structural frame struts (zero disconnected tubes)
+    const aluStruts: StrutTransform[] = [];
+    for (let i = 0; i < 3; i++) {
+      const next = (i + 1) % 3;
+      // Lower triangle edge + inner hub cross-spider + tripod main column
+      aluStruts.push(computeStrut(baseVerts[i], baseVerts[next], 0.024));
+      aluStruts.push(computeStrut(baseVerts[i], mastBottom, 0.02));
+      aluStruts.push(computeStrut(baseVerts[i], apex, 0.025));
+      // Mid triangle collar + diagonal truss brace across each face
+      aluStruts.push(computeStrut(midVerts[i], midVerts[next], 0.017));
+      aluStruts.push(computeStrut(baseVerts[i], midVerts[next], 0.015));
+      // Mast guy brace from tripod node to mast collar
+      aluStruts.push(computeStrut(guyNodes[i], mastGuyCollar, 0.015));
+
+      // Leg A-frame twin booms + hinge pin + two cross-ties + honeycomb block hanger
+      const pd = padData[i];
+      aluStruts.push(computeStrut(pd.bLeft, pd.bRight, 0.018));
+      aluStruts.push(computeStrut(pd.bLeft, pd.aLeft, 0.022));
+      aluStruts.push(computeStrut(pd.bRight, pd.aRight, 0.022));
+      aluStruts.push(computeStrut(lerp3(pd.bLeft, pd.aLeft, 0.42), lerp3(pd.bRight, pd.aRight, 0.42), 0.015));
+      aluStruts.push(computeStrut(lerp3(pd.bLeft, pd.aLeft, 0.72), lerp3(pd.bRight, pd.aRight, 0.72), 0.015));
+      aluStruts.push(computeStrut(baseVerts[i], [baseVerts[i][0], baseVerts[i][1] - 0.13, baseVerts[i][2]], 0.02));
+    }
+
+    // Telescoping shock absorbers (upper barrel + lower piston along exact joint axis)
+    const shockBarrels: StrutTransform[] = [];
+    const shockPistons: StrutTransform[] = [];
+    for (let i = 0; i < 3; i++) {
+      const u = upperShockNodes[i];
+      const l = padData[i].shockLow;
+      shockBarrels.push(computeStrut(u, lerp3(u, l, 0.56), 0.025));
+      shockPistons.push(computeStrut(lerp3(u, l, 0.44), l, 0.016));
+    }
+
+    // Continuous central mast + AOPP masthead gimbal crossbar (panel braces live inside each hinge group)
+    const mastStruts: StrutTransform[] = [
+      computeStrut(mastBottom, apex, 0.036),
+      computeStrut(apex, mastTop, 0.033),
+      computeStrut([-0.09, 2.8, 0.01], [0.09, 2.84, 0.01], 0.028),
+    ];
+
+    // 2 Folding Omnidirectional Conical Antenna Booms hinged at Frame Corners 1 & 2
+    const omniConfigs = [
+      { base: baseVerts[1], elbow: [-1.1, 1.02, -0.28] as const, tip: [-1.46, 1.42, -0.44] as const },
+      { base: baseVerts[2], elbow: [0.68, 1.04, -1.04] as const, tip: [0.88, 1.44, -1.36] as const },
+    ];
+    const omniStruts: StrutTransform[] = [];
+    for (const o of omniConfigs) {
+      const hinge: [number, number, number] = [o.base[0], o.base[1] + 0.16, o.base[2]];
+      omniStruts.push(computeStrut(o.base, hinge, 0.016));
+      omniStruts.push(computeStrut(hinge, o.elbow, 0.013));
+      omniStruts.push(computeStrut(o.elbow, o.tip, 0.011));
+    }
+
+    // Empty TV Camera Pedestal mount clamped onto Leg 0's upper tripod strut
+    const camAnchor = lerp3(baseVerts[0], apex, 0.56);
+    const camPedestalBase: [number, number, number] = [camAnchor[0] + 0.08, camAnchor[1] - 0.06, camAnchor[2] + 0.13];
+    const camBracketStrut = computeStrut(camAnchor, camPedestalBase, 0.016);
+
+    // 5-Bay Pin-Jointed Pantograph Surface Sampler Arm WITHOUT Scoop (extending outward along +18 deg azimuth)
+    const pDirX = Math.cos(0.3);
+    const pDirZ = Math.sin(0.3);
+    const pOrigin: [number, number, number] = [0.56 * Math.cos(0.3), 0.74, 0.56 * Math.sin(0.3)];
+    const frameTie = lerp3(baseVerts[0], baseVerts[2], 0.42);
+    const pantoStruts: StrutTransform[] = [computeStrut(frameTie, pOrigin, 0.016)];
+    const pantoPins: [number, number, number][] = [pOrigin];
+    const bayStep = 0.22;
+    const halfH = 0.105;
+    for (let b = 0; b < 5; b++) {
+      const d0 = b * bayStep;
+      const d1 = (b + 1) * bayStep;
+      const dMid = (d0 + d1) * 0.5;
+      const drop0 = d0 * 0.22;
+      const drop1 = d1 * 0.22;
+      const dropMid = dMid * 0.22;
+      const top0: [number, number, number] = [pOrigin[0] + pDirX * d0, pOrigin[1] + halfH - drop0, pOrigin[2] + pDirZ * d0];
+      const bot0: [number, number, number] = [pOrigin[0] + pDirX * d0, pOrigin[1] - halfH - drop0, pOrigin[2] + pDirZ * d0];
+      const top1: [number, number, number] = [pOrigin[0] + pDirX * d1, pOrigin[1] + halfH - drop1, pOrigin[2] + pDirZ * d1];
+      const bot1: [number, number, number] = [pOrigin[0] + pDirX * d1, pOrigin[1] - halfH - drop1, pOrigin[2] + pDirZ * d1];
+      const centerPin: [number, number, number] = [pOrigin[0] + pDirX * dMid, pOrigin[1] - dropMid, pOrigin[2] + pDirZ * dMid];
+      pantoStruts.push(computeStrut(top0, bot1, 0.008));
+      pantoStruts.push(computeStrut(bot0, top1, 0.008));
+      pantoPins.push(top1, bot1, centerPin);
+    }
+    const pEnd = 5 * bayStep;
+    const pTip: [number, number, number] = [
+      pOrigin[0] + pDirX * pEnd,
+      pOrigin[1] - pEnd * 0.22,
+      pOrigin[2] + pDirZ * pEnd,
+    ];
+    pantoStruts.push(
+      computeStrut([pTip[0], pTip[1] + halfH, pTip[2]], pTip, 0.009),
+      computeStrut([pTip[0], pTip[1] - halfH, pTip[2]], pTip, 0.009),
+    );
+
+    return {
+      baseVerts,
+      midVerts,
+      guyNodes,
+      apex,
+      mastGuyCollar,
+      mastTop,
+      padData,
+      aluStruts,
+      shockBarrels,
+      shockPistons,
+      mastStruts,
+      omniConfigs,
+      omniStruts,
+      camPedestalBase,
+      camBracketStrut,
+      pOrigin,
+      pantoStruts,
+      pantoPins,
+      pTip,
+    };
+  }, [scale, groundHeightFn]);
 
   return (
-    <group scale={scale}>
-      {/* Central spaceframe lower triangle ring */}
-      <mesh position={[0, 0.62, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[0.68, 0.028, 8, 3]} />
-        <meshStandardMaterial color="#D4CEC2" roughness={0.55} metalness={0.38} />
-      </mesh>
-
-      {/* 3 Tripod primary tubular struts rising to apex at y = 1.88 */}
-      {legAngles.map((a, i) => {
-        const bx = Math.cos(a) * 0.68;
-        const bz = Math.sin(a) * 0.68;
-        return (
-          <group key={i}>
-            {/* Main tripod column */}
-            <mesh
-              position={[bx * 0.5, 1.25, bz * 0.5]}
-              rotation={[Math.sin(a) * 0.48, 0, -Math.cos(a) * 0.48]}
-            >
-              <cylinderGeometry args={[0.026, 0.03, 1.42, 8]} />
-              <meshStandardMaterial color="#D8D1C4" roughness={0.52} metalness={0.35} />
-            </mesh>
-
-            {/* Hinged landing leg + shock absorber + crushable honeycomb block + footpad */}
-            <group rotation={[0, -a, 0]}>
-              {/* Main leg A-frame boom extending to radius ~2.05 */}
-              <mesh position={[1.32, 0.34, 0]} rotation={[0, 0, 0.42]}>
-                <cylinderGeometry args={[0.032, 0.04, 1.48, 8]} />
-                <meshStandardMaterial color="#CEC7BA" roughness={0.55} metalness={0.42} />
-              </mesh>
-              {/* Telescoping shock absorber strut */}
-              <mesh position={[1.08, 0.62, 0]} rotation={[0, 0, -0.58]}>
-                <cylinderGeometry args={[0.022, 0.026, 0.92, 8]} />
-                <meshStandardMaterial color="#9CA2AE" roughness={0.38} metalness={0.75} />
-              </mesh>
-              {/* Crushable honeycomb block under lower corner */}
-              <mesh position={[0.72, 0.38, 0]}>
-                <cylinderGeometry args={[0.13, 0.13, 0.18, 12]} />
-                <meshStandardMaterial color="#B8AF9E" roughness={0.62} metalness={0.32} />
-              </mesh>
-              {/* Crushable circular landing footpad */}
-              <mesh position={[1.98, 0.07, 0]}>
-                <cylinderGeometry args={[0.24, 0.28, 0.12, 16]} />
-                <meshStandardMaterial color="#BFB6A6" roughness={0.65} metalness={0.35} />
-              </mesh>
-            </group>
-          </group>
-        );
-      })}
-
-      {/* 2 White thermal electronics compartments (Compartment A & B) */}
-      <mesh position={[-0.36, 0.82, 0.24]} rotation={[0, 0.52, 0]}>
-        <boxGeometry args={[0.58, 0.42, 0.38]} />
-        <meshStandardMaterial color="#DCD5C8" roughness={0.48} metalness={0.28} />
-      </mesh>
-      <mesh position={[0.38, 0.78, 0.2]} rotation={[0, -0.45, 0]}>
-        <boxGeometry args={[0.52, 0.38, 0.34]} />
-        <meshStandardMaterial color="#D6CFC2" roughness={0.5} metalness={0.3} />
-      </mesh>
-
-      {/* Spherical vernier propellant & helium tanks (polished metal + tan dust) */}
-      {[
-        [0.18, 0.76, -0.34],
-        [-0.22, 0.74, -0.32],
-        [0.0, 0.92, 0.35],
-      ].map(([tx, ty, tz], ti) => (
-        <mesh key={ti} position={[tx, ty, tz]}>
-          <sphereGeometry args={[0.16, 14, 12]} />
-          <meshStandardMaterial color="#C8C2B8" roughness={0.35} metalness={0.72} />
+    <group rotation={[slopeRx, 0, slopeRz]} scale={scale}>
+      {/* Bare aluminum spaceframe struts, mid-ring, diagonal braces, leg A-frames & mast guys */}
+      {rig.aluStruts.map((s, i) => (
+        <mesh
+          key={`alu-${i}`}
+          position={s.mid}
+          quaternion={s.quat}
+          scale={[s.r, s.len, s.r]}
+          geometry={UNIT_STRUT_GEO}
+          castShadow
+        >
+          <meshStandardMaterial color="#CFC9BC" roughness={0.46} metalness={0.62} />
         </mesh>
       ))}
 
-      {/* Central Mast (~1 m above tripod apex) + Positioner + Solar Panel + Planar High-Gain Antenna */}
-      <mesh position={[0, 2.38, 0]}>
-        <cylinderGeometry args={[0.036, 0.042, 1.15, 10]} />
-        <meshStandardMaterial color="#D2CBC0" roughness={0.48} metalness={0.48} />
-      </mesh>
-      {/* Flat 792-cell Solar Panel (tilted) */}
-      <group position={[0.12, 2.86, 0.08]} rotation={[0.42, 0.35, -0.22]}>
-        <mesh>
-          <boxGeometry args={[0.96, 0.025, 0.88]} />
-          <meshStandardMaterial color="#1C263B" roughness={0.32} metalness={0.68} />
+      {/* Continuous central mast & AOPP masthead gimbal struts */}
+      {rig.mastStruts.map((s, i) => (
+        <mesh
+          key={`mast-${i}`}
+          position={s.mid}
+          quaternion={s.quat}
+          scale={[s.r, s.len, s.r]}
+          geometry={UNIT_STRUT_GEO}
+          castShadow
+        >
+          <meshStandardMaterial color="#D6D0C4" roughness={0.44} metalness={0.58} />
         </mesh>
-        <mesh position={[0, -0.016, 0]}>
-          <boxGeometry args={[0.98, 0.01, 0.9]} />
-          <meshStandardMaterial color="#D8D2C6" roughness={0.5} metalness={0.4} />
-        </mesh>
-      </group>
-      {/* Flat Planar High-Gain Antenna beside solar panel */}
-      <group position={[-0.24, 2.92, -0.12]} rotation={[-0.28, -0.25, 0.15]}>
-        <mesh>
-          <boxGeometry args={[0.68, 0.72, 0.035]} />
-          <meshStandardMaterial color="#E2DDD2" roughness={0.46} metalness={0.32} />
-        </mesh>
-      </group>
+      ))}
 
-      {/* 2 Omnidirectional conical antennas on folding booms */}
-      {[-1, 1].map((side) => (
-        <group key={side} position={[side * 0.55, 1.05, -0.2]} rotation={[0.15, side * 0.4, -side * 0.25]}>
-          <mesh position={[side * 0.45, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-            <cylinderGeometry args={[0.012, 0.016, 0.9, 6]} />
-            <meshStandardMaterial color="#C8C2B6" roughness={0.5} metalness={0.5} />
+      {/* Machined joint hubs: 3 lower clevises, 3 mid hubs, apex hub collar, guy-strut sleeve & AOPP gearbox */}
+      {rig.baseVerts.map((v, i) => (
+        <group key={`hub-${i}`}>
+          <mesh position={v}>
+            <sphereGeometry args={[0.044, 10, 8]} />
+            <meshStandardMaterial color="#9BA2AE" roughness={0.36} metalness={0.78} />
           </mesh>
-          <mesh position={[side * 0.92, 0.06, 0]}>
-            <coneGeometry args={[0.075, 0.16, 10]} />
-            <meshStandardMaterial color="#DDD6CA" roughness={0.45} metalness={0.4} />
+          <mesh position={rig.midVerts[i]}>
+            <sphereGeometry args={[0.032, 8, 8]} />
+            <meshStandardMaterial color="#A8AEB8" roughness={0.38} metalness={0.74} />
+          </mesh>
+          {/* Crushable honeycomb impact damper drum beneath each lower spaceframe corner */}
+          <mesh position={[v[0], v[1] - 0.14, v[2]]} castShadow>
+            <cylinderGeometry args={[0.095, 0.095, 0.14, 14]} />
+            <meshStandardMaterial color="#C8C0B0" roughness={0.58} metalness={0.35} />
+          </mesh>
+        </group>
+      ))}
+      <mesh position={rig.apex}>
+        <cylinderGeometry args={[0.068, 0.072, 0.12, 12]} />
+        <meshStandardMaterial color="#9BA2AE" roughness={0.36} metalness={0.78} />
+      </mesh>
+      <mesh position={rig.mastGuyCollar}>
+        <cylinderGeometry args={[0.056, 0.056, 0.075, 12]} />
+        <meshStandardMaterial color="#9BA2AE" roughness={0.36} metalness={0.78} />
+      </mesh>
+      <mesh position={rig.mastTop} castShadow>
+        <cylinderGeometry args={[0.065, 0.062, 0.12, 14]} />
+        <meshStandardMaterial color="#AEB4BE" roughness={0.38} metalness={0.72} />
+      </mesh>
+
+      {/* Telescoping shock absorber barrels & polished chrome piston shafts */}
+      {rig.shockBarrels.map((s, i) => (
+        <mesh
+          key={`sb-${i}`}
+          position={s.mid}
+          quaternion={s.quat}
+          scale={[s.r, s.len, s.r]}
+          geometry={UNIT_STRUT_GEO}
+          castShadow
+        >
+          <meshStandardMaterial color="#D6CFC2" roughness={0.5} metalness={0.45} />
+        </mesh>
+      ))}
+      {rig.shockPistons.map((s, i) => (
+        <mesh
+          key={`sp-${i}`}
+          position={s.mid}
+          quaternion={s.quat}
+          scale={[s.r, s.len, s.r]}
+          geometry={UNIT_STRUT_GEO}
+          castShadow
+        >
+          <meshStandardMaterial color="#A8B0BC" roughness={0.28} metalness={0.85} />
+        </mesh>
+      ))}
+
+      {/* 3 Compact Crushable Round Footpads (~0.32 m diameter) seated flush on crater regolith */}
+      {rig.padData.map((pd, i) => (
+        <group key={`pad-${i}`}>
+          {/* Ankle clevis fork */}
+          <mesh position={pd.ankle}>
+            <sphereGeometry args={[0.042, 10, 8]} />
+            <meshStandardMaterial color="#959CA8" roughness={0.38} metalness={0.76} />
+          </mesh>
+          {/* Crushable beveled round dish footpad */}
+          <mesh position={pd.padCenter} castShadow receiveShadow>
+            <cylinderGeometry args={[0.145, 0.165, 0.088, 18]} />
+            <meshStandardMaterial color="#C8C0B2" roughness={0.68} metalness={0.34} />
+          </mesh>
+          {/* Inner upper aluminum retainer ring */}
+          <mesh position={[pd.padCenter[0], pd.padCenter[1] + 0.042, pd.padCenter[2]]}>
+            <cylinderGeometry args={[0.105, 0.12, 0.018, 16]} />
+            <meshStandardMaterial color="#B5ADA0" roughness={0.55} metalness={0.52} />
           </mesh>
         </group>
       ))}
 
-      {/* Empty TV Survey Camera Mount (camera head removed by Apollo 12 astronauts in Nov 1969) */}
-      <group position={[0.18, 1.38, 0.36]} rotation={[0.12, 0.3, 0]}>
-        <mesh>
-          <cylinderGeometry args={[0.065, 0.075, 0.26, 12]} />
-          <meshStandardMaterial color="#D6CFC2" roughness={0.5} metalness={0.38} />
+      {/* Thermal Compartment A (left-front face 0-1, angled louvered thermal cover per AS12-48-7133) */}
+      <group position={[-0.25, 0.78, 0.36]} rotation={[0, 0.56, 0]}>
+        <mesh castShadow receiveShadow>
+          <boxGeometry args={[0.56, 0.38, 0.34]} />
+          <meshStandardMaterial map={boxTex} color="#E2DBD0" roughness={0.56} metalness={0.18} />
         </mesh>
-        {/* Open mounting collar ring where the camera head was detached */}
-        <mesh position={[0, 0.14, 0]} rotation={[Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[0.06, 0.012, 8, 16]} />
-          <meshStandardMaterial color="#8E95A2" roughness={0.35} metalness={0.78} />
+        {/* Pitched top thermal radiator hood */}
+        <mesh position={[0, 0.21, 0]} rotation={[0.18, 0, 0]} castShadow>
+          <boxGeometry args={[0.58, 0.055, 0.36]} />
+          <meshStandardMaterial map={boxTex} color="#E7E1D6" roughness={0.52} metalness={0.2} />
         </mesh>
       </group>
 
-      {/* Deployed Pantograph Surface Sampler Arm WITHOUT Scoop (scoop removed by Apollo 12) */}
-      <group position={[0.34, 0.72, 0.42]} rotation={[0.28, -0.35, 0]}>
-        {[0, 1, 2].map((seg) => (
-          <group key={seg} position={[0, 0, seg * 0.28]}>
-            <mesh rotation={[0.45, 0, 0]}>
-              <boxGeometry args={[0.018, 0.22, 0.018]} />
-              <meshStandardMaterial color="#B8BFC8" roughness={0.4} metalness={0.75} />
-            </mesh>
-            <mesh rotation={[-0.45, 0, 0]}>
-              <boxGeometry args={[0.018, 0.22, 0.018]} />
-              <meshStandardMaterial color="#B8BFC8" roughness={0.4} metalness={0.75} />
-            </mesh>
-          </group>
-        ))}
-        {/* Empty distal mounting bracket (no scoop attached) */}
-        <mesh position={[0, -0.02, 0.82]}>
-          <boxGeometry args={[0.04, 0.04, 0.06]} />
-          <meshStandardMaterial color="#8E96A4" roughness={0.4} metalness={0.8} />
+      {/* Thermal Compartment B (right-back face 2-0, angled companion thermal cover) */}
+      <group position={[0.42, 0.76, -0.18]} rotation={[0, -0.46, 0]}>
+        <mesh castShadow receiveShadow>
+          <boxGeometry args={[0.48, 0.35, 0.32]} />
+          <meshStandardMaterial map={boxTex} color="#DDD6CA" roughness={0.58} metalness={0.18} />
+        </mesh>
+        <mesh position={[0, 0.195, 0]} rotation={[0.16, 0, 0]} castShadow>
+          <boxGeometry args={[0.5, 0.05, 0.34]} />
+          <meshStandardMaterial map={boxTex} color="#E3DDD2" roughness={0.52} metalness={0.2} />
         </mesh>
       </group>
+
+      {/* 3 Spherical Vernier Propellant / Helium Tanks tucked inside base spaceframe */}
+      {[
+        [0.14, 0.72, 0.22],
+        [-0.24, 0.72, 0.02],
+        [0.12, 0.72, -0.24],
+      ].map(([tx, ty, tz], ti) => (
+        <mesh key={`tank-${ti}`} position={[tx, ty, tz]} castShadow>
+          <sphereGeometry args={[0.135, 14, 12]} />
+          <meshStandardMaterial color="#C8C2B8" roughness={0.34} metalness={0.76} />
+        </mesh>
+      ))}
+
+      {/* Planar High-Gain Antenna hinged directly onto left AOPP yoke arm (NO floating gap) */}
+      <group position={[-0.08, 2.8, 0.01]} rotation={[0, 0.76, 0]}>
+        <group rotation={[0, 0, 1.02]}>
+          {/* Hinge knuckle attached directly at AOPP crossbar end */}
+          <mesh rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.034, 0.034, 0.18, 10]} />
+            <meshStandardMaterial color="#9BA2AE" roughness={0.36} metalness={0.76} />
+          </mesh>
+          {/* Twin mounting arms connecting AOPP hinge to planar array board */}
+          <mesh position={[-0.24, -0.025, 0.18]}>
+            <boxGeometry args={[0.48, 0.026, 0.026]} />
+            <meshStandardMaterial color="#C8C2B6" roughness={0.45} metalness={0.62} />
+          </mesh>
+          <mesh position={[-0.24, -0.025, -0.18]}>
+            <boxGeometry args={[0.48, 0.026, 0.026]} />
+            <meshStandardMaterial color="#C8C2B6" roughness={0.45} metalness={0.62} />
+          </mesh>
+          {/* Flat perforated planar waveguide array board (0.92 × 0.90 m) */}
+          <mesh position={[-0.47, 0.005, 0]} castShadow>
+            <boxGeometry args={[0.92, 0.03, 0.9]} />
+            <meshStandardMaterial map={planarTex} color="#E4DDD0" roughness={0.5} metalness={0.28} />
+          </mesh>
+          {/* Coaxial waveguide feed box on shadowed back */}
+          <mesh position={[-0.47, -0.035, 0]}>
+            <boxGeometry args={[0.24, 0.055, 0.24]} />
+            <meshStandardMaterial color="#A8AEB8" roughness={0.42} metalness={0.68} />
+          </mesh>
+        </group>
+      </group>
+
+      {/* Flat 792-Cell Solar Panel (0.855 m²) hinged directly onto right AOPP yoke arm */}
+      <group position={[0.08, 2.84, 0.01]} rotation={[0.24, -0.32, -0.42]}>
+        {/* Hinge knuckle */}
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.034, 0.034, 0.2, 10]} />
+          <meshStandardMaterial color="#9BA2AE" roughness={0.36} metalness={0.76} />
+        </mesh>
+        {/* Yoke support rails connecting hinge directly to underside */}
+        <mesh position={[0.22, -0.022, 0.16]}>
+          <boxGeometry args={[0.44, 0.024, 0.026]} />
+          <meshStandardMaterial color="#C8C2B6" roughness={0.44} metalness={0.62} />
+        </mesh>
+        <mesh position={[0.22, -0.022, -0.16]}>
+          <boxGeometry args={[0.44, 0.024, 0.026]} />
+          <meshStandardMaterial color="#C8C2B6" roughness={0.44} metalness={0.62} />
+        </mesh>
+        {/* Top photovoltaic 792-cell panel */}
+        <mesh position={[0.48, 0.02, 0]} castShadow>
+          <boxGeometry args={[0.94, 0.02, 0.86]} />
+          <meshStandardMaterial map={solarTex} roughness={0.3} metalness={0.64} />
+        </mesh>
+        {/* Aluminum backing plate + perimeter bezel */}
+        <mesh position={[0.48, 0.004, 0]} castShadow>
+          <boxGeometry args={[0.96, 0.012, 0.88]} />
+          <meshStandardMaterial color="#D4CEC2" roughness={0.48} metalness={0.55} />
+        </mesh>
+        {/* Structural aluminum lattice backing ribs (clearly visible underside in AS12-48-7121) */}
+        {[-0.28, 0, 0.28].map((rz) => (
+          <mesh key={`ribz-${rz}`} position={[0.48, -0.012, rz]}>
+            <boxGeometry args={[0.92, 0.022, 0.024]} />
+            <meshStandardMaterial color="#C8C2B6" roughness={0.44} metalness={0.62} />
+          </mesh>
+        ))}
+        {[0.18, 0.48, 0.78].map((rx) => (
+          <mesh key={`ribx-${rx}`} position={[rx, -0.012, 0]}>
+            <boxGeometry args={[0.024, 0.022, 0.84]} />
+            <meshStandardMaterial color="#C8C2B6" roughness={0.44} metalness={0.62} />
+          </mesh>
+        ))}
+      </group>
+
+      {/* 2 Conical Omnidirectional Antennas on hinged folding booms */}
+      {rig.omniStruts.map((s, i) => (
+        <mesh
+          key={`omni-s-${i}`}
+          position={s.mid}
+          quaternion={s.quat}
+          scale={[s.r, s.len, s.r]}
+          geometry={UNIT_STRUT_GEO}
+          castShadow
+        >
+          <meshStandardMaterial color="#CCC6BA" roughness={0.46} metalness={0.58} />
+        </mesh>
+      ))}
+      {rig.omniConfigs.map((o, i) => (
+        <group key={`omni-head-${i}`}>
+          <mesh position={o.elbow}>
+            <sphereGeometry args={[0.022, 8, 6]} />
+            <meshStandardMaterial color="#9BA2AE" roughness={0.38} metalness={0.76} />
+          </mesh>
+          <mesh position={[o.tip[0], o.tip[1] + 0.055, o.tip[2]]} castShadow>
+            <coneGeometry args={[0.058, 0.13, 12]} />
+            <meshStandardMaterial color="#DDD6CA" roughness={0.45} metalness={0.42} />
+          </mesh>
+          <mesh position={[o.tip[0], o.tip[1] + 0.15, o.tip[2]]}>
+            <cylinderGeometry args={[0.005, 0.005, 0.08, 6]} />
+            <meshStandardMaterial color="#AEB4BE" roughness={0.32} metalness={0.82} />
+          </mesh>
+        </group>
+      ))}
+
+      {/* Empty TV Survey Camera Turret Mount clamped on Leg 0 tripod strut (NO camera head / mirror hood) */}
+      <mesh
+        position={rig.camBracketStrut.mid}
+        quaternion={rig.camBracketStrut.quat}
+        scale={[rig.camBracketStrut.r, rig.camBracketStrut.len, rig.camBracketStrut.r]}
+        geometry={UNIT_STRUT_GEO}
+      >
+        <meshStandardMaterial color="#B5BCC6" roughness={0.42} metalness={0.72} />
+      </mesh>
+      <group position={rig.camPedestalBase} rotation={[0.08, 0.25, -0.06]}>
+        {/* Pedestal mounting cylinder */}
+        <mesh position={[0, 0.12, 0]} castShadow>
+          <cylinderGeometry args={[0.058, 0.066, 0.24, 12]} />
+          <meshStandardMaterial color="#DBD4C8" roughness={0.5} metalness={0.36} />
+        </mesh>
+        {/* Empty open detachment collar ring */}
+        <mesh position={[0, 0.25, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.054, 0.011, 8, 16]} />
+          <meshStandardMaterial color="#8E96A2" roughness={0.35} metalness={0.78} />
+        </mesh>
+        {/* Open empty saddle yoke bracket where camera head was unbolted by Pete Conrad */}
+        <mesh position={[-0.045, 0.29, 0]} rotation={[0, 0, 0.15]}>
+          <boxGeometry args={[0.016, 0.09, 0.04]} />
+          <meshStandardMaterial color="#A8AEB8" roughness={0.4} metalness={0.72} />
+        </mesh>
+        <mesh position={[0.045, 0.29, 0]} rotation={[0, 0, -0.15]}>
+          <boxGeometry args={[0.016, 0.09, 0.04]} />
+          <meshStandardMaterial color="#A8AEB8" roughness={0.4} metalness={0.72} />
+        </mesh>
+      </group>
+
+      {/* Deployed 5-Bay Pin-Jointed Pantograph Surface Sampler Arm WITHOUT Scoop (scoop removed by Apollo 12) */}
+      <group position={rig.pOrigin}>
+        <mesh castShadow>
+          <boxGeometry args={[0.09, 0.14, 0.09]} />
+          <meshStandardMaterial color="#B8BFC8" roughness={0.42} metalness={0.7} />
+        </mesh>
+      </group>
+      {rig.pantoStruts.map((s, i) => (
+        <mesh
+          key={`panto-s-${i}`}
+          position={s.mid}
+          quaternion={s.quat}
+          scale={[s.r, s.len, s.r]}
+          geometry={UNIT_STRUT_GEO}
+          castShadow
+        >
+          <meshStandardMaterial color="#C8CED8" roughness={0.38} metalness={0.76} />
+        </mesh>
+      ))}
+      {rig.pantoPins.map((p, i) => (
+        <mesh key={`pin-${i}`} position={p}>
+          <sphereGeometry args={[0.014, 6, 6]} />
+          <meshStandardMaterial color="#8E96A4" roughness={0.35} metalness={0.82} />
+        </mesh>
+      ))}
+      {/* Empty distal mounting bracket at sampler arm tip (no scoop) */}
+      <mesh position={rig.pTip}>
+        <boxGeometry args={[0.036, 0.048, 0.056]} />
+        <meshStandardMaterial color="#8E96A4" roughness={0.38} metalness={0.82} />
+      </mesh>
     </group>
   );
 }

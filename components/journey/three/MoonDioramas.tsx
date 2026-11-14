@@ -233,9 +233,25 @@ export function HallOneLunarDiorama({
         : slug === "moon-apollo-15-lrv"
           ? 303
           : 404;
-  const rockClear = slug === "moon-apollo-11" || slug === "moon-apollo-17" ? 4.4 : 1.75;
+  const rockClear =
+    slug === "moon-apollo-11" || slug === "moon-apollo-17"
+      ? 4.4
+      : slug === "moon-surveyor-3"
+        ? 2.2
+        : 1.75;
 
   // Surface heights for distant Apollo 12 & Apollo 15 LM silhouettes on crater rim / rille shoulder
+  const surveyorBootY = useMemo(
+    () =>
+      slug === "moon-surveyor-3"
+        ? DIORAMA_SURFACE_Y + getMoonTerrainHeight("moon-surveyor-3", -0.45, 1.75) + 0.018
+        : 0,
+    [slug],
+  );
+  const surveyorHeightFn = useMemo(
+    () => (lx: number, lz: number) => getMoonTerrainHeight("moon-surveyor-3", lx, lz),
+    [],
+  );
   const apollo12LmY = useMemo(
     () =>
       slug === "moon-surveyor-3"
@@ -326,16 +342,16 @@ export function HallOneLunarDiorama({
       {/* ─── Beat 9: Surveyor 3 (~3.0 m tall) · Ocean of Storms Inner Crater Slope (untouched except Apollo 12 bootpath) ─── */}
       {slug === "moon-surveyor-3" && (
         <group>
-          <group position={[0, DIORAMA_SURFACE_Y, 0]} rotation={[0.1, 0.28, -0.08]}>
-            <Surveyor3Model scale={0.92} />
+          <group position={[0, DIORAMA_SURFACE_Y, 0]}>
+            <Surveyor3Model scale={0.94} groundHeightFn={surveyorHeightFn} />
           </group>
           <DistantApolloLmSilhouette
             position={[4.6, apollo12LmY + 0.05, -15.5]}
             scale={0.34}
           />
           <mesh
-            position={[-0.65, DIORAMA_SURFACE_Y + 0.025, 1.35]}
-            rotation={[-Math.PI / 2 + 0.09, 0, 0.42]}
+            position={[-0.45, surveyorBootY, 1.75]}
+            rotation={[-Math.PI / 2 + 0.085, 0.07, 0.42]}
             receiveShadow
           >
             <planeGeometry args={[2.6, 0.9]} />
