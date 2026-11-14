@@ -104,7 +104,7 @@ export const BEAT_POSES: BeatPose[] = [
   },
   // 9: moon-surveyor-3 (SM-L-002) — Ocean of Storms crater slope (3.0 m Surveyor + distant Apollo 12 LM on rim)
   {
-    camPos: [-7.1, 344.75, -170.0],
+    camPos: [-7.1, 344.55, -170.2],
     camLook: [-9.75, 343.62, -176.0],
     rocketPos: [-22, 356, -188],
     rocketRot: [-0.2, 0.9, 0.1],

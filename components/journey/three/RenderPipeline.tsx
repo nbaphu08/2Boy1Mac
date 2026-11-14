@@ -11,7 +11,7 @@ import {
   SMAA,
   ToneMapping,
 } from "@react-three/postprocessing";
-import { type DepthOfFieldEffect, ToneMappingMode } from "postprocessing";
+import { type BloomEffect, type DepthOfFieldEffect, ToneMappingMode } from "postprocessing";
 import * as THREE from "three";
 import { scrollState, smoothstep } from "@/lib/scroll/progress";
 import { usePerfBudget } from "./perfTier";
@@ -46,19 +46,19 @@ export function HallEnvironment() {
   if (hall === "moon") {
     // Hard single white solar key + pitch-black lunar sky + minimal regolith underside bounce
     return (
-      <Environment key="moon" resolution={128} frames={1} environmentIntensity={0.14}>
+      <Environment key="moon" resolution={128} frames={1} environmentIntensity={0.09}>
         <color attach="background" args={["#000000"]} />
         <Lightformer
           form="circle"
-          intensity={9.0}
+          intensity={6.5}
           color="#FFFDF5"
           position={[18, 6, 8]}
-          scale={[4.5, 4.5, 1]}
+          scale={[4.0, 4.0, 1]}
           target={[0, 0, 0]}
         />
         <Lightformer
           form="rect"
-          intensity={0.12}
+          intensity={0.08}
           color="#7A746C"
           position={[0, -12, 0]}
           rotation={[-Math.PI / 2, 0, 0]}
@@ -199,6 +199,7 @@ export function HallEnvironment() {
 export function PostEffects() {
   const budget = usePerfBudget();
   const dofRef = useRef<DepthOfFieldEffect>(null);
+  const bloomRef = useRef<BloomEffect>(null);
   const trajTmp = useMemo(
     () => ({
       camPos: new THREE.Vector3(),
@@ -211,8 +212,15 @@ export function PostEffects() {
   );
 
   useFrame((_, delta) => {
-    if (budget.tier !== "high" || !dofRef.current) return;
     const p = scrollState.current;
+    // Moon Apollo optics & airless vacuum: mute bloom haze on lunar surface beats 8..12 (AG-12b)
+    if (bloomRef.current) {
+      const inMoon = smoothstep(7.55, 7.9, p) * (1 - smoothstep(12.1, 12.5, p));
+      const baseBloom = budget.tier === "medium" ? 0.44 : 0.58;
+      bloomRef.current.intensity = THREE.MathUtils.lerp(baseBloom, 0.02, inMoon);
+    }
+
+    if (budget.tier !== "high" || !dofRef.current) return;
     // Moon Apollo Hasselblad optics keep distant Mount Hadley / massifs razor-sharp (AG-12)
     const inMars = smoothstep(13.65, 14.0, p) * (1 - smoothstep(20.05, 20.45, p));
     const isResting = 1 - smoothstep(0.08, 0.45, Math.abs(scrollState.velocity));
@@ -250,6 +258,7 @@ export function PostEffects() {
           color="#03050A"
         />
         <Bloom
+          ref={bloomRef}
           mipmapBlur
           luminanceThreshold={1.08}
           luminanceSmoothing={0.22}
@@ -282,6 +291,7 @@ export function PostEffects() {
         resolutionScale={0.5}
       />
       <Bloom
+        ref={bloomRef}
         mipmapBlur
         luminanceThreshold={1.08}
         luminanceSmoothing={0.22}
