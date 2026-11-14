@@ -5,7 +5,7 @@ import { useFrame } from "@react-three/fiber";
 import { Line, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import { scrollState, smoothstep } from "@/lib/scroll/progress";
-import { EXHIBIT_PLINTH_ANCHORS, WORLD_ANCHORS } from "./trajectory";
+import { EXHIBIT_PLINTH_ANCHORS, WORLD_ANCHORS, sampleTrajectory } from "./trajectory";
 
 /** Fresnel atmosphere / rim glow shader for Earth, Moon & Mars limbs. */
 function AtmosphereRim({
@@ -212,13 +212,24 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
   const lunarApproachArcRef = useRef<THREE.Group>(null);
   const transitArcRef = useRef<THREE.Group>(null);
 
+  const trajTmp = useMemo(
+    () => ({
+      camPos: new THREE.Vector3(),
+      camLook: new THREE.Vector3(),
+      rocketPos: new THREE.Vector3(),
+      rocketRot: new THREE.Euler(),
+      rocketScale: 1,
+    }),
+    [],
+  );
+
   // Trans-Lunar Injection -> Sea of Tranquility approach trajectory (beats 6.4 -> 8.6)
   const lunarApproachPoints = useMemo(() => {
     const apolloPos = EXHIBIT_PLINTH_ANCHORS["moon-apollo-11"].pos;
     const curve = new THREE.CatmullRomCurve3([
       new THREE.Vector3(16, 248, -52),
       new THREE.Vector3(6, 298, -124),
-      new THREE.Vector3(-8, 344, -172),
+      new THREE.Vector3(-4, 326, -158),
       new THREE.Vector3(apolloPos[0], apolloPos[1] + 0.6, apolloPos[2]),
     ]);
     return curve.getPoints(56);
@@ -227,9 +238,9 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
   // Moon -> Mars Hohmann transfer arc (beat 13)
   const transitPoints = useMemo(() => {
     const curve = new THREE.QuadraticBezierCurve3(
-      new THREE.Vector3(-4, 358, -225),
-      new THREE.Vector3(24, 425, -305),
-      new THREE.Vector3(-6, 475, -395),
+      new THREE.Vector3(-4, 372, -196),
+      new THREE.Vector3(24, 425, -295),
+      new THREE.Vector3(4, 472, -366),
     );
     return curve.getPoints(48);
   }, []);
@@ -239,27 +250,57 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
     const spin = reducedMotion ? 0 : delta * 0.014;
 
     if (earthRef.current) {
-      earthRef.current.visible = p > 2.3 && p < 9.2;
+      earthRef.current.visible = p > 2.3 && p < 7.8;
       earthRef.current.rotation.y += spin * 0.55;
     }
+
     if (lunarSkyEarthRef.current) {
-      // Near-side lunar sites (Apollo 11, Surveyor 3/Apollo 12, Apollo 15, Apollo 17) see Earth in the sky; GRAIL polar site (beat 12) does not
-      lunarSkyEarthRef.current.visible = p > 7.5 && p < 11.45;
-      lunarSkyEarthRef.current.rotation.y += spin * 0.4;
+      // Near-side lunar sites (beats 8..11: Apollo 11, Surveyor 3, Apollo 15, Apollo 17) see Earth hanging in the black lunar sky;
+      // GRAIL polar impact site (beat 12) does not (AG-1b #2).
+      const skyVis = smoothstep(7.45, 7.8, p) * (1 - smoothstep(11.2, 11.55, p));
+      lunarSkyEarthRef.current.visible = skyVis > 0.02;
+      if (lunarSkyEarthRef.current.visible) {
+        sampleTrajectory(p, trajTmp);
+        lunarSkyEarthRef.current.position.set(
+          trajTmp.camLook.x - 11.8,
+          trajTmp.camLook.y + 1.4,
+          trajTmp.camLook.z - 15.0,
+        );
+        lunarSkyEarthRef.current.scale.setScalar(skyVis);
+        lunarSkyEarthRef.current.rotation.y += spin * 0.4;
+      }
     }
+
     if (moonRef.current) {
-      moonRef.current.visible = p > 4.8 && p < 16.0;
-      moonRef.current.rotation.y += spin * 0.35;
+      // Visible during orbital approach (beat 7) and departure (beat 13), hidden while on the lunar surface (beats 8..12) so the sky is black with stars (AG-1b #2)
+      const approachVis = smoothstep(4.8, 5.8, p) * (1 - smoothstep(7.2, 7.62, p));
+      const departVis = smoothstep(12.38, 12.75, p) * (1 - smoothstep(13.8, 15.0, p));
+      const moonVis = Math.max(approachVis, departVis);
+      moonRef.current.visible = moonVis > 0.02;
+      if (moonRef.current.visible) {
+        moonRef.current.scale.setScalar(0.35 + 0.65 * moonVis);
+        moonRef.current.rotation.y += spin * 0.35;
+      }
     }
+
     if (lunarApproachArcRef.current) {
-      lunarApproachArcRef.current.visible = p > 6.2 && p < 8.7;
+      lunarApproachArcRef.current.visible = p > 6.2 && p < 7.75;
     }
+
     if (marsRef.current) {
-      marsRef.current.visible = p > 11.2 && p < 22.8;
-      marsRef.current.rotation.y += spin * 0.65;
+      // Visible during Mars orbital approach (beat 13) and departure (beat 21), hidden while on the Martian surface dioramas (beats 14..20)
+      const approachVis = smoothstep(11.5, 12.6, p) * (1 - smoothstep(13.25, 13.68, p));
+      const departVis = smoothstep(20.35, 20.75, p) * (1 - smoothstep(21.6, 22.4, p));
+      const marsVis = Math.max(approachVis, departVis);
+      marsRef.current.visible = marsVis > 0.02;
+      if (marsRef.current.visible) {
+        marsRef.current.scale.setScalar(0.35 + 0.65 * marsVis);
+        marsRef.current.rotation.y += spin * 0.65;
+      }
     }
+
     if (transitArcRef.current) {
-      transitArcRef.current.visible = p > 12.1 && p < 14.2;
+      transitArcRef.current.visible = p > 12.2 && p < 13.75;
     }
     if (finaleRef.current) {
       finaleRef.current.visible = p > 21.5;
@@ -280,7 +321,7 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
         <AtmosphereRim radius={WORLD_ANCHORS.earthRadius * 1.026} color="#6AA8FF" intensity={0.92} power={3.3} />
       </group>
 
-      {/* ─── TRANS-LUNAR INJECTION & SEA OF TRANQUILITY DESCENT ARC (beats 6.5..8.5) ─── */}
+      {/* ─── TRANS-LUNAR INJECTION & SEA OF TRANQUILITY DESCENT ARC (beats 6.5..7.7) ─── */}
       <group ref={lunarApproachArcRef} visible={false}>
         <Line
           points={lunarApproachPoints}
@@ -295,12 +336,19 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
       </group>
 
       {/* ─── DISTANT EARTH IN THE LUNAR SKY (Near-side Hall I sites only: beats 8..11, hidden at polar beat 12) ─── */}
-      <group ref={lunarSkyEarthRef} position={[-16, 360, -236]} rotation={[0.2, -2.1, 0.1]} visible={false}>
+      <group ref={lunarSkyEarthRef} rotation={[0.2, -2.1, 0.1]} visible={false}>
         <mesh>
-          <sphereGeometry args={[2.1, 32, 24]} />
-          <meshStandardMaterial map={earthTex} roughness={0.65} metalness={0.1} />
+          <sphereGeometry args={[1.35, 32, 24]} />
+          <meshStandardMaterial
+            map={earthTex}
+            emissiveMap={earthTex}
+            emissive="#7EB0FF"
+            emissiveIntensity={0.62}
+            roughness={0.6}
+            metalness={0.1}
+          />
         </mesh>
-        <AtmosphereRim radius={2.1 * 1.04} color="#6AA8FF" intensity={0.85} power={3.0} />
+        <AtmosphereRim radius={1.35 * 1.055} color="#6AA8FF" intensity={0.95} power={2.8} />
       </group>
 
       {/* ─── 3D MOON (Hall I — beats 7..13) ─── */}

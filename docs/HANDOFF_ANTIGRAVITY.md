@@ -52,3 +52,23 @@ See `GEMINI.md` §1–2 (architecture). Merged to `main` in commit a5633df.
 **Requests for Sonnet:**
 - None required — clicking any 3D exhibit plinth or diorama continues to invoke `openExhibit(slug)` as before.
 
+## AG-1b — Hall I Fixes after Opus Review — 14/11 — branch `ag/1b-hall-i-fixes`
+**Done:**
+1. **Fixed Apollo 17 beat (`#moon-apollo-17`) & plinth spacing (`trajectory.ts`)**: `moon-apollo-17` was previously at `dist = 20.64 m` from `moonCenter` (`moonRadius = 24 m`), placing it 3.36 m inside the Moon sphere. Moved all 5 Moon plinths (`z = -172 .. -188`) and 7 Mars plinths (`z = -368 .. -386`) cleanly outside their planet spheres with consistent camera framing (`camPos = anchor + [2.8, 2.15, 6.8]`, `camLook = anchor + [-0.65, 0.72, 0]`) and tightened `SingleExhibitPlinth` visibility (`smoothstep(0.42, 0.78, dist)`) so neighbouring plinths never enter the frame.
+2. **Black starry sky + visible Earth on near-side beats 8–11 (`CelestialWorlds.tsx`)**: Smoothly hides the giant orbital Moon globe (`moonRef`) while resting on surface beats 8–12 (`7.62 <= p <= 12.38`), leaving pure black starry sky. Positioned `lunarSkyEarthRef` dynamically relative to `traj.camLook + [-11.8, 1.4, -15.0]` (`ndcX ≈ -0.24, ndcY ≈ +0.48`) with `emissiveMap` day-side illumination + `#6AA8FF` `AtmosphereRim` for near-side beats 8–11 (`Apollo 11`, `Surveyor 3`, `Apollo 15`, `Apollo 17`), and hidden on beat 12 (`GRAIL` polar site).
+3. **Eliminated dark-navy blob artifacts (`MoonDioramas.tsx`)**: Recessed the solid `#181C26` plinth cylinder floor `-0.22 m` below `DIORAMA_SURFACE_Y` (`y = -0.22`) with an open-ended cylindrical outer wall (`cylinderGeometry(..., true)`) so negative-height craters/undulations never poke through the base cylinder top. Replaced large shadow planes with subtle contact shadows (`opacity = 0.42..0.45`) directly under artifacts.
+4. **Clean Apollo 11 & 17 LM top cut (`ExhibitStage3D.tsx`, `MoonModels.tsx`, `MoonDioramas.tsx`)**: Hid all Ascent Stage meshes (`child.position.y > 1.85` in GLB space, including the `group31 17/18/g1/gr` dark-navy thermal skirts) at the node level and capped both `SM-L-001` and `SM-L-004` at `y = 0.765` with `<ClippedLmTopCap />` (flat octagonal dark-anodized deck + gold Kapton rim + cross-ribs, zero stray triangles).
+5. **LRV grey/silver fenders & tubular webbing seats (`MoonModels.tsx`)**: Changed LRV fenders to metallic dusty grey/silver (`#9E9F9C`, metalness `0.64`) and rebuilt both folding seats as open tubular aluminum frames (`#CFD6E2`) with 5 horizontal nylon webbing straps (`#8E8B82`) and visible gaps.
+6. **Genuinely translucent GRAIL ghost holograms (`MoonModels.tsx`)**: Switched `SingleGrailGhostCraft` to low-opacity `#4A6FA5` fill (`opacity: 0.045..0.055`) + `#9DB8FF` starlight wireframe (`opacity: 0.24..0.28`, `toneMapped={false}`) so the two dark-ejecta craters remain the visual focus.
+7. **Sculpted 3D lunar massifs (`MoonDioramas.tsx`)**: Replaced flat low-poly cones on `SM-L-003`, `SM-L-004`, and `SM-L-005` with `<SculptedLunarMassif />` (`36×18` multi-octave displaced highland ridges).
+
+**Files changed:**
+- `components/journey/three/trajectory.ts`, `CelestialWorlds.tsx`, `ExhibitStage3D.tsx`, `MoonDioramas.tsx`, `MoonModels.tsx`
+
+**New APIs/components:**
+- `ClippedLmTopCap` (`MoonModels.tsx`), `SculptedLunarMassif` (`MoonDioramas.tsx`)
+
+**Screenshots:**
+- Sandbox cannot attach to headless Chrome (`127.0.0.1:9222`); ready for Opus re-shoot of `docs/antigravity/shots/AG-1b-<slug>.png`.
+
+

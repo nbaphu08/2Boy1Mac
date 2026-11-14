@@ -284,6 +284,47 @@ export function DistantApolloLmSilhouette({
 }
 
 /**
+ * Clean flat octagonal interstage deck cap + gold Kapton foil rim for the clipped Apollo LM
+ * descent stage (shared by SM-L-001 Apollo 11 Eagle and SM-L-004 Apollo 17 Challenger).
+ */
+export function ClippedLmTopCap({ baseY }: { baseY: number }) {
+  return (
+    <group position={[0, baseY + 0.765, 0]}>
+      {/* Outer gold Kapton octagonal collar rim */}
+      <mesh rotation={[0, Math.PI / 8, 0]}>
+        <cylinderGeometry args={[0.86, 0.88, 0.045, 8]} />
+        <meshStandardMaterial color="#C88A2E" roughness={0.38} metalness={0.76} />
+      </mesh>
+      {/* Flat dark-anodized octagonal interstage structural deck cap */}
+      <mesh position={[0, 0.024, 0]} rotation={[0, Math.PI / 8, 0]}>
+        <cylinderGeometry args={[0.82, 0.82, 0.014, 8]} />
+        <meshStandardMaterial color="#1D222B" roughness={0.58} metalness={0.68} />
+      </mesh>
+      {/* Central ascent-engine blast deflector depression & structural cross-ribs */}
+      <mesh position={[0, 0.033, 0]}>
+        <cylinderGeometry args={[0.32, 0.32, 0.008, 16]} />
+        <meshStandardMaterial color="#12151C" roughness={0.7} metalness={0.5} />
+      </mesh>
+      <mesh position={[0, 0.034, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.31, 0.36, 16]} />
+        <meshStandardMaterial color="#9CA3B0" roughness={0.42} metalness={0.78} />
+      </mesh>
+      {[0, Math.PI / 4, Math.PI / 2, (3 * Math.PI) / 4].map((rot, idx) => (
+        <mesh key={idx} position={[0, 0.032, 0]} rotation={[0, rot, 0]}>
+          <boxGeometry args={[1.56, 0.01, 0.028]} />
+          <meshStandardMaterial color="#6C7380" roughness={0.45} metalness={0.75} />
+        </mesh>
+      ))}
+      {/* Conical descent engine bell underneath center bay */}
+      <mesh position={[0, -0.54, 0]}>
+        <cylinderGeometry args={[0.21, 0.33, 0.3, 16, 1, true]} />
+        <meshStandardMaterial color="#2A2F3A" roughness={0.5} metalness={0.8} side={THREE.DoubleSide} />
+      </mesh>
+    </group>
+  );
+}
+
+/**
  * Apollo 11 (SM-L-001) specific props per REF_MOON.md:
  * 1. Top octagonal interstage deck cap + Kapton foil accents on the clipped LM Eagle descent stage
  * 2. Forward leg egress platform + 9-rung ladder + commemorative plaque plate behind the ladder (no text)
@@ -303,21 +344,7 @@ export function Apollo11SiteProps({ baseY }: { baseY: number }) {
   return (
     <group position={[0, baseY, 0]}>
       {/* 1. Clipped LM Descent Stage Top-Deck Structural Cap & Gold Kapton Thermal Foil Rim */}
-      <group position={[0, 1.05, 0]}>
-        <mesh rotation={[-Math.PI / 2, Math.PI / 8, 0]}>
-          <ringGeometry args={[0.25, 0.96, 8]} />
-          <meshStandardMaterial color="#242934" roughness={0.55} metalness={0.72} />
-        </mesh>
-        <mesh position={[0, -0.02, 0]}>
-          <cylinderGeometry args={[0.92, 0.92, 0.05, 8]} />
-          <meshStandardMaterial color="#C88A2E" roughness={0.38} metalness={0.78} />
-        </mesh>
-        {/* Conical descent engine skirt underneath center bay */}
-        <mesh position={[0, -0.78, 0]}>
-          <cylinderGeometry args={[0.22, 0.34, 0.32, 16, 1, true]} />
-          <meshStandardMaterial color="#2A2F3A" roughness={0.5} metalness={0.8} side={THREE.DoubleSide} />
-        </mesh>
-      </group>
+      <ClippedLmTopCap baseY={0} />
 
       {/* 2. Forward Leg Egress Platform, 9-Rung Ladder & Commemorative Plaque Plate */}
       <group position={[0, 0, 0.95]}>
@@ -653,27 +680,69 @@ export function LunarRovingVehicleModel({ scale = 0.72 }: { scale?: number }) {
             <sphereGeometry args={[0.11, 12, 10]} />
             <meshStandardMaterial color="#B8BFC8" roughness={0.42} metalness={0.7} />
           </mesh>
-          {/* Curved copper-tan fiberglass dust guard (fender) above wheel */}
+          {/* Curved grey/silver metallic dust guard (fender) above wheel (AG-1b #5) */}
           <mesh position={[0, 0.06, 0]} rotation={[0.25, Math.PI / 2, 0]}>
-            <torusGeometry args={[0.44, 0.09, 6, 12, Math.PI * 0.72]} />
-            <meshStandardMaterial color="#B86B43" roughness={0.52} metalness={0.35} />
+            <torusGeometry args={[0.44, 0.082, 6, 14, Math.PI * 0.72]} />
+            <meshStandardMaterial color="#9E9F9C" roughness={0.44} metalness={0.64} />
           </mesh>
         </group>
       ))}
 
-      {/* 2 Side-by-Side Folding Tubular Aluminum Seats + Nylon Webbing */}
+      {/* 2 Side-by-Side Folding Tubular Aluminum Seats + Open Nylon Webbing Straps (AG-1b #5) */}
       {[-0.3, 0.3].map((sx, si) => (
         <group key={si} position={[sx, 0.44, -0.1]}>
-          {/* Seat bottom pan */}
-          <mesh position={[0, 0.04, 0.12]}>
-            <boxGeometry args={[0.42, 0.03, 0.42]} />
-            <meshStandardMaterial color="#D8D4C8" roughness={0.65} metalness={0.2} />
-          </mesh>
-          {/* Seat backrest frame & nylon webbing */}
-          <mesh position={[0, 0.32, -0.08]} rotation={[-0.14, 0, 0]}>
-            <boxGeometry args={[0.42, 0.54, 0.03]} />
-            <meshStandardMaterial color="#DCD8CC" roughness={0.65} metalness={0.22} />
-          </mesh>
+          {/* Seat bottom left/right tubular rails */}
+          {[-0.19, 0.19].map((tx, ti) => (
+            <mesh key={`sr-${ti}`} position={[tx, 0.04, 0.12]} rotation={[Math.PI / 2, 0, 0]}>
+              <cylinderGeometry args={[0.012, 0.012, 0.42, 8]} />
+              <meshStandardMaterial color="#CFD6E2" roughness={0.35} metalness={0.82} />
+            </mesh>
+          ))}
+          {/* Seat bottom front/rear crossbars */}
+          {[-0.08, 0.32].map((tz, ti) => (
+            <mesh key={`sc-${ti}`} position={[0, 0.04, tz]} rotation={[0, 0, Math.PI / 2]}>
+              <cylinderGeometry args={[0.012, 0.012, 0.38, 8]} />
+              <meshStandardMaterial color="#CFD6E2" roughness={0.35} metalness={0.82} />
+            </mesh>
+          ))}
+          {/* Seat bottom 5 nylon webbing straps with open gaps */}
+          {[-0.03, 0.045, 0.12, 0.195, 0.27].map((wz, wi) => (
+            <mesh key={`sw-${wi}`} position={[0, 0.042, wz]}>
+              <boxGeometry args={[0.36, 0.008, 0.048]} />
+              <meshStandardMaterial color="#8E8B82" roughness={0.82} metalness={0.08} />
+            </mesh>
+          ))}
+
+          {/* Backrest tubular frame + 5 horizontal nylon webbing straps with open gaps */}
+          <group position={[0, 0.31, -0.09]} rotation={[-0.14, 0, 0]}>
+            {[-0.19, 0.19].map((tx, ti) => (
+              <mesh key={`br-${ti}`} position={[tx, 0, 0]}>
+                <cylinderGeometry args={[0.012, 0.012, 0.54, 8]} />
+                <meshStandardMaterial color="#CFD6E2" roughness={0.35} metalness={0.82} />
+              </mesh>
+            ))}
+            {[-0.26, 0.26].map((ty, ti) => (
+              <mesh key={`bc-${ti}`} position={[0, ty, 0]} rotation={[0, 0, Math.PI / 2]}>
+                <cylinderGeometry args={[0.012, 0.012, 0.38, 8]} />
+                <meshStandardMaterial color="#CFD6E2" roughness={0.35} metalness={0.82} />
+              </mesh>
+            ))}
+            {[-0.19, -0.095, 0, 0.095, 0.19].map((wy, wi) => (
+              <mesh key={`bw-${wi}`} position={[0, wy, 0]}>
+                <boxGeometry args={[0.36, 0.052, 0.008]} />
+                <meshStandardMaterial color="#8E8B82" roughness={0.82} metalness={0.08} />
+              </mesh>
+            ))}
+          </group>
+
+          {/* Tubular side armrests */}
+          {[-0.19, 0.19].map((ax, ai) => (
+            <mesh key={`arm-${ai}`} position={[ax, 0.18, 0.08]} rotation={[Math.PI / 2, 0, 0]}>
+              <cylinderGeometry args={[0.01, 0.01, 0.32, 6]} />
+              <meshStandardMaterial color="#C8D0DC" roughness={0.38} metalness={0.78} />
+            </mesh>
+          ))}
+
           {/* Footrest pan ahead of seat */}
           <mesh position={[0, 0.03, 0.68]} rotation={[0.45, 0, 0]}>
             <boxGeometry args={[0.32, 0.02, 0.22]} />
@@ -788,38 +857,39 @@ function SingleGrailGhostCraft({
 }) {
   return (
     <group position={position} rotation={rotation} scale={scale}>
-      {/* Box bus (0.95 m wide × 1.09 m high × 0.76 m deep) — translucent hologram body + wireframe */}
+      {/* Box bus (0.95 m wide × 1.09 m high × 0.76 m deep) — faint translucent fill + starlight #9DB8FF wireframe (AG-1b #6) */}
       <mesh>
         <boxGeometry args={[0.95, 1.09, 0.76]} />
         <meshBasicMaterial
-          color="#9DB8FF"
+          color="#4A6FA5"
           transparent
-          opacity={0.22}
-          blending={THREE.AdditiveBlending}
+          opacity={0.055}
           depthWrite={false}
+          toneMapped={false}
         />
       </mesh>
       <mesh>
         <boxGeometry args={[0.96, 1.1, 0.77]} />
         <meshBasicMaterial
-          color="#DCE6FF"
+          color="#9DB8FF"
           wireframe
           transparent
-          opacity={0.58}
-          blending={THREE.AdditiveBlending}
+          opacity={0.28}
           depthWrite={false}
+          toneMapped={false}
         />
       </mesh>
 
       {/* Ka-band inter-spacecraft ranging horn assembly on front face */}
       <mesh position={[0, 0.05, 0.44]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[0.11, 0.16, 0.18, 12]} />
+        <cylinderGeometry args={[0.11, 0.16, 0.18, 10]} />
         <meshBasicMaterial
-          color="#DCE6FF"
+          color="#9DB8FF"
+          wireframe
           transparent
-          opacity={0.42}
-          blending={THREE.AdditiveBlending}
+          opacity={0.26}
           depthWrite={false}
+          toneMapped={false}
         />
       </mesh>
 
@@ -829,22 +899,22 @@ function SingleGrailGhostCraft({
           <mesh>
             <boxGeometry args={[1.22, 1.04, 0.025]} />
             <meshBasicMaterial
-              color="#7DA8FF"
+              color="#4A6FA5"
               transparent
-              opacity={0.2}
-              blending={THREE.AdditiveBlending}
+              opacity={0.045}
               depthWrite={false}
+              toneMapped={false}
             />
           </mesh>
           <mesh>
             <boxGeometry args={[1.23, 1.05, 0.03]} />
             <meshBasicMaterial
-              color="#B8D0FF"
+              color="#9DB8FF"
               wireframe
               transparent
-              opacity={0.52}
-              blending={THREE.AdditiveBlending}
+              opacity={0.24}
               depthWrite={false}
+              toneMapped={false}
             />
           </mesh>
         </group>
@@ -858,58 +928,58 @@ export function GrailTwinHolograms({ reducedMotion }: { reducedMotion: boolean }
 
   useFrame(({ clock }) => {
     if (!groupRef.current || reducedMotion) return;
-    groupRef.current.position.y = Math.sin(clock.elapsedTime * 1.4) * 0.06;
+    groupRef.current.position.y = Math.sin(clock.elapsedTime * 1.4) * 0.05;
   });
 
   return (
     <group ref={groupRef}>
       {/* GRAIL-A (Ebb) ghost hologram hovering above Crater A */}
       <SingleGrailGhostCraft
-        position={[-0.95, 1.55, 0.35]}
+        position={[-0.95, 1.52, 0.35]}
         rotation={[0.28, 0.32, -0.12]}
-        scale={0.58}
+        scale={0.56}
       />
       {/* Faint descent trajectory ray from Ebb into Crater A */}
-      <mesh position={[-0.95, 0.88, 0.35]}>
-        <cylinderGeometry args={[0.01, 0.18, 1.15, 12, 1, true]} />
+      <mesh position={[-0.95, 0.86, 0.35]}>
+        <cylinderGeometry args={[0.008, 0.14, 1.12, 10, 1, true]} />
         <meshBasicMaterial
           color="#9DB8FF"
           transparent
-          opacity={0.18}
-          blending={THREE.AdditiveBlending}
+          opacity={0.09}
           depthWrite={false}
+          toneMapped={false}
           side={THREE.DoubleSide}
         />
       </mesh>
 
       {/* GRAIL-B (Flow) ghost hologram flying behind Ebb above Crater B */}
       <SingleGrailGhostCraft
-        position={[1.05, 1.82, -0.32]}
+        position={[1.05, 1.78, -0.32]}
         rotation={[0.28, 0.32, -0.08]}
-        scale={0.58}
+        scale={0.56}
       />
       {/* Faint descent trajectory ray from Flow into Crater B */}
-      <mesh position={[1.05, 1.12, -0.32]}>
-        <cylinderGeometry args={[0.01, 0.18, 1.25, 12, 1, true]} />
+      <mesh position={[1.05, 1.1, -0.32]}>
+        <cylinderGeometry args={[0.008, 0.14, 1.22, 10, 1, true]} />
         <meshBasicMaterial
           color="#9DB8FF"
           transparent
-          opacity={0.18}
-          blending={THREE.AdditiveBlending}
+          opacity={0.09}
           depthWrite={false}
+          toneMapped={false}
           side={THREE.DoubleSide}
         />
       </mesh>
 
       {/* Inter-spacecraft Ka-band gravity-mapping link line between Ebb & Flow */}
-      <mesh position={[0.05, 1.68, 0.01]} rotation={[0.14, 0.3, -1.44]}>
-        <cylinderGeometry args={[0.008, 0.008, 2.08, 6]} />
+      <mesh position={[0.05, 1.65, 0.01]} rotation={[0.14, 0.3, -1.44]}>
+        <cylinderGeometry args={[0.006, 0.006, 2.08, 6]} />
         <meshBasicMaterial
-          color="#DCE6FF"
+          color="#9DB8FF"
           transparent
-          opacity={0.38}
-          blending={THREE.AdditiveBlending}
+          opacity={0.22}
           depthWrite={false}
+          toneMapped={false}
         />
       </mesh>
     </group>

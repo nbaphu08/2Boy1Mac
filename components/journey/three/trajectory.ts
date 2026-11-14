@@ -96,43 +96,43 @@ export const BEAT_POSES: BeatPose[] = [
   },
   // 8: moon-apollo-11 (SM-L-001) — Descending to Sea of Tranquility diorama (Eagle descent stage, EASEP, LRRR + green laser)
   {
-    camPos: [8.6, 343.1, -180.6],
-    camLook: [4.8, 341.2, -187.4],
-    rocketPos: [-12, 355, -186],
+    camPos: [8.3, 336.75, -165.2],
+    camLook: [4.85, 335.32, -172.0],
+    rocketPos: [-18, 352, -182],
     rocketRot: [-0.3, 0.8, 0.15],
-    rocketScale: 0.45,
+    rocketScale: 0.42,
   },
   // 9: moon-surveyor-3 (SM-L-002) — Ocean of Storms crater slope + distant Apollo 12 LM on rim
   {
-    camPos: [-5.1, 337.2, -182.3],
-    camLook: [-1.8, 335.4, -189.2],
-    rocketPos: [-16, 352, -192],
+    camPos: [-6.7, 344.75, -169.2],
+    camLook: [-10.15, 343.32, -176.0],
+    rocketPos: [-22, 356, -188],
     rocketRot: [-0.2, 0.9, 0.1],
-    rocketScale: 0.42,
+    rocketScale: 0.4,
   },
   // 10: moon-apollo-15-lrv (SM-L-003) — Hadley–Apennine plain, Mount Hadley massif, parked LRV & distant LM
   {
-    camPos: [5.9, 352.8, -184.2],
-    camLook: [2.1, 350.9, -191.2],
-    rocketPos: [-14, 362, -195],
+    camPos: [7.3, 353.75, -173.2],
+    camLook: [3.85, 352.32, -180.0],
+    rocketPos: [-20, 364, -194],
     rocketRot: [-0.25, 1.0, 0.08],
-    rocketScale: 0.42,
+    rocketScale: 0.4,
   },
-  // 11: moon-apollo-17 (SM-L-004) — Taurus–Littrow valley massifs, Challenger descent stage, LRV & tracks
+  // 11: moon-apollo-17 (SM-L-004) — Taurus–Littrow valley massifs, Challenger descent stage, LRV & tracks (AG-1b #1 fixed)
   {
-    camPos: [14.1, 348.4, -191.0],
-    camLook: [10.1, 346.4, -198.2],
-    rocketPos: [-10, 360, -200],
+    camPos: [19.3, 362.75, -177.2],
+    camLook: [15.85, 361.32, -184.0],
+    rocketPos: [-16, 370, -198],
     rocketRot: [-0.2, 1.1, 0.05],
-    rocketScale: 0.42,
+    rocketScale: 0.4,
   },
   // 12: moon-grail (SM-L-005) — North polar mountain slope, two ~5 m craters with dark ejecta & twin ghost holograms
   {
-    camPos: [3.6, 362.7, -192.1],
-    camLook: [0.2, 360.8, -199.2],
-    rocketPos: [-12, 372, -206],
+    camPos: [3.3, 372.75, -181.2],
+    camLook: [-0.15, 371.32, -188.0],
+    rocketPos: [-18, 380, -204],
     rocketRot: [-0.4, 0.7, 0.1],
-    rocketScale: 0.45,
+    rocketScale: 0.42,
   },
   // 13: transit — Orbital arc from Moon to Mars (7-10 months)
   {
@@ -144,59 +144,59 @@ export const BEAT_POSES: BeatPose[] = [
   },
   // 14: mars-viking-1 (SM-M-001) — Chryse Planitia
   {
-    camPos: [14.5, 488, -368],
-    camLook: [6, 484.8, -384],
-    rocketPos: [-14, 502, -386],
+    camPos: [9.8, 474.75, -361.2],
+    camLook: [6.35, 473.32, -368.0],
+    rocketPos: [-20, 496, -384],
     rocketRot: [-0.2, 0.7, 0.12],
-    rocketScale: 0.45,
+    rocketScale: 0.42,
   },
   // 15: mars-pathfinder (SM-M-002) — Ares Vallis
   {
-    camPos: [-11.5, 483, -369],
-    camLook: [-2, 481, -385],
-    rocketPos: [-18, 498, -390],
+    camPos: [-5.2, 481.75, -364.2],
+    camLook: [-8.65, 480.32, -371.0],
+    rocketPos: [-24, 500, -388],
     rocketRot: [-0.25, 0.85, 0.1],
-    rocketScale: 0.42,
+    rocketScale: 0.4,
   },
-  // 16: mars-spirit (SM-M-003) — Gusev Crater
+  // 16: mars-spirit (SM-M-003) — Gusev Crater ("Troy" beside Home Plate)
   {
-    camPos: [-19, 474, -384],
-    camLook: [-9, 475, -398],
-    rocketPos: [-22, 494, -402],
+    camPos: [-15.2, 488.75, -367.2],
+    camLook: [-18.65, 487.32, -374.0],
+    rocketPos: [-28, 504, -392],
     rocketRot: [-0.3, 0.95, 0.05],
-    rocketScale: 0.42,
+    rocketScale: 0.4,
   },
-  // 17: mars-opportunity (SM-M-004) — Meridiani Planum
+  // 17: mars-opportunity (SM-M-004) — Meridiani Planum (Perseverance Valley rim of Endeavour Crater)
   {
-    camPos: [7, 479, -368],
-    camLook: [0.5, 479, -384],
-    rocketPos: [-16, 496, -394],
+    camPos: [-0.2, 495.75, -370.2],
+    camLook: [-3.65, 494.32, -377.0],
+    rocketPos: [-22, 508, -396],
     rocketRot: [-0.2, 1.0, 0.08],
-    rocketScale: 0.42,
+    rocketScale: 0.4,
   },
   // 18: mars-phoenix (SM-M-005) — Vastitas Borealis north pole
   {
-    camPos: [2.5, 513, -382],
-    camLook: [0.5, 506, -398],
-    rocketPos: [-14, 518, -405],
+    camPos: [12.8, 502.75, -373.2],
+    camLook: [9.35, 501.32, -380.0],
+    rocketPos: [-18, 514, -400],
     rocketRot: [-0.35, 0.8, 0.1],
-    rocketScale: 0.42,
+    rocketScale: 0.4,
   },
   // 19: mars-insight (SM-M-006) — Elysium Planitia
   {
-    camPos: [22.5, 489, -383],
-    camLook: [12, 486, -397],
-    rocketPos: [-12, 504, -402],
+    camPos: [23.8, 509.75, -376.2],
+    camLook: [20.35, 508.32, -383.0],
+    rocketPos: [-16, 518, -404],
     rocketRot: [-0.22, 0.9, 0.06],
-    rocketScale: 0.42,
+    rocketScale: 0.4,
   },
-  // 20: mars-ingenuity (SM-M-007) — Jezero Crater
+  // 20: mars-ingenuity (SM-M-007) — Jezero Crater ("Valinor Hills")
   {
-    camPos: [18, 498, -376],
-    camLook: [8.5, 494, -391],
-    rocketPos: [-15, 508, -398],
+    camPos: [10.8, 516.75, -379.2],
+    camLook: [7.35, 515.32, -386.0],
+    rocketPos: [-18, 524, -408],
     rocketRot: [-0.28, 1.05, 0.08],
-    rocketScale: 0.42,
+    rocketScale: 0.4,
   },
   // 21: silence — Pull back into tranquil starfield for The Hall of Silence
   {
@@ -290,17 +290,17 @@ export function sampleTrajectory(progress: number, out: SampledTrajectory): Samp
 
 /** World position of each exhibit plinth (beats 8..12 Moon, beats 14..20 Mars). */
 export const EXHIBIT_PLINTH_ANCHORS: Record<string, { pos: Vec3; rotY: number; planet: "moon" | "mars" }> = {
-  "moon-apollo-11": { pos: [5.5, 340.6, -187.5], rotY: -0.3, planet: "moon" },
-  "moon-surveyor-3": { pos: [-1.5, 334.8, -189.2], rotY: 0.35, planet: "moon" },
-  "moon-apollo-15-lrv": { pos: [2.5, 350.3, -191.2], rotY: -0.25, planet: "moon" },
-  "moon-apollo-17": { pos: [10.5, 345.8, -198.2], rotY: -0.45, planet: "moon" },
-  "moon-grail": { pos: [0.5, 359.8, -199.2], rotY: -0.1, planet: "moon" },
+  "moon-apollo-11": { pos: [5.5, 334.6, -172.0], rotY: -0.3, planet: "moon" },
+  "moon-surveyor-3": { pos: [-9.5, 342.6, -176.0], rotY: 0.35, planet: "moon" },
+  "moon-apollo-15-lrv": { pos: [4.5, 351.6, -180.0], rotY: -0.25, planet: "moon" },
+  "moon-apollo-17": { pos: [16.5, 360.6, -184.0], rotY: -0.45, planet: "moon" },
+  "moon-grail": { pos: [0.5, 370.6, -188.0], rotY: -0.1, planet: "moon" },
 
-  "mars-viking-1": { pos: [6, 484.6, -384.2], rotY: -0.35, planet: "mars" },
-  "mars-pathfinder": { pos: [-2, 480.8, -385.2], rotY: 0.3, planet: "mars" },
-  "mars-spirit": { pos: [-9, 474.8, -398.2], rotY: 0.55, planet: "mars" },
-  "mars-opportunity": { pos: [0.5, 478.8, -384.2], rotY: -0.15, planet: "mars" },
-  "mars-phoenix": { pos: [0.5, 505.8, -398.2], rotY: 0.0, planet: "mars" },
-  "mars-insight": { pos: [12, 485.8, -397.2], rotY: -0.5, planet: "mars" },
-  "mars-ingenuity": { pos: [8.5, 493.8, -391.2], rotY: -0.4, planet: "mars" },
+  "mars-viking-1": { pos: [7.0, 472.6, -368.0], rotY: -0.35, planet: "mars" },
+  "mars-pathfinder": { pos: [-8.0, 479.6, -371.0], rotY: 0.25, planet: "mars" },
+  "mars-spirit": { pos: [-18.0, 486.6, -374.0], rotY: 0.35, planet: "mars" },
+  "mars-opportunity": { pos: [-3.0, 493.6, -377.0], rotY: -0.15, planet: "mars" },
+  "mars-phoenix": { pos: [10.0, 500.6, -380.0], rotY: 0.0, planet: "mars" },
+  "mars-insight": { pos: [21.0, 507.6, -383.0], rotY: -0.35, planet: "mars" },
+  "mars-ingenuity": { pos: [8.0, 514.6, -386.0], rotY: -0.3, planet: "mars" },
 };

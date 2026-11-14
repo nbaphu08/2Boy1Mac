@@ -5,6 +5,7 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import {
   Apollo11SiteProps,
+  ClippedLmTopCap,
   DistantApolloLmSilhouette,
   GrailTwinHolograms,
   LunarRovingVehicleModel,
@@ -101,7 +102,7 @@ export function getLunarRegolithTextures(): {
   return { map, bumpMap };
 }
 
-/** Soft radial contact shadow decal texture placed under landers and rovers. */
+/** Soft radial contact shadow decal texture placed under landers and rovers (AG-1b #3). */
 export function getSoftContactShadowTexture(): THREE.CanvasTexture {
   if (cachedContactShadow) return cachedContactShadow;
   const canvas = document.createElement("canvas");
@@ -109,16 +110,73 @@ export function getSoftContactShadowTexture(): THREE.CanvasTexture {
   canvas.height = 128;
   const ctx = canvas.getContext("2d")!;
 
-  const grad = ctx.createRadialGradient(64, 64, 6, 64, 64, 60);
-  grad.addColorStop(0, "rgba(4, 6, 10, 0.82)");
-  grad.addColorStop(0.55, "rgba(4, 6, 10, 0.42)");
-  grad.addColorStop(1, "rgba(4, 6, 10, 0)");
+  const grad = ctx.createRadialGradient(64, 64, 4, 64, 64, 58);
+  grad.addColorStop(0, "rgba(8, 9, 12, 0.46)");
+  grad.addColorStop(0.45, "rgba(8, 9, 12, 0.22)");
+  grad.addColorStop(0.8, "rgba(8, 9, 12, 0.06)");
+  grad.addColorStop(1, "rgba(8, 9, 12, 0)");
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, 128, 128);
 
   const tex = new THREE.CanvasTexture(canvas);
   cachedContactShadow = tex;
   return tex;
+}
+
+/**
+ * Sculpted, multi-octave displaced 3D lunar massif / ridge silhouette (AG-1b #7).
+ * Replaces flat low-poly cones with smooth, weathered lunar highland relief.
+ */
+function SculptedLunarMassif({
+  position,
+  rotation = [0, 0, 0],
+  width = 3.2,
+  depth = 1.6,
+  height = 1.25,
+  seed = 1,
+  color = "#54504A",
+}: {
+  position: [number, number, number];
+  rotation?: [number, number, number];
+  width?: number;
+  depth?: number;
+  height?: number;
+  seed?: number;
+  color?: string;
+}) {
+  const geo = useMemo(() => {
+    const g = new THREE.PlaneGeometry(width, depth, 36, 18);
+    g.rotateX(-Math.PI / 2);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const vx = pos.getX(i);
+      const vz = pos.getZ(i);
+      const nx = vx / (width * 0.5);
+      const nz = vz / (depth * 0.5);
+      // Smooth bell-shaped massif envelope tapering to 0 at all edges
+      const envX = Math.max(0, 1 - nx * nx);
+      const envZ = Math.max(0, 1 - Math.pow(nz, 2));
+      const envelope = Math.pow(envX, 1.35) * Math.pow(envZ, 1.25);
+
+      // Multi-peak rounded lunar highland ridgeline + subtle gullies
+      const ridge =
+        0.68 +
+        0.22 * Math.cos(nx * 2.6 + seed * 1.1) +
+        0.12 * Math.sin(nx * 5.4 - nz * 2.2 + seed * 2.3) +
+        0.06 * Math.cos(nx * 9.2 + nz * 4.5);
+
+      const y = Math.max(0, envelope * ridge * height);
+      pos.setY(i, y);
+    }
+    g.computeVertexNormals();
+    return g;
+  }, [width, depth, height, seed]);
+
+  return (
+    <mesh position={position} rotation={rotation} geometry={geo}>
+      <meshStandardMaterial color={color} roughness={0.95} metalness={0.03} />
+    </mesh>
+  );
 }
 
 /** Helper to sculpt a bowl crater into a vertex heightfield. */
@@ -315,10 +373,14 @@ export function HallOneLunarDiorama({
 
   return (
     <group>
-      {/* Sleek dark-basalt museum diorama base ring with lunar-platinum bevel */}
-      <mesh position={[0, 0, 0]}>
-        <cylinderGeometry args={[3.28, 3.48, 0.42, 48]} />
+      {/* Sleek dark-basalt museum diorama base: recessed floor (-0.22 m below terrain) + open outer skirt wall so craters NEVER intersect the base top (AG-1b #3) */}
+      <mesh position={[0, -0.22, 0]}>
+        <cylinderGeometry args={[3.32, 3.48, 0.36, 48]} />
         <meshStandardMaterial color="#181C26" roughness={0.82} metalness={0.22} />
+      </mesh>
+      <mesh position={[0, 0.08, 0]}>
+        <cylinderGeometry args={[3.26, 3.32, 0.28, 48, 1, true]} />
+        <meshStandardMaterial color="#181C26" roughness={0.82} metalness={0.22} side={THREE.DoubleSide} />
       </mesh>
       <mesh position={[0, DIORAMA_SURFACE_Y - 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[3.2, 3.29, 48]} />
@@ -345,31 +407,22 @@ export function HallOneLunarDiorama({
       {/* ─── SITE 1: SM-L-001 · APOLLO 11 (Sea of Tranquility) ─── */}
       {slug === "moon-apollo-11" ? (
         <group>
-          {/* Soft contact shadow beneath Eagle descent stage */}
-          <mesh position={[0, DIORAMA_SURFACE_Y + 0.015, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <planeGeometry args={[2.9, 2.9]} />
-            <meshBasicMaterial map={shadowTex} transparent opacity={0.78} depthWrite={false} />
-          </mesh>
-          {/* Soft contact shadows under EASEP & LRRR */}
-          <mesh position={[-0.78, DIORAMA_SURFACE_Y + 0.015, 1.72]} rotation={[-Math.PI / 2, 0, 0]}>
-            <planeGeometry args={[0.95, 0.95]} />
-            <meshBasicMaterial map={shadowTex} transparent opacity={0.62} depthWrite={false} />
-          </mesh>
-          <mesh position={[-1.25, DIORAMA_SURFACE_Y + 0.015, 1.18]} rotation={[-Math.PI / 2, 0, 0]}>
-            <planeGeometry args={[0.75, 0.75]} />
-            <meshBasicMaterial map={shadowTex} transparent opacity={0.58} depthWrite={false} />
+          {/* Soft physically plausible contact shadow directly beneath Eagle descent stage */}
+          <mesh position={[0, DIORAMA_SURFACE_Y + 0.032, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[2.1, 2.1]} />
+            <meshBasicMaterial map={shadowTex} transparent opacity={0.45} depthWrite={false} />
           </mesh>
 
           {/* Astronaut bootprint paths connecting LM ladder -> EASEP -> LRRR */}
           <mesh
-            position={[-0.42, DIORAMA_SURFACE_Y + 0.02, 1.36]}
+            position={[-0.42, DIORAMA_SURFACE_Y + 0.036, 1.36]}
             rotation={[-Math.PI / 2, 0, -0.68]}
           >
             <planeGeometry args={[1.65, 0.36]} />
             <meshBasicMaterial map={bootprintTex} transparent opacity={0.85} depthWrite={false} />
           </mesh>
           <mesh
-            position={[-0.98, DIORAMA_SURFACE_Y + 0.02, 1.42]}
+            position={[-0.98, DIORAMA_SURFACE_Y + 0.036, 1.42]}
             rotation={[-Math.PI / 2, 0, 0.78]}
           >
             <planeGeometry args={[1.15, 0.32]} />
@@ -385,18 +438,18 @@ export function HallOneLunarDiorama({
       {/* ─── SITE 2: SM-L-002 · SURVEYOR 3 (Ocean of Storms crater + Apollo 12 LM on rim) ─── */}
       {slug === "moon-surveyor-3" ? (
         <group>
-          {/* Soft contact shadow beneath Surveyor 3 on the inner crater slope */}
+          {/* Soft contact shadow directly beneath Surveyor 3 on the inner crater slope */}
           <mesh
-            position={[0.1, DIORAMA_SURFACE_Y - 0.12, 0.25]}
-            rotation={[-Math.PI / 2 + 0.12, 0, 0]}
+            position={[0.08, DIORAMA_SURFACE_Y - 0.11, 0.22]}
+            rotation={[-Math.PI / 2 + 0.14, 0, 0]}
           >
-            <planeGeometry args={[2.8, 2.8]} />
-            <meshBasicMaterial map={shadowTex} transparent opacity={0.72} depthWrite={false} />
+            <planeGeometry args={[1.85, 1.85]} />
+            <meshBasicMaterial map={shadowTex} transparent opacity={0.42} depthWrite={false} />
           </mesh>
 
           {/* Bootprint trail from Conrad & Bean walking down the crater slope to Surveyor 3 */}
           <mesh
-            position={[0.62, DIORAMA_SURFACE_Y - 0.02, -0.58]}
+            position={[0.62, DIORAMA_SURFACE_Y + 0.02, -0.58]}
             rotation={[-Math.PI / 2 + 0.14, 0, -1.12]}
           >
             <planeGeometry args={[2.1, 0.38]} />
@@ -413,7 +466,7 @@ export function HallOneLunarDiorama({
 
           {/* Distant Apollo 12 LM (Intrepid) silhouette on the northern crater rim (155 m away) */}
           <DistantApolloLmSilhouette
-            position={[1.18, DIORAMA_SURFACE_Y + 0.36, -2.05]}
+            position={[1.18, DIORAMA_SURFACE_Y + 0.38, -2.05]}
             scale={0.21}
             includeAscentStage
           />
@@ -423,25 +476,35 @@ export function HallOneLunarDiorama({
       {/* ─── SITE 3: SM-L-003 · APOLLO 15 LRV (Hadley–Apennine, Mount Hadley, distant LM) ─── */}
       {slug === "moon-apollo-15-lrv" ? (
         <group>
-          {/* Mount Hadley & Apennine Front backdrop massifs along the northern horizon */}
-          <mesh position={[0.65, DIORAMA_SURFACE_Y + 0.62, -2.35]} rotation={[0, -0.2, 0]}>
-            <coneGeometry args={[1.65, 1.45, 7]} />
-            <meshStandardMaterial color="#5A5650" roughness={0.95} metalness={0.04} />
-          </mesh>
-          <mesh position={[-1.15, DIORAMA_SURFACE_Y + 0.45, -2.25]} rotation={[0, 0.35, 0]}>
-            <coneGeometry args={[1.35, 1.05, 6]} />
-            <meshStandardMaterial color="#504C47" roughness={0.95} metalness={0.04} />
-          </mesh>
+          {/* Sculpted Mount Hadley & Apennine Front backdrop massifs along the northern horizon (AG-1b #7) */}
+          <SculptedLunarMassif
+            position={[0.65, DIORAMA_SURFACE_Y + 0.04, -2.1]}
+            rotation={[0, -0.15, 0]}
+            width={3.6}
+            depth={1.65}
+            height={1.45}
+            seed={15}
+            color="#58544E"
+          />
+          <SculptedLunarMassif
+            position={[-1.35, DIORAMA_SURFACE_Y + 0.02, -1.95]}
+            rotation={[0, 0.35, 0]}
+            width={2.6}
+            depth={1.4}
+            height={0.98}
+            seed={29}
+            color="#4E4A45"
+          />
 
           {/* Soft contact shadow under parked LRV */}
-          <mesh position={[0.15, DIORAMA_SURFACE_Y + 0.015, 0.35]} rotation={[-Math.PI / 2, 0, -0.45]}>
-            <planeGeometry args={[2.6, 1.8]} />
-            <meshBasicMaterial map={shadowTex} transparent opacity={0.74} depthWrite={false} />
+          <mesh position={[0.15, DIORAMA_SURFACE_Y + 0.032, 0.35]} rotation={[-Math.PI / 2, 0, -0.45]}>
+            <planeGeometry args={[2.1, 1.4]} />
+            <meshBasicMaterial map={shadowTex} transparent opacity={0.44} depthWrite={false} />
           </mesh>
 
           {/* Rover wheel tracks trailing behind the parked LRV */}
           <mesh
-            position={[0.92, DIORAMA_SURFACE_Y + 0.02, 1.15]}
+            position={[0.92, DIORAMA_SURFACE_Y + 0.036, 1.15]}
             rotation={[-Math.PI / 2, 0, -0.52]}
           >
             <planeGeometry args={[2.2, 1.15]} />
@@ -449,7 +512,7 @@ export function HallOneLunarDiorama({
           </mesh>
           {/* Dave Scott's bootprints walking away from the parked rover */}
           <mesh
-            position={[-0.55, DIORAMA_SURFACE_Y + 0.02, 0.15]}
+            position={[-0.55, DIORAMA_SURFACE_Y + 0.036, 0.15]}
             rotation={[-Math.PI / 2, 0, 0.85]}
           >
             <planeGeometry args={[1.85, 0.34]} />
@@ -463,7 +526,7 @@ export function HallOneLunarDiorama({
 
           {/* Distant Apollo 15 LM (Falcon) ~150 m away in the direction the rover's TV camera points */}
           <DistantApolloLmSilhouette
-            position={[-1.35, DIORAMA_SURFACE_Y + 0.08, -1.65]}
+            position={[-1.35, DIORAMA_SURFACE_Y + 0.14, -1.55]}
             scale={0.19}
             includeAscentStage={false}
           />
@@ -473,33 +536,43 @@ export function HallOneLunarDiorama({
       {/* ─── SITE 4: SM-L-004 · APOLLO 17 (Taurus–Littrow valley massifs, LM, LRV, tracks & footprints) ─── */}
       {slug === "moon-apollo-17" ? (
         <group>
-          {/* Taurus–Littrow North Massif & South Massif framing both sides of the valley */}
-          <mesh position={[-2.15, DIORAMA_SURFACE_Y + 0.68, -1.45]} rotation={[0, 0.4, 0]}>
-            <coneGeometry args={[1.48, 1.52, 6]} />
-            <meshStandardMaterial color="#58544E" roughness={0.95} metalness={0.04} />
-          </mesh>
-          <mesh position={[2.2, DIORAMA_SURFACE_Y + 0.6, -1.35]} rotation={[0, -0.35, 0]}>
-            <coneGeometry args={[1.42, 1.36, 6]} />
-            <meshStandardMaterial color="#524E48" roughness={0.95} metalness={0.04} />
-          </mesh>
+          {/* Sculpted Taurus–Littrow North Massif & South Massif framing both sides of the valley (AG-1b #7) */}
+          <SculptedLunarMassif
+            position={[-1.85, DIORAMA_SURFACE_Y + 0.02, -1.55]}
+            rotation={[0, 0.42, 0]}
+            width={3.1}
+            depth={1.55}
+            height={1.38}
+            seed={17}
+            color="#56524C"
+          />
+          <SculptedLunarMassif
+            position={[1.95, DIORAMA_SURFACE_Y + 0.02, -1.45]}
+            rotation={[0, -0.38, 0]}
+            width={2.9}
+            depth={1.5}
+            height={1.26}
+            seed={41}
+            color="#504C46"
+          />
 
           {/* Prominent dual parallel LRV tracks & astronaut bootprints across the valley floor */}
           <mesh
-            position={[0.35, DIORAMA_SURFACE_Y + 0.022, 0.68]}
+            position={[0.35, DIORAMA_SURFACE_Y + 0.034, 0.68]}
             rotation={[-Math.PI / 2, 0, -0.32]}
           >
             <planeGeometry args={[3.4, 1.18]} />
             <meshBasicMaterial map={roverTrackTex} transparent opacity={0.9} depthWrite={false} />
           </mesh>
           <mesh
-            position={[-0.25, DIORAMA_SURFACE_Y + 0.024, -0.65]}
+            position={[-0.25, DIORAMA_SURFACE_Y + 0.036, -0.65]}
             rotation={[-Math.PI / 2, 0, 0.42]}
           >
             <planeGeometry args={[2.8, 1.05]} />
             <meshBasicMaterial map={roverTrackTex} transparent opacity={0.82} depthWrite={false} />
           </mesh>
           <mesh
-            position={[0.15, DIORAMA_SURFACE_Y + 0.026, 1.25]}
+            position={[0.15, DIORAMA_SURFACE_Y + 0.038, 1.25]}
             rotation={[-Math.PI / 2, 0, -0.18]}
           >
             <planeGeometry args={[2.45, 0.38]} />
@@ -507,18 +580,19 @@ export function HallOneLunarDiorama({
           </mesh>
 
           {/* Soft contact shadows under Challenger descent stage & parked LRV */}
-          <mesh position={[-0.58, DIORAMA_SURFACE_Y + 0.015, -0.18]} rotation={[-Math.PI / 2, 0, 0]}>
-            <planeGeometry args={[2.6, 2.6]} />
-            <meshBasicMaterial map={shadowTex} transparent opacity={0.76} depthWrite={false} />
+          <mesh position={[-0.58, DIORAMA_SURFACE_Y + 0.032, -0.18]} rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[1.95, 1.95]} />
+            <meshBasicMaterial map={shadowTex} transparent opacity={0.44} depthWrite={false} />
           </mesh>
-          <mesh position={[1.28, DIORAMA_SURFACE_Y + 0.015, 0.82]} rotation={[-Math.PI / 2, 0, 0.4]}>
-            <planeGeometry args={[1.9, 1.4]} />
-            <meshBasicMaterial map={shadowTex} transparent opacity={0.7} depthWrite={false} />
+          <mesh position={[1.28, DIORAMA_SURFACE_Y + 0.032, 0.82]} rotation={[-Math.PI / 2, 0, 0.4]}>
+            <planeGeometry args={[1.55, 1.15]} />
+            <meshBasicMaterial map={shadowTex} transparent opacity={0.4} depthWrite={false} />
           </mesh>
 
-          {/* Clipped LM Challenger Descent Stage (shifted slightly left to share the valley floor with the LRV) */}
+          {/* Clipped LM Challenger Descent Stage + clean octagonal top cap */}
           <group position={[-0.58, 0, -0.18]} scale={0.88}>
             {children}
+            <ClippedLmTopCap baseY={DIORAMA_SURFACE_Y} />
           </group>
 
           {/* Apollo 17 LRV parked a short distance away */}
@@ -531,15 +605,20 @@ export function HallOneLunarDiorama({
       {/* ─── SITE 5: SM-L-005 · GRAIL EBB & FLOW (Mountain slope, two ~5 m craters + dark ejecta, twin ghost holograms) ─── */}
       {slug === "moon-grail" ? (
         <group>
-          {/* Upper mountain ridge crest at top of southern slope */}
-          <mesh position={[0, DIORAMA_SURFACE_Y + 0.72, -2.35]} rotation={[0, 0.15, 0]}>
-            <coneGeometry args={[2.35, 1.45, 7]} />
-            <meshStandardMaterial color="#54514C" roughness={0.95} metalness={0.04} />
-          </mesh>
+          {/* Sculpted ~2.5 km polar mountain massif crest at top of southern slope (AG-1b #7) */}
+          <SculptedLunarMassif
+            position={[0, DIORAMA_SURFACE_Y + 0.18, -2.05]}
+            rotation={[0, 0.08, 0]}
+            width={4.6}
+            depth={1.85}
+            height={1.42}
+            seed={53}
+            color="#524E49"
+          />
 
           {/* Crater A (Ebb / GRAIL-A) ~5 m impact crater + faint dark ejecta rays */}
           <mesh
-            position={[-0.95, DIORAMA_SURFACE_Y + 0.14, 0.35]}
+            position={[-0.95, DIORAMA_SURFACE_Y + 0.16, 0.35]}
             rotation={[-Math.PI / 2 + 0.18, 0, 0.2]}
           >
             <planeGeometry args={[1.75, 1.75]} />
@@ -548,7 +627,7 @@ export function HallOneLunarDiorama({
 
           {/* Crater B (Flow / GRAIL-B) ~5 m impact crater + faint dark ejecta rays */}
           <mesh
-            position={[1.05, DIORAMA_SURFACE_Y + 0.26, -0.32]}
+            position={[1.05, DIORAMA_SURFACE_Y + 0.28, -0.32]}
             rotation={[-Math.PI / 2 + 0.18, 0, -0.4]}
           >
             <planeGeometry args={[1.75, 1.75]} />

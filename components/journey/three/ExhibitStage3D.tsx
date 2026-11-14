@@ -18,18 +18,11 @@ const PLINTH_SURFACE_Y = 0.22;
 function GlbExhibitMesh({
   url,
   isApolloLm,
-  spinRef,
 }: {
   url: string;
   isApolloLm: boolean;
-  spinRef: React.RefObject<THREE.Group | null>;
 }) {
   const { scene } = useGLTF(url, false, true);
-  const clipPlane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, -1, 0), 100), []);
-  const cutRef = useRef<THREE.Object3D>(null);
-  const normalRef = useRef(new THREE.Vector3(0, -1, 0));
-  const worldPtRef = useRef(new THREE.Vector3());
-  const quatRef = useRef(new THREE.Quaternion());
 
   const { cloned, scale, offset } = useMemo(() => {
     const copy = scene.clone(true);
@@ -42,17 +35,12 @@ function GlbExhibitMesh({
     const s = (isApolloLm ? 2.8 : 2.15) / maxDim;
 
     if (isApolloLm) {
+      // In SM-L-001_apollo_lunar_module.web.glb, all Descent Stage meshes sit at y <= 1.85
+      // and all Ascent Stage meshes sit at y >= 2.14. Hide the Ascent Stage meshes cleanly
+      // at the node level so no jagged cross-section triangles remain (AG-1b #4).
       copy.traverse((child) => {
-        if ((child as THREE.Mesh).isMesh) {
-          const mesh = child as THREE.Mesh;
-          const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-          const nextMats = mats.map((m) => {
-            const c = m.clone();
-            c.clippingPlanes = [clipPlane];
-            c.clipShadows = true;
-            return c;
-          });
-          mesh.material = Array.isArray(mesh.material) ? nextMats : nextMats[0];
+        if ((child as THREE.Mesh).isMesh && child.position.y > 1.85) {
+          child.visible = false;
         }
       });
     }
@@ -62,21 +50,11 @@ function GlbExhibitMesh({
       scale: s,
       offset: [-center.x * s, PLINTH_SURFACE_Y - box.min.y * s, -center.z * s] as [number, number, number],
     };
-  }, [scene, isApolloLm, clipPlane]);
-
-  // Dynamically keep the Apollo LM descent-stage clipping plane synced in world space
-  useFrame(() => {
-    if (!isApolloLm || !cutRef.current || !spinRef.current) return;
-    cutRef.current.getWorldPosition(worldPtRef.current);
-    spinRef.current.getWorldQuaternion(quatRef.current);
-    normalRef.current.set(0, -1, 0).applyQuaternion(quatRef.current).normalize();
-    clipPlane.setFromNormalAndCoplanarPoint(normalRef.current, worldPtRef.current);
-  });
+  }, [scene, isApolloLm]);
 
   return (
     <group>
       <primitive object={cloned} scale={scale} position={offset} />
-      {isApolloLm ? <object3D ref={cutRef} position={[0, PLINTH_SURFACE_Y + 1.08, 0]} /> : null}
     </group>
   );
 }
@@ -146,7 +124,7 @@ function SingleExhibitPlinth({
   useFrame((state, delta) => {
     const p = scrollState.current;
     const dist = Math.abs(p - beatIndex);
-    const vis = 1 - smoothstep(0.68, 1.38, dist);
+    const vis = 1 - smoothstep(0.42, 0.78, dist);
     if (!rootRef.current) return;
     rootRef.current.visible = vis > 0.01;
     if (!rootRef.current.visible) return;
@@ -224,7 +202,7 @@ function SingleExhibitPlinth({
           <HallOneLunarDiorama slug={exhibit.slug} reducedMotion={reducedMotion}>
             {exhibit.media.model ? (
               <Suspense fallback={<PlinthFallback />}>
-                <GlbExhibitMesh url={exhibit.media.model} isApolloLm={isApolloLm} spinRef={spinRef} />
+                <GlbExhibitMesh url={exhibit.media.model} isApolloLm={isApolloLm} />
               </Suspense>
             ) : null}
           </HallOneLunarDiorama>
@@ -245,7 +223,7 @@ function SingleExhibitPlinth({
           <group ref={spinRef}>
             <Suspense fallback={<PlinthFallback />}>
               {exhibit.media.model ? (
-                <GlbExhibitMesh url={exhibit.media.model} isApolloLm={isApolloLm} spinRef={spinRef} />
+                <GlbExhibitMesh url={exhibit.media.model} isApolloLm={isApolloLm} />
               ) : (
                 <LightboxExhibitMesh imageSrc={lightboxImg} />
               )}
