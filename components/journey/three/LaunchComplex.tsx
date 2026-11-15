@@ -770,12 +770,12 @@ export function LaunchComplex({ reducedMotion = false }: { reducedMotion?: boole
               <cylinderGeometry args={[0.05, 0.1, 6.2, 8]} />
               <meshStandardMaterial color="#58637A" roughness={0.52} metalness={0.65} />
             </mesh>
-            <mesh position={[0, 6.25, 0]}>
-              <boxGeometry args={[0.8, 0.34, 0.14]} />
+            <mesh position={[0, 6.35, 0]}>
+              <boxGeometry args={[1.3, 0.62, 0.12]} />
               <meshStandardMaterial color="#2C3548" roughness={0.45} metalness={0.7} />
             </mesh>
-            <mesh position={[0, 6.25, -0.08]}>
-              <planeGeometry args={[0.7, 0.26]} />
+            <mesh position={[0, 6.35, -0.07]}>
+              <planeGeometry args={[1.18, 0.5]} />
               <meshBasicMaterial color={ft.hdr} toneMapped={false} />
             </mesh>
             <sprite position={[0, 6.25, -0.14]} scale={[3.4, 3.4, 1]}>

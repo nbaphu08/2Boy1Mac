@@ -317,7 +317,7 @@ function TreeLineRibbon({
             if (cameraPosition.y > 9.0) discard;
             float a = vAlong;
             // canopy profile: broad crowns + leafy detail + sparse pine / palm spikes
-            float h = uBaseH + uVarH * (n1(a * 0.11) * 0.9 + n1(a * 0.43 + 3.0) * 0.55 + n1(a * 1.9 + 7.0) * 0.22 + n1(a * 6.0) * 0.06);
+            float h = uBaseH + uVarH * (n1(a * 0.11) * 0.9 + n1(a * 0.43 + 3.0) * 0.5 + n1(a * 1.9 + 7.0) * 0.3 + n1(a * 5.0) * 0.16 + n1(a * 14.0 + 2.0) * 0.07);
             float spikeSel = step(0.9, n1(floor(a * 0.7) + 11.0));
             float spikeX = fract(a * 0.7);
             float spike = spikeSel * (1.0 - smoothstep(0.0, 0.07, abs(spikeX - 0.5))) * uVarH * 0.7;

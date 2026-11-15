@@ -207,9 +207,9 @@ export function LaunchSmoke({ count, reducedMotion }: { count: number; reducedMo
         s.cx[i] = 0.55 + cyc * 3.4 + pf.s3 * 0.3;
         s.cy[i] = vy + (pf.s4 - 0.5) * 0.5 - cyc * 0.9;
         s.cz[i] = 0.45 + cyc * 0.6;
-        s.size[i] = 0.35 + cyc * 1.7;
+        s.size[i] = 0.5 + cyc * 2.4;
         s.heat[i] = -1; // sentinel: thin sunlit vapour wisp
-        s.alpha[i] = Math.sin(Math.PI * cyc) * 0.26 * vent;
+        s.alpha[i] = Math.sin(Math.PI * cyc) * Math.sin(Math.PI * cyc) * 0.16 * vent;
       } else if (pf.kind === 0) {
         // Ground cloud rolling out to both sides of the pad (and a little behind), slowly boiling
         const side = pf.s1 < 0.5 ? -1 : 1;

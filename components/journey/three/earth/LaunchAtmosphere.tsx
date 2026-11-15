@@ -36,7 +36,7 @@ const fragmentShader = /* glsl */ `
       float dist = length(d);
       d /= max(dist, 1e-4);
       float h = exp(-max(wp.y + 1.6, 0.0) * 0.045);
-      float haze = clamp(1.0 - exp(-max(dist - 18.0, 0.0) * 0.0021 * (0.45 + 0.55 * h)), 0.0, 0.96);
+      float haze = clamp(1.0 - exp(-max(dist - 18.0, 0.0) * 0.0016 * (0.45 + 0.55 * h)), 0.0, 0.96);
       col = mix(col, lhHazeColor(d), haze * uStrength);
     }
 
