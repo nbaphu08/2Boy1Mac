@@ -101,13 +101,15 @@ function AtmosphereRim({
   );
 }
 
-const DAWN_ZENITH = new THREE.Color("#09193D");
-const DAWN_MID = new THREE.Color("#21396B");
-const DAWN_HORIZON = new THREE.Color("#CF724B");
-const DAWN_SUN_GLOW = new THREE.Color("#FFA25E");
-const DAY_ZENITH = new THREE.Color("#0D2F6E");
-const DAY_MID = new THREE.Color("#2358A6");
-const DAY_HORIZON = new THREE.Color("#6AA2E0");
+// Opus pad scene: soft overcast dusk (reference: launch across the water) — slate zenith, pale grey-blue horizon,
+// only a faint peach warmth toward the low WNW sun (Deep Field palette).
+const DAWN_ZENITH = new THREE.Color("#46506A");
+const DAWN_MID = new THREE.Color("#78829A");
+const DAWN_HORIZON = new THREE.Color("#B9BEC9");
+const DAWN_SUN_GLOW = new THREE.Color("#DDBDAD");
+const DAY_ZENITH = new THREE.Color("#132A55");
+const DAY_MID = new THREE.Color("#30528A");
+const DAY_HORIZON = new THREE.Color("#8CA4C6");
 const HIGH_ZENITH = new THREE.Color("#040712");
 const HIGH_MID = new THREE.Color("#091532");
 const HIGH_HORIZON = new THREE.Color("#183568");
@@ -239,41 +241,41 @@ function AscentSkyDome({ reducedMotion }: { reducedMotion: boolean }) {
             vec3 lowMix = mix(uHorizon, uMid, pow(smoothstep(0.0, 0.34, skyT), 0.82));
             vec3 col = mix(lowMix, uZenith, smoothstep(0.24, 0.94, skyT));
 
-            // Azimuthal western dusk scatter + solar aureole (~4° above WNW horizon)
+            // Azimuthal dusk scatter + soft aureole behind the overcast (~4° above WNW horizon)
             float sunDot = max(dot(dir, uSunDir), 0.0);
-            float horizonBand = exp(-max(dir.y + 0.015, 0.0) * 8.2);
-            float sunsetWide = pow(sunDot, 2.0) * 0.58 * horizonBand;
-            float mieCore = (pow(sunDot, 14.0) * 0.62 + pow(sunDot, 160.0) * 0.85) * exp(-max(dir.y - 0.02, 0.0) * 4.5);
+            float horizonBand = exp(-max(dir.y + 0.015, 0.0) * 9.0);
+            float sunsetWide = pow(sunDot, 2.0) * 0.32 * horizonBand;
+            float mieCore = (pow(sunDot, 10.0) * 0.28 + pow(sunDot, 90.0) * 0.35) * exp(-max(dir.y - 0.02, 0.0) * 5.0);
             col += uSunGlow * (sunsetWide + mieCore) * uSunsetStrength;
 
-            // Broken dusk cloud layer with warm sunlit edges and cool dark bellies
-            if (uSunsetStrength > 0.01 && dir.y > 0.008) {
-              vec2 wind = vec2(uTime * 0.012, uTime * 0.004);
-              float projY = max(dir.y, 0.055);
-              vec2 uv = (dir.xz / (projY + 0.14)) * vec2(1.45, 2.25) + wind;
+            // Overcast stratocumulus deck: wide soft rolls, low contrast, darker bellies, paler breaks toward the horizon
+            if (uSunsetStrength > 0.01 && dir.y > 0.004) {
+              vec2 wind = vec2(uTime * 0.006, uTime * 0.002);
+              float projY = max(dir.y, 0.04);
+              vec2 uv = (dir.xz / (projY + 0.2)) * vec2(2.6, 3.4) + wind;
 
               float n = fbmCloud(uv);
-              // Directional sample toward western sun for rim vs belly self-shadowing
               vec2 toSun = normalize(uSunDir.xz);
-              float nSun = fbmCloudShadow(uv + toSun * 0.16);
+              float nSun = fbmCloudShadow(uv + toSun * 0.12);
+              float rolls = 0.5 + 0.5 * sin(uv.y * 2.6 + n * 3.2);
 
-              float cloudMask = smoothstep(0.45, 0.77, n);
-              float altFade = smoothstep(0.012, 0.09, dir.y) * (1.0 - smoothstep(0.42, 0.78, dir.y));
-              float alpha = cloudMask * altFade * uSunsetStrength * 0.86;
+              float cover = smoothstep(0.3, 0.72, n * 0.9 + rolls * 0.16);
+              float altFade = smoothstep(0.004, 0.06, dir.y) * (1.0 - smoothstep(0.55, 0.95, dir.y) * 0.35);
+              float alpha = cover * altFade * uSunsetStrength * 0.72;
 
-              float litEdge = clamp(0.52 + (n - nSun) * 3.8 + pow(sunDot, 3.0) * 0.65, 0.0, 1.0);
-              vec3 bellyCol = mix(vec3(0.11, 0.15, 0.25), uMid * 0.85, 0.35);
-              vec3 sunlitEdgeCol = mix(vec3(0.95, 0.56, 0.34), vec3(1.0, 0.8, 0.56), pow(sunDot, 2.5));
-              vec3 cloudCol = mix(bellyCol, sunlitEdgeCol, litEdge);
-
-              // Subtle horizon haze blend on distant low clouds
-              cloudCol = mix(uHorizon * 0.92 + uSunGlow * 0.22 * pow(sunDot, 2.0), cloudCol, smoothstep(0.012, 0.12, dir.y));
+              float lit = clamp(0.5 + (n - nSun) * 2.6, 0.0, 1.0);
+              vec3 belly = mix(uZenith, uMid, 0.45) * 0.9;
+              vec3 top = mix(uMid, uHorizon, 0.7);
+              vec3 cloudCol = mix(belly, top, lit * 0.85);
+              cloudCol = mix(cloudCol, uSunGlow * 0.8, pow(sunDot, 4.0) * lit * 0.35);
+              // distant clouds dissolve into the horizon haze
+              cloudCol = mix(uHorizon * 0.96, cloudCol, smoothstep(0.004, 0.16, dir.y));
               col = mix(col, cloudCol, alpha);
             }
 
             // Soft low atmospheric horizon haze band unifying sky, ocean, and distant KSC coast
-            float horizonHaze = exp(-abs(dir.y) * 16.0) * 0.36;
-            vec3 hazeCol = mix(uHorizon * 0.88, uSunGlow * 0.9, pow(sunDot, 3.0) * 0.65 * uSunsetStrength);
+            float horizonHaze = exp(-abs(dir.y) * 18.0) * 0.5;
+            vec3 hazeCol = mix(uHorizon * 0.9, uSunGlow * 0.85, pow(sunDot, 3.0) * 0.5 * uSunsetStrength);
             col = mix(col, hazeCol, horizonHaze * (0.4 + 0.6 * uSunsetStrength));
 
             // Smooth extinction below sea level

@@ -38,18 +38,19 @@ export const BEAT_POSES: BeatPose[] = [
     rocketRot: [0, 0.2, 0],
     rocketScale: 1,
   },
-  // 1: enter — Inside the Launch Complex perimeter framing the full dusk-lit SLS + Orion & ML-1 tower on LC-39B
+  // 1: enter — Opus pad scene: low across the lagoon (reference: launch seen across the water), SLS + ML-1 on LC-39B,
+  // dark tree line between, VAB small on the left horizon
   {
-    camPos: [-10.8, 5.0, 17.6],
-    camLook: [-0.6, 7.2, -1.0],
+    camPos: [-9.0, -0.75, 62.0],
+    camLook: [-1.6, 10.6, 0.0],
     rocketPos: [0, 0, 0],
     rocketRot: [0, 0.15, 0],
     rocketScale: 1,
   },
-  // 2: ignition — liftoff! Rocket rises above ground-lit deluge steam with VAB silhouetted against western sunset
+  // 2: ignition — liftoff seen from the same shore: ground clouds roll out, smoke column rises under the rocket
   {
-    camPos: [12.5, 6.2, 21.5],
-    camLook: [-0.5, 11.8, -1.5],
+    camPos: [-4.0, -0.6, 66.0],
+    camLook: [0.2, 13.6, 0.0],
     rocketPos: [0, 10, 0],
     rocketRot: [0, 0.08, -0.02],
     rocketScale: 1,
