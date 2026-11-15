@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useSyncExternalStore } from "react";
+import { site } from "@/content/site";
 
 const Canvas3D = dynamic(() => import("./ModelViewerCanvas"), { ssr: false });
 
@@ -31,6 +32,7 @@ export function ModelViewer({ url, poster, label }: { url: string; poster: strin
       <p className="font-hud pointer-events-none absolute bottom-2 left-3 text-[10px] text-platinum">
         Drag to rotate · 3D reconstruction
       </p>
+      <p className="font-hud pointer-events-none absolute bottom-2 right-3 text-[10px] text-platinum/60">{site.siWatermark}</p>
     </div>
   );
 }

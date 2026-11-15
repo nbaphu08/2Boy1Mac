@@ -1,3 +1,4 @@
+// Built with AI assistance (Claude, Gemini). See AI_DISCLOSURE.md.
 import type { Metadata, Viewport } from "next";
 import { Archivo, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";

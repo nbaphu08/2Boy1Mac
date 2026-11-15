@@ -7,6 +7,7 @@ export const site = {
   tagline: "A museum of the machines we left behind — on the Moon and Mars.",
   disclaimer:
     "SpaceMuse is an independent project for the NASA Space Apps Challenge 2026. It is not affiliated with or endorsed by NASA. Images courtesy of NASA and partners; see Sources & Credits.",
+  siWatermark: "Illustrative 3D reconstruction · AI-assisted",
   illustrative: "3D reconstructions are illustrative, based on NASA imagery and data.",
   skip: "Skip to the galleries →",
   explore: "Explore exhibit",

@@ -1,4 +1,5 @@
 import { exhibitBySlug } from "@/content/exhibits";
+import { site } from "@/content/site";
 import type { Beat } from "@/content/types";
 
 const BASE = "/media/three/posters";
@@ -30,6 +31,7 @@ export function StaticPoster({ beat, eager }: { beat: Beat; eager: boolean }) {
         />
       </picture>
       <div className="absolute inset-0 bg-gradient-to-t from-void/70 via-transparent to-void/40" />
+      <p className="font-hud pointer-events-none absolute bottom-1.5 left-3 z-10 select-none text-[10px] uppercase tracking-wide text-platinum/60 sm:left-10">{site.siWatermark}</p>
     </div>
   );
 }

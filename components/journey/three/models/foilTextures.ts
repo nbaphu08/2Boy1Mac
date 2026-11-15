@@ -152,29 +152,12 @@ const BLACK_FILM = "#17171A";
 
 let lmSidesCache: MapPair | null = null;
 
-/** Small US flag (the real LM carried one on its descent stage) — stripes + canton only. */
-function drawFlag(ctx: CanvasRenderingContext2D, x: number, y: number, w: number) {
-  const h = w * 0.526;
-  ctx.fillStyle = "#F2F0EA";
-  ctx.fillRect(x, y, w, h);
-  ctx.fillStyle = "#B4282E";
-  for (let i = 0; i < 13; i += 2) ctx.fillRect(x, y + (i * h) / 13, w, h / 13);
-  ctx.fillStyle = "#2B3A6B";
-  ctx.fillRect(x, y, w * 0.4, (h * 7) / 13);
-  ctx.fillStyle = "rgba(242,240,234,0.85)";
-  for (let r = 0; r < 5; r++) {
-    for (let c = 0; c < 6; c++) {
-      ctx.fillRect(x + w * 0.03 + c * w * 0.062, y + h * 0.04 + r * h * 0.1, 1.2, 1.2);
-    }
-  }
-}
-
 /**
  * 8 faces × 256 px strip for the octagonal descent stage (u runs around the octagon starting at
  * the forward/ladder face, canvas top = top of the stage). Look from AS11-40-5948 / AS11-40-5927:
  * crinkled amber Kapton blankets, a black film band along the top edge and black panels on the
  * side quadrants, taped vertical seams, a thin aluminised strip along the bottom edge, and the
- * US flag on the forward-right panel (as on the NASA LM model).
+ * (no flag or insignia is drawn).
  */
 export function getLmDescentStageTextures(): MapPair {
   if (lmSidesCache) return lmSidesCache;
@@ -224,14 +207,6 @@ export function getLmDescentStageTextures(): MapPair {
 
     drawCrinkle(ctx, bctx, x, 0, FW, H, rng, 1.15, 1);
 
-    if (f === 1) {
-      // Flag on the forward-right panel, lower-left like the NASA model decal
-      ctx.fillStyle = "#C9C4B6";
-      ctx.fillRect(x + 22, H * 0.6 - 4, FW * 0.42 + 8, FW * 0.42 * 0.526 + 8);
-      drawFlag(ctx, x + 26, H * 0.6, FW * 0.42);
-      bctx.fillStyle = "#808080";
-      bctx.fillRect(x + 22, H * 0.6 - 4, FW * 0.42 + 8, FW * 0.42 * 0.526 + 8);
-    }
   }
   lmSidesCache = finish(c, bc);
   return lmSidesCache;

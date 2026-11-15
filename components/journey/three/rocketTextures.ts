@@ -276,18 +276,6 @@ export function getSrbTextures(): TexturePair {
   ctx.fillRect(0, 128, W, 10);
   ctx.fillRect(0, 1700, W, 10);
 
-  // Vertical UNITED STATES & NASA stencils
-  ctx.save();
-  ctx.fillStyle = "#151A26";
-  ctx.font = "bold 30px monospace";
-  "UNITED STATES".split("").forEach((ch, idx) => {
-    ctx.fillText(ch, 240, 440 + idx * 48);
-  });
-  "ARTEMIS II".split("").forEach((ch, idx) => {
-    ctx.fillText(ch, 760, 520 + idx * 52);
-  });
-  ctx.restore();
-
   // Photogrammetry targets on SRBs
   [300, 620, 940, 1320, 1760].forEach((ty) => {
     drawCalibrationTarget(ctx, 180, ty, 13);
@@ -392,8 +380,6 @@ export function getOrionTextures(): TexturePair {
   ctx.strokeRect(460, 480, 104, 130);
   ctx.fillStyle = "#182030";
   ctx.font = "bold 13px monospace";
-  ctx.fillText("ORION · INTEGRITY", 448, 462);
-  ctx.fillText("MPCV-002 · ARTEMIS II", 438, 636);
 
   // Reaction Control System (RCS) thruster ports
   [

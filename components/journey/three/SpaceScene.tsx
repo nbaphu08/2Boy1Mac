@@ -14,6 +14,7 @@ import { HallEnvironment, PostEffects } from "./RenderPipeline";
 import { SLSRocket } from "./SLSRocket";
 import { detectInitialPerfTier, usePerfBudget } from "./perfTier";
 import { grailSimState } from "./simulationBus";
+import { site } from "@/content/site";
 import { sharedTerrainUniforms } from "./landscapeMaterials";
 import { applyExpeditionCamera, updateExpeditionState } from "./expeditionCamera";
 import {
@@ -674,6 +675,7 @@ export default function SpaceScene() {
 
   return (
     <div aria-hidden className={`fixed inset-0 bg-void ${posterBeat !== null ? "z-50" : "z-0"}`}>
+      <p className="font-hud pointer-events-none absolute bottom-1.5 left-3 z-10 select-none text-[10px] uppercase tracking-wide text-platinum/60 sm:left-10">{site.siWatermark}</p>
       <Canvas
         shadows={budget.tier !== "low" ? "soft" : false}
         frameloop={isPageHidden ? "never" : "always"}

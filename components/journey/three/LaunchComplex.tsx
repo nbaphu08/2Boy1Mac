@@ -815,34 +815,11 @@ export function LaunchComplex({ reducedMotion = false }: { reducedMotion?: boole
           </mesh>
         ))}
 
-        <group position={[-6.8, 19.2, 11.58]}>
-          <mesh>
-            <planeGeometry args={[4.2, 7.8]} />
-            <meshStandardMaterial color="#BAC3D1" roughness={0.84} metalness={0.12} />
-          </mesh>
-          {[-1.8, -1.2, -0.6, 0, 0.6, 1.2, 1.8].map((sx, si) => (
-            <mesh key={si} position={[sx, 0, 0.01]}>
-              <planeGeometry args={[0.32, 7.8]} />
-              <meshStandardMaterial color="#8A2138" roughness={0.82} metalness={0.12} />
-            </mesh>
-          ))}
-          <mesh position={[-0.95, 1.95, 0.02]}>
-            <planeGeometry args={[2.1, 3.8]} />
-            <meshStandardMaterial color="#14325B" roughness={0.82} metalness={0.12} />
-          </mesh>
-        </group>
-
-        {/* Subdued blue circular NASA insignia */}
-        <group position={[6.8, 18.2, 11.58]}>
-          <mesh>
-            <circleGeometry args={[1.08, 24]} />
-            <meshStandardMaterial color="#143B7A" roughness={0.8} metalness={0.15} />
-          </mesh>
-          <mesh position={[0, 0.06, 0.01]} rotation={[0, 0, -0.35]}>
-            <planeGeometry args={[1.95, 0.16]} />
-            <meshStandardMaterial color="#B53726" roughness={0.8} metalness={0.12} />
-          </mesh>
-        </group>
+        {/* Plain panel inset (flag and insignia intentionally omitted) */}
+        <mesh position={[-6.8, 19.2, 11.58]}>
+          <planeGeometry args={[4.2, 7.8]} />
+          <meshStandardMaterial color="#9AA4B5" roughness={0.84} metalness={0.12} />
+        </mesh>
 
         {/* Stepped Low Bay wing */}
         <mesh position={[17.5, 7.2, 3.5]}>

@@ -1,6 +1,8 @@
 {
   "name": "spacemuse",
   "version": "0.1.0",
+  "description": "SpaceMuse: an interactive 3D museum of NASA hardware left on the Moon and Mars (NASA Space Apps Challenge 2026, Team 2Boy1Mac)",
+  "ai_disclosure": "See AI_DISCLOSURE.md \u2014 code written with AI assistance (Claude, Gemini)",
   "private": true,
   "scripts": {
     "dev": "next dev",
