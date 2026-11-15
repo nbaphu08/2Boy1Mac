@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Line } from "@react-three/drei";
 import * as THREE from "three";
 import { scrollState, smoothstep } from "@/lib/scroll/progress";
 import { usePerfBudget } from "./perfTier";
@@ -107,23 +106,32 @@ function AtlanticOceanSurface({ reducedMotion }: { reducedMotion: boolean }) {
           uniform vec3 uHorizonGlow;
           varying vec3 vWorldPos;
 
-          float waveHeight(vec2 p, float t) {
-            float w = 0.0;
-            w += sin(dot(p, vec2(0.42, 0.25)) - t * 1.15) * 0.22;
-            w += sin(dot(p, vec2(-0.31, 0.54)) - t * 0.88) * 0.16;
-            w += sin(dot(p, vec2(0.95, -0.68)) + t * 1.55) * 0.09;
-            w += sin(dot(p, vec2(-1.35, -0.82)) - t * 2.05) * 0.05;
-            w += sin(dot(p, vec2(2.6, 1.85)) - t * 2.65) * 0.025;
-            return w;
+          vec3 waveNormal(vec2 p, float t) {
+            // Single-pass analytical gradient across 4 directional Atlantic swell octaves
+            float dhx = 0.0;
+            float dhz = 0.0;
+            float ph1 = dot(p, vec2(0.42, 0.25)) - t * 1.15;
+            float c1 = cos(ph1) * 0.22;
+            dhx += c1 * 0.42; dhz += c1 * 0.25;
+
+            float ph2 = dot(p, vec2(-0.31, 0.54)) - t * 0.88;
+            float c2 = cos(ph2) * 0.16;
+            dhx += c2 * -0.31; dhz += c2 * 0.54;
+
+            float ph3 = dot(p, vec2(0.95, -0.68)) + t * 1.55;
+            float c3 = cos(ph3) * 0.09;
+            dhx += c3 * 0.95; dhz += c3 * -0.68;
+
+            float ph4 = dot(p, vec2(-1.45, -0.92)) - t * 2.15;
+            float c4 = cos(ph4) * 0.055;
+            dhx += c4 * -1.45; dhz += c4 * -0.92;
+
+            return normalize(vec3(-dhx * 0.85, 1.0, -dhz * 0.85));
           }
 
           void main() {
             vec2 p = vWorldPos.xz * 0.34;
-            float eps = 0.25;
-            float h0 = waveHeight(p, uTime);
-            float hx = waveHeight(p + vec2(eps, 0.0), uTime);
-            float hz = waveHeight(p + vec2(0.0, eps), uTime);
-            vec3 N = normalize(vec3((h0 - hx) * 0.85, 1.0, (h0 - hz) * 0.85));
+            vec3 N = waveNormal(p, uTime);
 
             vec3 V = normalize(cameraPosition - vWorldPos);
             float dist = length(cameraPosition - vWorldPos);
@@ -225,6 +233,7 @@ function MarshScrubField({
       metalness: 0.02,
       side: THREE.DoubleSide,
     });
+    m.customProgramCacheKey = () => "marsh-scrub-wind-v1";
     m.onBeforeCompile = (shader) => {
       shader.uniforms.uWindTime = SCRUB_WIND_UNIFORM;
       shader.vertexShader = `uniform float uWindTime;\n${shader.vertexShader}`.replace(
@@ -298,6 +307,7 @@ function MarshScrubField({
     mesh.count = placed;
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    mesh.boundingSphere = new THREE.Sphere(new THREE.Vector3(-40, 0, -60), 230);
   }, [count]);
 
   useFrame((_, delta) => {
@@ -309,7 +319,6 @@ function MarshScrubField({
     <instancedMesh
       ref={meshRef}
       args={[tuftGeo, scrubMat, count]}
-      frustumCulled={false}
       receiveShadow={false}
     />
   );
@@ -384,21 +393,25 @@ function LightningProtectionCage({
     }
     mesh.count = idx;
     mesh.instanceMatrix.needsUpdate = true;
+    mesh.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 10, 0), 36);
   }, []);
 
-  // Catenary lightning arrestor wires spanning top-to-top + outer anchor guys
-  const catenaryWires = useMemo(() => {
-    const buildArc = (a: [number, number, number], b: [number, number, number], sag: number, segs = 22) => {
-      const pts: [number, number, number][] = [];
-      for (let i = 0; i <= segs; i++) {
-        const u = i / segs;
-        pts.push([
-          THREE.MathUtils.lerp(a[0], b[0], u),
-          THREE.MathUtils.lerp(a[1], b[1], u) - sag * 4 * u * (1 - u),
-          THREE.MathUtils.lerp(a[2], b[2], u),
-        ]);
+  // Catenary lightning arrestor wires spanning top-to-top + outer anchor guys (merged into 1 LineSegments draw call)
+  const catenaryGeo = useMemo(() => {
+    const verts: number[] = [];
+    const pushArc = (a: [number, number, number], b: [number, number, number], sag: number, segs = 22) => {
+      for (let i = 0; i < segs; i++) {
+        const u0 = i / segs;
+        const u1 = (i + 1) / segs;
+        verts.push(
+          THREE.MathUtils.lerp(a[0], b[0], u0),
+          THREE.MathUtils.lerp(a[1], b[1], u0) - sag * 4 * u0 * (1 - u0),
+          THREE.MathUtils.lerp(a[2], b[2], u0),
+          THREE.MathUtils.lerp(a[0], b[0], u1),
+          THREE.MathUtils.lerp(a[1], b[1], u1) - sag * 4 * u1 * (1 - u1),
+          THREE.MathUtils.lerp(a[2], b[2], u1),
+        );
       }
-      return pts;
     };
 
     const tips: [number, number, number][] = LIGHTNING_TOWER_COORDS.map(([x, z]) => [x, 18.85, z]);
@@ -407,14 +420,15 @@ function LightningProtectionCage({
       [26.5, -0.5, -18.5],
       [0, -0.5, 29.0],
     ];
-    return [
-      buildArc(tips[0], tips[1], 1.15),
-      buildArc(tips[1], tips[2], 1.25),
-      buildArc(tips[2], tips[0], 1.25),
-      buildArc(tips[0], guys[0], 0.55, 12),
-      buildArc(tips[1], guys[1], 0.55, 12),
-      buildArc(tips[2], guys[2], 0.55, 12),
-    ];
+    pushArc(tips[0], tips[1], 1.15);
+    pushArc(tips[1], tips[2], 1.25);
+    pushArc(tips[2], tips[0], 1.25);
+    pushArc(tips[0], guys[0], 0.55, 12);
+    pushArc(tips[1], guys[1], 0.55, 12);
+    pushArc(tips[2], guys[2], 0.55, 12);
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.Float32BufferAttribute(verts, 3));
+    return geo;
   }, []);
 
   return (
@@ -424,7 +438,6 @@ function LightningProtectionCage({
         ref={latticeRef}
         args={[unitCyl, undefined, maxStruts]}
         castShadow={useShadows}
-        frustumCulled={false}
       >
         <meshStandardMaterial color="#8B94A4" roughness={0.52} metalness={0.68} />
       </instancedMesh>
@@ -457,17 +470,10 @@ function LightningProtectionCage({
         </group>
       ))}
 
-      {/* Overhead Catenary Lightning Protection Arrestor Cage */}
-      {catenaryWires.map((pts, wi) => (
-        <Line
-          key={`cat-${wi}`}
-          points={pts}
-          color="#3A4354"
-          lineWidth={1}
-          transparent
-          opacity={0.72}
-        />
-      ))}
+      {/* Overhead Catenary Lightning Protection Arrestor Cage (single LineSegments draw call) */}
+      <lineSegments geometry={catenaryGeo}>
+        <lineBasicMaterial color="#3A4354" transparent opacity={0.72} />
+      </lineSegments>
     </group>
   );
 }
@@ -570,6 +576,9 @@ export function LaunchComplex({ reducedMotion = false }: { reducedMotion?: boole
   const budget = usePerfBudget();
   const useShadows = budget.tier !== "low";
   const groupRef = useRef<THREE.Group>(null);
+  const towerLightRef = useRef<THREE.PointLight>(null);
+  const floodSpot1Ref = useRef<THREE.SpotLight>(null);
+  const floodSpot2Ref = useRef<THREE.SpotLight>(null);
   const crewArmRef = useRef<THREE.Group>(null);
   const osmArmRef = useRef<THREE.Group>(null);
   const icpsArmRef = useRef<THREE.Group>(null);
@@ -613,10 +622,17 @@ export function LaunchComplex({ reducedMotion = false }: { reducedMotion?: boole
 
   useFrame((_, delta) => {
     const p = scrollState.current;
+    const padVisible = p < 3.6;
     if (groupRef.current) {
-      groupRef.current.visible = p < 3.6; // Opus: hide pad + VAB once climbing (ascent-2 sits on the cloud deck)
+      groupRef.current.visible = padVisible; // Opus: hide pad + VAB once climbing (ascent-2 sits on the cloud deck)
     }
-    if (p >= 3.6) return;
+    // Keep launchpad point/spot lights mounted & visible permanently; attenuate intensity only so scene light count never mutates
+    const lightFade = padVisible ? 1 - smoothstep(2.9, 3.58, p) : 0;
+    if (towerLightRef.current) towerLightRef.current.intensity = 22 * lightFade;
+    if (floodSpot1Ref.current) floodSpot1Ref.current.intensity = 240 * lightFade;
+    if (floodSpot2Ref.current) floodSpot2Ref.current.intensity = 185 * lightFade;
+
+    if (!padVisible) return;
     elapsedRef.current += Math.min(delta, 0.05);
 
     // Swing arms retract smoothly before T-0 (progress 1.4 -> 1.92)
@@ -638,7 +654,40 @@ export function LaunchComplex({ reducedMotion = false }: { reducedMotion?: boole
   const scrubCount = budget.tier === "high" ? 480 : budget.tier === "medium" ? 260 : 110;
 
   return (
-    <group ref={groupRef}>
+    <group>
+      {/* Always-mounted pad lights (moved outside pad mesh visibility group so shader light-count defines never recompile) */}
+      <pointLight
+        ref={towerLightRef}
+        position={[WORLD_ANCHORS.pad[0] - 3.25, WORLD_ANCHORS.pad[1] + 7.58, WORLD_ANCHORS.pad[2] + 0.15]}
+        color="#FFB04D"
+        intensity={22}
+        distance={15}
+        decay={2}
+      />
+      <spotLight
+        ref={floodSpot1Ref}
+        position={[WORLD_ANCHORS.pad[0] + 12.5, WORLD_ANCHORS.pad[1] + 6.4, WORLD_ANCHORS.pad[2] + 11.2]}
+        angle={0.68}
+        penumbra={0.94}
+        intensity={240}
+        distance={72}
+        color="#DCE6FF"
+      />
+      <spotLight
+        ref={floodSpot2Ref}
+        position={[WORLD_ANCHORS.pad[0] - 12.8, WORLD_ANCHORS.pad[1] + 6.4, WORLD_ANCHORS.pad[2] + 11.6]}
+        angle={0.68}
+        penumbra={0.94}
+        intensity={185}
+        distance={72}
+        color="#FFE2BE"
+      />
+
+      <group
+        ref={groupRef}
+        name="warmup-launch-complex"
+        userData={{ warmup: true, anchorPos: [0, 4, 0], camPos: [-12, 6, 22], beatIndex: 0 }}
+      >
       {/* ─── LC-39B PAD APRON, ATLANTIC COASTLINE, DUNE BERM, WETLANDS & CRAWLERWAY ─── */}
       <group position={WORLD_ANCHORS.pad}>
         {/* E2 · Animated Atlantic Ocean water shader with dusk glint */}
@@ -795,8 +844,6 @@ export function LaunchComplex({ reducedMotion = false }: { reducedMotion?: boole
 
         {/* ─── MOBILE LAUNCHER UMBILICAL TOWER (ML-1, x = -3.45) + WARM WORK LIGHTS ─── */}
         <group position={[-3.45, 0.38, 0]}>
-          {/* Warm amber interior work fill lighting up inner steel trusses (matches NHQ202603270007) */}
-          <pointLight position={[0.2, 7.2, 0.15]} color="#FFB04D" intensity={22} distance={15} decay={2} />
 
           {[
             [-0.92, -0.92],
@@ -1006,24 +1053,6 @@ export function LaunchComplex({ reducedMotion = false }: { reducedMotion?: boole
             </sprite>
           </group>
         ))}
-
-        {/* Soft dusk pools of xenon/halogen floodlight onto pad concrete & lower SLS */}
-        <spotLight
-          position={[12.5, 6.4, 11.2]}
-          angle={0.68}
-          penumbra={0.94}
-          intensity={240}
-          distance={72}
-          color="#DCE6FF"
-        />
-        <spotLight
-          position={[-12.8, 6.4, 11.6]}
-          angle={0.68}
-          penumbra={0.94}
-          intensity={185}
-          distance={72}
-          color="#FFE2BE"
-        />
       </group>
 
       {/* ─── E4 · DISTANT VAB (~5 KM VISUAL SCALE) ALONG CRAWLERWAY HORIZON + LOW KSC BUILDINGS ─── */}
@@ -1034,6 +1063,9 @@ export function LaunchComplex({ reducedMotion = false }: { reducedMotion?: boole
             map={vabTex.map}
             bumpMap={vabTex.bumpMap}
             bumpScale={0.035}
+            color="#9BA8C4"
+            emissive="#1D263C"
+            emissiveIntensity={0.28}
             roughness={0.76}
             metalness={0.18}
           />
@@ -1123,6 +1155,7 @@ export function LaunchComplex({ reducedMotion = false }: { reducedMotion?: boole
           </group>
         );
       })}
+      </group>
     </group>
   );
 }

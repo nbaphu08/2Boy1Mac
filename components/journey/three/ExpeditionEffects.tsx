@@ -150,7 +150,16 @@ export function ExpeditionEffects({ reducedMotion }: { reducedMotion: boolean })
   if (reducedMotion) return null;
 
   return (
-    <group>
+    <group
+      name="warmup-expedition-fx"
+      userData={{
+        warmup: true,
+        anchorPos: MOON_TOUCHDOWN_ORIGIN,
+        camPos: [14, 338, -148],
+        hall: "moon",
+        beatIndex: 1,
+      }}
+    >
       {/* Moon Sea of Tranquility radial ballistic touchdown grains */}
       <points ref={moonPointsRef} position={MOON_TOUCHDOWN_ORIGIN} visible={false}>
         <bufferGeometry>
