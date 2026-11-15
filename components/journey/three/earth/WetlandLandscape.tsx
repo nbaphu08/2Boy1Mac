@@ -323,7 +323,7 @@ function TreeLineRibbon({
             float spike = spikeSel * (1.0 - smoothstep(0.0, 0.07, abs(spikeX - 0.5))) * uVarH * 0.7;
             h += spike;
             // cleared perimeter in front of the pad: low scrub only
-            h *= mix(0.42, 1.0, smoothstep(18.0, 34.0, abs(vWorldPos.x + 1.0)) + step(0.0, -vWorldPos.z - 40.0));
+            h *= mix(0.78, 1.0, smoothstep(18.0, 34.0, abs(vWorldPos.x + 1.0)) + step(0.0, -vWorldPos.z - 40.0));
             // sink the ribbons smoothly as the camera climbs (inland canopy blobs take over from above)
             h *= 1.0 - smoothstep(4.0, 9.0, cameraPosition.y);
             float y = vWorldPos.y - uLandY;
@@ -366,7 +366,7 @@ function PowerLine() {
     }
     return out;
   }, []);
-  const poleH = 4.6;
+  const poleH = 7.2;
 
   useEffect(() => {
     const poles = polesRef.current;
@@ -423,7 +423,7 @@ function PowerLine() {
   return (
     <group>
       <instancedMesh ref={polesRef} args={[undefined, undefined, pts.length]}>
-        <cylinderGeometry args={[0.07, 0.11, poleH, 5]} />
+        <cylinderGeometry args={[0.08, 0.13, poleH, 5]} />
         <meshStandardMaterial color="#20242B" roughness={0.9} metalness={0.1} />
       </instancedMesh>
       <instancedMesh ref={armsRef} args={[undefined, undefined, pts.length]}>

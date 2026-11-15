@@ -801,8 +801,8 @@ export function LaunchComplex({ reducedMotion = false }: { reducedMotion?: boole
             bumpMap={vabTex.bumpMap}
             bumpScale={0.035}
             color="#9BA8C4"
-            emissive="#1D263C"
-            emissiveIntensity={0.28}
+            emissive={budget.tier === "low" ? "#8E95A4" : "#1D263C"}
+            emissiveIntensity={budget.tier === "low" ? 0.55 : 0.28}
             roughness={0.76}
             metalness={0.18}
           />

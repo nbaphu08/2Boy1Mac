@@ -111,7 +111,7 @@ function makeScratch(count: number) {
   };
 }
 
-type Puff = { kind: 0 | 1; s1: number; s2: number; s3: number; s4: number; f: number };
+type Puff = { kind: 0 | 1 | 2; s1: number; s2: number; s3: number; s4: number; f: number };
 
 /**
  * Opus pad scene · liftoff exhaust: wide billowing ground clouds out of the flame trench and a tall,
@@ -125,16 +125,18 @@ export function LaunchSmoke({ count, reducedMotion }: { count: number; reducedMo
 
   const puffs = useMemo<Puff[]>(() => {
     const out: Puff[] = [];
-    const nGround = Math.round(count * 0.46);
-    const nCol = count - nGround;
+    const nVent = 12;
+    const nGround = Math.round((count - nVent) * 0.46);
+    const nCol = count - nVent - nGround;
     for (let i = 0; i < count; i++) {
       const h = (k: number) => {
         const v = Math.sin((i + 1) * 12.9898 + k * 78.233) * 43758.5453;
         return v - Math.floor(v);
       };
       const isGround = i < nGround;
+      const isVent = i >= nGround + nCol;
       out.push({
-        kind: isGround ? 0 : 1,
+        kind: isVent ? 2 : isGround ? 0 : 1,
         s1: h(1),
         s2: h(2),
         s3: h(3),
@@ -179,7 +181,9 @@ export function LaunchSmoke({ count, reducedMotion }: { count: number; reducedMo
     if (!mesh || !mat) return;
     const p = scrollState.current;
     const active = smoothstep(1.6, 1.8, p) * (1 - smoothstep(3.2, 3.58, p));
-    mesh.visible = active > 0.005;
+    // Pre-launch cryogenic venting: faint white wisps drifting off the core stage while it sits on the pad
+    const vent = smoothstep(0.55, 0.95, p) * (1 - smoothstep(1.62, 1.85, p));
+    mesh.visible = active > 0.005 || vent > 0.005;
     if (!mesh.visible) return;
     if (!reducedMotion) timeRef.current += Math.min(delta, 0.05);
     const t = timeRef.current;
@@ -197,7 +201,16 @@ export function LaunchSmoke({ count, reducedMotion }: { count: number; reducedMo
     for (let i = 0; i < puffs.length; i++) {
       const pf = puffs[i];
       const churn = reducedMotion ? 0 : t;
-      if (pf.kind === 0) {
+      if (pf.kind === 2) {
+        const cyc = ((reducedMotion ? 0.45 : t * 0.07) + pf.s2) % 1;
+        const vy = pf.s1 < 0.6 ? 8.7 : 3.6;
+        s.cx[i] = 0.55 + cyc * 3.4 + pf.s3 * 0.3;
+        s.cy[i] = vy + (pf.s4 - 0.5) * 0.5 - cyc * 0.9;
+        s.cz[i] = 0.45 + cyc * 0.6;
+        s.size[i] = 0.35 + cyc * 1.7;
+        s.heat[i] = -1; // sentinel: thin sunlit vapour wisp
+        s.alpha[i] = Math.sin(Math.PI * cyc) * 0.26 * vent;
+      } else if (pf.kind === 0) {
         // Ground cloud rolling out to both sides of the pad (and a little behind), slowly boiling
         const side = pf.s1 < 0.5 ? -1 : 1;
         const reach = 2.5 + pf.s2 * 36 * Math.pow(spread, 0.6);
@@ -208,7 +221,7 @@ export function LaunchSmoke({ count, reducedMotion }: { count: number; reducedMo
         s.cy[i] = 0.2 + sz * 0.32 + pf.s3 * 3.2 * spread * (1 - reach / 40) + Math.sin(churn * 0.33 + pf.s2 * 7) * 0.2;
         s.size[i] = sz;
         s.heat[i] = Math.exp(-reach / 5.5) * thrust * 0.9;
-        s.alpha[i] = smoothstep(1.62 + pf.s4 * 0.12, 1.82 + pf.s4 * 0.12, p) * 0.92;
+        s.alpha[i] = smoothstep(1.62 + pf.s4 * 0.12, 1.82 + pf.s4 * 0.12, p) * 0.92 * active;
       } else {
         // Column: from the trench up to the rocket's tail, widening and leaning downwind with age
         const f = pf.f;
@@ -223,7 +236,7 @@ export function LaunchSmoke({ count, reducedMotion }: { count: number; reducedMo
         s.size[i] = sz;
         const nearTail = Math.exp(-Math.max(0, colTop - (y - 0.5)) / 1.4);
         s.heat[i] = (nearTail * 1.15 + Math.exp(-y / 2.2) * 0.55) * thrust;
-        s.alpha[i] = build * smoothstep(0.0, 0.6, colTop + 0.6 - f * colTop) * 0.95;
+        s.alpha[i] = build * smoothstep(0.0, 0.6, colTop + 0.6 - f * colTop) * 0.95 * active;
         if (y > tailY + 0.2) s.alpha[i] = 0;
       }
       s.rot[i] = (pf.s1 - 0.5) * 1.0 + (reducedMotion ? 0 : Math.sin(t * 0.07 + pf.s2 * 6) * 0.15);
@@ -253,7 +266,7 @@ export function LaunchSmoke({ count, reducedMotion }: { count: number; reducedMo
       pa[j * 4] = s.size[i];
       pa[j * 4 + 1] = s.rot[i];
       pa[j * 4 + 2] = s.heat[i];
-      pa[j * 4 + 3] = s.alpha[i] * active;
+      pa[j * 4 + 3] = s.alpha[i];
       ka[j] = Math.floor(puffs[i].s4 * 4) % 4;
     }
     cAttr.needsUpdate = true;
@@ -323,7 +336,9 @@ export function LaunchSmoke({ count, reducedMotion }: { count: number; reducedMo
             col = mix(col, uLitCol * 1.05, (1.0 - dens) * 0.3);
             // Engine glow lighting the smoke from below
             float under = smoothstep(0.7, -0.8, vOff.y);
-            col += vec3(2.2, 0.82, 0.26) * vHeat * (0.35 + 0.65 * under) * uFlicker * (0.55 + 0.45 * dens);
+            col += vec3(2.2, 0.82, 0.26) * max(vHeat, 0.0) * (0.35 + 0.65 * under) * uFlicker * (0.55 + 0.45 * dens);
+            // Pre-launch cryogenic vapour: pale, nearly white
+            if (vHeat < -0.5) col = mix(uLitCol * 1.25, uWarmCol, 0.15);
             gl_FragColor = vec4(col, a);
             #include <tonemapping_fragment>
             #include <colorspace_fragment>
