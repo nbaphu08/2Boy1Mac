@@ -41,16 +41,16 @@ export const BEAT_POSES: BeatPose[] = [
   // 1: enter — Opus pad scene: low across the lagoon (reference: launch seen across the water), SLS + ML-1 on LC-39B,
   // dark tree line between, VAB small on the left horizon
   {
-    camPos: [-9.0, -0.75, 62.0],
-    camLook: [-1.6, 10.6, 0.0],
+    camPos: [-12.0, -0.4, 48.5],
+    camLook: [-1.6, 5.7, 0.0],
     rocketPos: [0, 0, 0],
     rocketRot: [0, 0.15, 0],
     rocketScale: 1,
   },
   // 2: ignition — liftoff seen from the same shore: ground clouds roll out, smoke column rises under the rocket
   {
-    camPos: [-4.0, -0.6, 66.0],
-    camLook: [0.2, 13.6, 0.0],
+    camPos: [-5.5, -0.35, 53.5],
+    camLook: [0.0, 6.6, 0.0],
     rocketPos: [0, 10, 0],
     rocketRot: [0, 0.08, -0.02],
     rocketScale: 1,
