@@ -50,6 +50,18 @@ export const expedition = {
     arrived: "TARGET IN SIGHT",
   },
 
+  // Interactive mini-map in the tracker (Moon and Mars beats).
+  minimap: {
+    title: "MAP",
+    moon: "THE MOON · 5 SITES",
+    mars: "MARS · 7 SITES",
+    jump: (name: string) => `Fly to ${name}`,
+    open: "Map",
+    close: "Close map",
+    noPin: "No published position",
+    here: "Current target",
+  },
+
   // Orbit map beats.
   moonMap: {
     label: "LUNAR ORBIT · FIVE TARGETS BELOW",

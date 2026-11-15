@@ -25,7 +25,7 @@ export type MapPin = {
 type Hall = "moon" | "mars";
 
 /** Map window in degrees. Must match the crop of the image files in public/media/images/map. */
-const VIEW: Record<Hall, { img: string; lon0: number; lon1: number; lat0: number; lat1: number; grid: number }> = {
+export const MAP_VIEW: Record<Hall, { img: string; lon0: number; lon1: number; lat0: number; lat1: number; grid: number }> = {
   moon: { img: "/media/images/map/moon-nearside", lon0: -90, lon1: 90, lat0: -20, lat1: 85, grid: 30 },
   mars: { img: "/media/images/map/mars-global", lon0: -180, lon1: 180, lat0: -60, lat1: 80, grid: 30 },
 };
@@ -46,7 +46,7 @@ export function StoryMap({ pins }: { pins: Record<Hall, MapPin[]> }) {
   const [hall, setHall] = useState<Hall>("moon");
   const [selected, setSelected] = useState<Record<Hall, string>>({ moon: pins.moon[0].slug, mars: pins.mars[0].slug });
 
-  const v = VIEW[hall];
+  const v = MAP_VIEW[hall];
   const lonSpan = v.lon1 - v.lon0;
   const latSpan = v.lat1 - v.lat0;
   const list = pins[hall];

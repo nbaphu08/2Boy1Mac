@@ -2,11 +2,12 @@
 
 import { useLayoutEffect, useRef, useState } from "react";
 import gsap from "gsap";
+import { MiniMap } from "@/components/museum/MiniMap";
+import { MiniMapSheet } from "@/components/museum/MiniMapSheet";
 import { exhibitBySlug } from "@/content/exhibits";
 import { expedition } from "@/content/guide";
 import { readExpedition, trackerActive } from "@/lib/expedition";
-import { scrollState } from "@/lib/scroll/progress";
-import { useMuseum } from "@/lib/store";
+import { scrollState, scrollToBeat } from "@/lib/scroll/progress";
 
 function formatCoords(lat?: number, lon?: number): string | null {
   if (lat === undefined || lon === undefined) return null;
@@ -19,13 +20,9 @@ export function TrackerHud() {
   const barRef = useRef<HTMLDivElement>(null);
   const statusRef = useRef<HTMLSpanElement>(null);
   const [slug, setSlug] = useState<string | null>(null);
-  const reducedMotion = useMuseum((s) => s.reducedMotion);
-  const lightweight = useMuseum((s) => s.lightweight);
-  const webglFailed = useMuseum((s) => s.webglFailed);
-  const isStatic = reducedMotion || lightweight || webglFailed;
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   useLayoutEffect(() => {
-    if (isStatic) return;
     const root = rootRef.current;
     const bar = barRef.current;
     const status = statusRef.current;
@@ -33,6 +30,7 @@ export function TrackerHud() {
     let lastSlug: string | null = null;
     const apply = () => {
       const show = trackerActive(scrollState.current);
+      if (!show) setSheetOpen(false);
       root.style.opacity = show ? "1" : "0";
       root.style.visibility = show ? "visible" : "hidden";
       if (!show) return;
@@ -42,7 +40,10 @@ export function TrackerHud() {
         setSlug(e.targetSlug);
       }
       bar.style.transform = `scaleX(${e.proximity.toFixed(3)})`;
-      status.textContent = e.phase === "arrived" ? expedition.tracker.arrived : expedition.tracker.signal;
+      status.textContent =
+        e.phase === "arrived"
+          ? expedition.tracker.arrived
+          : expedition.tracker.signal;
       status.style.color = e.phase === "arrived" ? "var(--starlight)" : "";
     };
     apply();
@@ -50,30 +51,72 @@ export function TrackerHud() {
     return () => {
       gsap.ticker.remove(apply);
     };
-  }, [isStatic]);
-
-  // Static mode: no live tracking, show the current exhibit target only.
-  if (isStatic) return null;
+  }, []);
 
   const ex = slug ? exhibitBySlug(slug) : undefined;
   const coords = ex ? formatCoords(ex.location.lat, ex.location.lon) : null;
 
+  const hall = ex?.hall ?? "moon";
+  const T = expedition.minimap;
+
   return (
-    <div
-      ref={rootRef}
-      aria-hidden
-      className="pointer-events-none fixed right-12 top-[10.5rem] z-20 w-44 rounded border border-line/70 bg-surface/70 px-2.5 py-2 backdrop-blur-md sm:bottom-5 sm:right-24 sm:top-auto sm:w-60 sm:px-3 sm:py-2.5"
-      style={{ opacity: 0, visibility: "hidden" }}
-    >
-      <p className="font-hud hidden text-[9px] text-mute sm:block">{expedition.tracker.label}</p>
-      <p className="font-display truncate text-xs text-text sm:mt-0.5 sm:text-sm">{ex?.name ?? ""}</p>
-      <p className="font-hud text-[9px] text-platinum sm:text-[10px]">{coords ?? ex?.location.site ?? ""}</p>
-      <div className="mt-1.5 h-0.5 w-full overflow-hidden rounded bg-line/60">
-        <div ref={barRef} className="h-full origin-left bg-starlight" style={{ transform: "scaleX(0)" }} />
+    <>
+      <div
+        ref={rootRef}
+        className="pointer-events-none fixed right-12 top-[10.5rem] z-20 w-44 rounded border border-line/70 bg-surface/70 px-2.5 py-2 backdrop-blur-md sm:bottom-5 sm:right-24 sm:top-auto sm:w-[17rem] sm:px-3 sm:py-2.5"
+        style={{ opacity: 0, visibility: "hidden" }}
+      >
+        <div className="hidden sm:block">
+          <p className="font-hud mb-1 text-[9px] text-mute">
+            {T.title} · {hall === "moon" ? T.moon : T.mars}
+          </p>
+          <MiniMap
+            hall={hall}
+            currentSlug={slug}
+            onJump={(s) => scrollToBeat(s)}
+          />
+          <div className="my-2 h-px bg-line/60" />
+        </div>
+        <button
+          type="button"
+          onClick={() => setSheetOpen(true)}
+          className="font-hud pointer-events-auto mb-1.5 min-h-11 w-full cursor-pointer rounded border border-line/80 px-2 text-[10px] text-platinum sm:hidden"
+        >
+          {T.open}
+        </button>
+        <div aria-hidden>
+          <p className="font-hud hidden text-[9px] text-mute sm:block">
+            {expedition.tracker.label}
+          </p>
+          <p className="font-display truncate text-xs text-text sm:mt-0.5 sm:text-sm">
+            {ex?.name ?? ""}
+          </p>
+          <p className="font-hud text-[9px] text-platinum sm:text-[10px]">
+            {coords ?? ex?.location.site ?? ""}
+          </p>
+          <div className="mt-1.5 h-0.5 w-full overflow-hidden rounded bg-line/60">
+            <div
+              ref={barRef}
+              className="h-full origin-left bg-starlight"
+              style={{ transform: "scaleX(0)" }}
+            />
+          </div>
+          <span
+            ref={statusRef}
+            className="font-hud mt-1 block text-[9px] text-mute"
+          >
+            {expedition.tracker.signal}
+          </span>
+        </div>
       </div>
-      <span ref={statusRef} className="font-hud mt-1 block text-[9px] text-mute">
-        {expedition.tracker.signal}
-      </span>
-    </div>
+      {sheetOpen && (
+        <MiniMapSheet
+          hall={hall}
+          currentSlug={slug}
+          onJump={(s) => scrollToBeat(s)}
+          onClose={() => setSheetOpen(false)}
+        />
+      )}
+    </>
   );
 }
