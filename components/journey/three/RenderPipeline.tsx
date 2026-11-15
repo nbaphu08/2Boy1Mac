@@ -18,6 +18,7 @@ import { scrollState, smoothstep } from "@/lib/scroll/progress";
 import { usePerfBudget } from "./perfTier";
 import { grailSimState } from "./simulationBus";
 import { sampleTrajectory } from "./trajectory";
+import { LaunchAtmosphere } from "./earth/LaunchAtmosphere";
 
 export type HallEnv = "launch" | "deep" | "moon" | "mars";
 
@@ -171,6 +172,7 @@ export function PostEffects() {
           intensity={1.35}
           color="#03050A"
         />
+        <LaunchAtmosphere />
         <Bloom
           ref={bloomRef}
           mipmapBlur
@@ -205,6 +207,7 @@ export function PostEffects() {
         bokehScale={0}
         resolutionScale={0.5}
       />
+      <LaunchAtmosphere />
       <Bloom
         ref={bloomRef}
         mipmapBlur

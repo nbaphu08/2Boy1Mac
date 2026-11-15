@@ -10,7 +10,6 @@ import {
   getKaptonBumpMap,
   getNozzleBellTextures,
   getOrionTextures,
-  getSmokePuffTexture,
   getSolarPanelTexture,
   getSparkTexture,
   getSrbTextures,
@@ -138,18 +137,12 @@ export function SLSRocket({
   const rcsJetsRef = useRef<THREE.Group>(null);
   const maxQConeRef = useRef<THREE.Mesh>(null);
   const maxQMatRef = useRef<THREE.ShaderMaterial>(null);
-  const padSteamRef = useRef<THREE.Points>(null);
-  const padGlowSteamRef = useRef<THREE.Points>(null);
-  const padSteamMatRef = useRef<THREE.ShaderMaterial>(null);
-  const padGlowSteamMatRef = useRef<THREE.ShaderMaterial>(null);
   const padSparksRef = useRef<THREE.Points>(null);
   const pyroSparksRef = useRef<THREE.Points>(null);
   const engineLightRef = useRef<THREE.PointLight>(null);
   const padBounceLightRef = useRef<THREE.PointLight>(null);
   const elapsedRef = useRef(0);
   const budget = usePerfBudget();
-  const steamCount = budget.tier === "high" ? 130 : budget.tier === "medium" ? 84 : 48;
-  const glowSteamCount = Math.max(22, Math.floor(steamCount * 0.42));
   const sparkCount = budget.sparkCount;
   const pyroCount = budget.pyroCount;
 
@@ -169,61 +162,6 @@ export function SLSRocket({
   const kaptonBump = useMemo(() => getKaptonBumpMap(), []);
   const solarTex = useMemo(() => getSolarPanelTexture(), []);
   const sparkTex = useMemo(() => getSparkTexture(), []);
-  const smokeTex = useMemo(() => getSmokePuffTexture(), []);
-
-  const steamUniforms = useMemo(
-    () => ({
-      uTex: { value: smokeTex },
-      uPointScale: { value: 900 },
-      uOpacity: { value: 0 },
-      uFlicker: { value: 1 },
-    }),
-    [smokeTex],
-  );
-  const glowSteamUniforms = useMemo(
-    () => ({
-      uTex: { value: smokeTex },
-      uPointScale: { value: 900 },
-      uOpacity: { value: 0 },
-      uFlicker: { value: 1 },
-    }),
-    [smokeTex],
-  );
-
-  // Pre-seed pad acoustic deluge steam clouds (trench +Z/-Z surge + radial deluge boil)
-  const steamData = useMemo(() => {
-    const positions = new Float32Array(steamCount * 3);
-    const sizes = new Float32Array(steamCount);
-    const rots = new Float32Array(steamCount);
-    const heats = new Float32Array(steamCount);
-    const glowPositions = new Float32Array(glowSteamCount * 3);
-    const glowSizes = new Float32Array(glowSteamCount);
-    const glowRots = new Float32Array(glowSteamCount);
-    const glowHeats = new Float32Array(glowSteamCount);
-    const seeds = new Float32Array(steamCount * 4); // trenchSide/angle, speed, heightBias, phase
-    for (let i = 0; i < steamCount; i++) {
-      const h1 = ((i * 2654435761) >>> 0) / 4294967295;
-      const h2 = (((i + 47) * 2246822519) >>> 0) / 4294967295;
-      const h3 = (((i + 131) * 3266489917) >>> 0) / 4294967295;
-      seeds[i * 4 + 0] = h1;
-      seeds[i * 4 + 1] = 0.72 + h2 * 0.88;
-      seeds[i * 4 + 2] = h3;
-      seeds[i * 4 + 3] = (i % 23) / 23 + h1 * 0.04;
-      rots[i] = h2 * Math.PI * 2;
-      if (i < glowSteamCount) glowRots[i] = h3 * Math.PI * 2;
-    }
-    return {
-      positions,
-      sizes,
-      rots,
-      heats,
-      glowPositions,
-      glowSizes,
-      glowRots,
-      glowHeats,
-      seeds,
-    };
-  }, [steamCount, glowSteamCount]);
 
   // Pre-seed ROFI igniter + exhaust spark particles
   const sparkData = useMemo(() => {
@@ -406,112 +344,12 @@ export function SLSRocket({
       maxQConeRef.current.scale.setScalar(0.96 + 0.05 * flicker);
     }
 
-    // 9. E6 · Volumetric Billowing Deluge Steam Clouds (rolling out of +Z/-Z flame trench, lit orange below, grey-white atop)
-    const steamActive = smoothstep(1.65, 1.95, p) * (1 - smoothstep(2.75, 3.4, p));
-    const perspectiveFov = (state.camera as THREE.PerspectiveCamera).fov || 44;
-    const ptScale =
-      (state.size.height * state.gl.getPixelRatio()) /
-      (2 * Math.tan(THREE.MathUtils.degToRad(perspectiveFov) * 0.5));
-
-    if (padSteamRef.current && padSteamMatRef.current) {
-      padSteamRef.current.visible = steamActive > 0.01;
-      if (steamActive > 0.01) {
-        const posAttr = padSteamRef.current.geometry.attributes.position as THREE.BufferAttribute;
-        const sizeAttr = padSteamRef.current.geometry.attributes.aSize as THREE.BufferAttribute;
-        const rotAttr = padSteamRef.current.geometry.attributes.aRot as THREE.BufferAttribute;
-        const heatAttr = padSteamRef.current.geometry.attributes.aHeat as THREE.BufferAttribute;
-        const arr = posAttr.array as Float32Array;
-        const sArr = sizeAttr.array as Float32Array;
-        const rArr = rotAttr.array as Float32Array;
-        const hArr = heatAttr.array as Float32Array;
-        const { seeds } = steamData;
-        const drift = reducedMotion ? 0 : Math.max(0, p - 1.65) * 1.45;
-        const trenchOutScale = 1 + Math.max(0, p - 1.8) * 0.35;
-
-        for (let i = 0; i < steamCount; i++) {
-          const uRand = seeds[i * 4 + 0];
-          const spd = seeds[i * 4 + 1];
-          const hBias = seeds[i * 4 + 2];
-          const phase = seeds[i * 4 + 3];
-          const cyc = ((reducedMotion ? 0.36 : t * 0.44) + phase + drift) % 1;
-          const cycCurve = Math.pow(cyc, 0.72);
-
-          // 70% jet out along open +-Z flame trench mouths before billowing skyward; 30% boil around MLP base
-          let px = 0;
-          let py = 0;
-          let pz = 0;
-          if (i % 10 < 7) {
-            const zDir = i % 2 === 0 ? 1 : -1;
-            const spreadAng = (uRand - 0.5) * 0.85;
-            const trenchDist = (2.4 + cycCurve * spd * 15.5) * trenchOutScale;
-            px = Math.sin(spreadAng) * trenchDist * (0.35 + cyc * 0.55);
-            pz = zDir * Math.cos(spreadAng) * trenchDist;
-            py = 0.25 + Math.pow(cyc, 1.35) * (4.2 + hBias * 5.8);
-          } else {
-            const ang = uRand * Math.PI * 2;
-            const rad = 1.6 + cycCurve * spd * 7.8;
-            px = Math.cos(ang) * rad;
-            pz = Math.sin(ang) * rad;
-            py = 0.35 + Math.pow(cyc, 1.2) * (3.4 + hBias * 3.8);
-          }
-
-          arr[i * 3 + 0] = px;
-          arr[i * 3 + 1] = py;
-          arr[i * 3 + 2] = pz;
-          sArr[i] = (3.6 + cyc * 6.8 + hBias * 2.0) * (0.86 + 0.28 * steamActive);
-          rArr[i] = uRand * 6.28 + (reducedMotion ? 0 : (i % 2 === 0 ? 0.32 : -0.28) * t);
-
-          const distPad = Math.hypot(px, py * 1.4, pz);
-          hArr[i] = clamp01(1 - distPad / 11.5) * (1 - cyc * 0.45);
-        }
-        posAttr.needsUpdate = true;
-        sizeAttr.needsUpdate = true;
-        rotAttr.needsUpdate = true;
-        heatAttr.needsUpdate = true;
-        padSteamMatRef.current.uniforms.uPointScale.value = ptScale;
-        padSteamMatRef.current.uniforms.uOpacity.value = steamActive * 0.82;
-        padSteamMatRef.current.uniforms.uFlicker.value = 0.92 + 0.14 * flicker;
-      }
-    }
-    if (padGlowSteamRef.current && padGlowSteamMatRef.current) {
-      padGlowSteamRef.current.visible = steamActive > 0.01;
-      if (steamActive > 0.01) {
-        const posAttr = padGlowSteamRef.current.geometry.attributes.position as THREE.BufferAttribute;
-        const sizeAttr = padGlowSteamRef.current.geometry.attributes.aSize as THREE.BufferAttribute;
-        const rotAttr = padGlowSteamRef.current.geometry.attributes.aRot as THREE.BufferAttribute;
-        const arr = posAttr.array as Float32Array;
-        const sArr = sizeAttr.array as Float32Array;
-        const rArr = rotAttr.array as Float32Array;
-        const { seeds } = steamData;
-        const drift = reducedMotion ? 0 : Math.max(0, p - 1.65) * 1.25;
-        for (let i = 0; i < glowSteamCount; i++) {
-          const uRand = seeds[i * 4 + 0];
-          const spd = seeds[i * 4 + 1] * 0.82;
-          const hBias = seeds[i * 4 + 2];
-          const phase = seeds[i * 4 + 3];
-          const cyc = ((reducedMotion ? 0.28 : t * 0.58) + phase + drift) % 1;
-          const zDir = i % 2 === 0 ? 1 : -1;
-          const spreadAng = (uRand - 0.5) * 0.65;
-          const trenchDist = 0.8 + Math.pow(cyc, 0.78) * spd * 9.2;
-          arr[i * 3 + 0] = Math.sin(spreadAng) * trenchDist * 0.4;
-          arr[i * 3 + 1] = 0.05 + cyc * 1.9 + hBias * 0.8;
-          arr[i * 3 + 2] = zDir * Math.cos(spreadAng) * trenchDist;
-          sArr[i] = 3.8 + cyc * 5.2;
-          rArr[i] = uRand * 6.28 - (reducedMotion ? 0 : t * 0.45);
-        }
-        posAttr.needsUpdate = true;
-        sizeAttr.needsUpdate = true;
-        rotAttr.needsUpdate = true;
-        padGlowSteamMatRef.current.uniforms.uPointScale.value = ptScale;
-        padGlowSteamMatRef.current.uniforms.uOpacity.value = steamActive * (0.46 + 0.14 * flicker);
-        padGlowSteamMatRef.current.uniforms.uFlicker.value = 0.9 + 0.2 * flicker;
-      }
-    }
-
     // 10. ROFI Igniter Sparks & Exhaust Sparks ("tia lửa")
     if (padSparksRef.current) {
-      padSparksRef.current.visible = rofiActive > 0.01;
-      if (rofiActive > 0.01) {
+      // Opus pad scene: ROFI sparks only under the engines around T-0 (no confetti during the climb)
+      const sparkActive = smoothstep(1.32, 1.6, p) * (1 - smoothstep(1.84, 2.0, p));
+      padSparksRef.current.visible = sparkActive > 0.01;
+      if (sparkActive > 0.01) {
         const posAttr = padSparksRef.current.geometry.attributes.position as THREE.BufferAttribute;
         const arr = posAttr.array as Float32Array;
         const { seeds } = sparkData;
@@ -536,7 +374,7 @@ export function SLSRocket({
         }
         posAttr.needsUpdate = true;
         const sMat = padSparksRef.current.material as THREE.PointsMaterial;
-        sMat.opacity = Math.min(1, rofiActive * 1.15);
+        sMat.opacity = Math.min(1, sparkActive * 0.8);
       }
     }
 
@@ -568,7 +406,7 @@ export function SLSRocket({
 
   return (
     <>
-      {/* ─── PAD ACOUSTIC DELUGE STEAM CLOUD + GROUND-LIT WARM UNDERSIDE ─── */}
+      {/* ─── PAD GROUND-LIT WARM UNDERSIDE (steam/smoke now in earth/LaunchSmoke) ─── */}
       <pointLight
         ref={padBounceLightRef}
         position={[WORLD_ANCHORS.pad[0] + 0.6, WORLD_ANCHORS.pad[1] + 1.2, WORLD_ANCHORS.pad[2] + 2.2]}
@@ -581,105 +419,6 @@ export function SLSRocket({
         name="warmup-sls-pad-fx"
         userData={{ warmup: true, anchorPos: [0, 2, 0], camPos: [14, 6, 22], hall: "launch", beatIndex: 0 }}
       >
-      <points ref={padSteamRef} position={WORLD_ANCHORS.pad} visible={false}>
-        <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[steamData.positions, 3]} />
-          <bufferAttribute attach="attributes-aSize" args={[steamData.sizes, 1]} />
-          <bufferAttribute attach="attributes-aRot" args={[steamData.rots, 1]} />
-          <bufferAttribute attach="attributes-aHeat" args={[steamData.heats, 1]} />
-        </bufferGeometry>
-        <shaderMaterial
-          ref={padSteamMatRef}
-          uniforms={steamUniforms}
-          transparent
-          depthWrite={false}
-          blending={THREE.NormalBlending}
-          vertexShader={`
-            attribute float aSize;
-            attribute float aRot;
-            attribute float aHeat;
-            uniform float uPointScale;
-            varying float vRot;
-            varying float vHeat;
-            void main() {
-              vRot = aRot;
-              vHeat = aHeat;
-              vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-              gl_PointSize = clamp(aSize * uPointScale / max(-mvPosition.z, 1.0), 3.0, uPointScale * 0.45);
-              gl_Position = projectionMatrix * mvPosition;
-            }
-          `}
-          fragmentShader={`
-            uniform sampler2D uTex;
-            uniform float uOpacity;
-            uniform float uFlicker;
-            varying float vRot;
-            varying float vHeat;
-            void main() {
-              vec2 c = gl_PointCoord - 0.5;
-              float cs = cos(vRot);
-              float sn = sin(vRot);
-              vec2 rUv = vec2(c.x * cs - c.y * sn, c.x * sn + c.y * cs) + 0.5;
-              vec4 tex = texture2D(uTex, clamp(rUv, 0.0, 1.0));
-              if (tex.a < 0.02) discard;
-
-              // Bottom-up engine orange scatter + cool white-grey illuminated billowing crown
-              float verticalGrad = smoothstep(0.92, 0.14, gl_PointCoord.y);
-              float underHeat = clamp(vHeat * 0.95 + verticalGrad * vHeat * 0.55, 0.0, 1.0);
-              vec3 crownCol = mix(vec3(0.76, 0.8, 0.86), vec3(0.92, 0.94, 0.98), smoothstep(0.65, 0.12, gl_PointCoord.y));
-              vec3 fireCol = vec3(1.18, 0.56, 0.22) * uFlicker;
-              vec3 finalCol = mix(crownCol, fireCol, pow(underHeat, 1.15));
-
-              gl_FragColor = vec4(finalCol, tex.a * uOpacity);
-              #include <tonemapping_fragment>
-              #include <colorspace_fragment>
-            }
-          `}
-        />
-      </points>
-      <points ref={padGlowSteamRef} position={WORLD_ANCHORS.pad} visible={false}>
-        <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[steamData.glowPositions, 3]} />
-          <bufferAttribute attach="attributes-aSize" args={[steamData.glowSizes, 1]} />
-          <bufferAttribute attach="attributes-aRot" args={[steamData.glowRots, 1]} />
-        </bufferGeometry>
-        <shaderMaterial
-          ref={padGlowSteamMatRef}
-          uniforms={glowSteamUniforms}
-          transparent
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-          vertexShader={`
-            attribute float aSize;
-            attribute float aRot;
-            uniform float uPointScale;
-            varying float vRot;
-            void main() {
-              vRot = aRot;
-              vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-              gl_PointSize = clamp(aSize * uPointScale / max(-mvPosition.z, 1.0), 3.0, uPointScale * 0.42);
-              gl_Position = projectionMatrix * mvPosition;
-            }
-          `}
-          fragmentShader={`
-            uniform sampler2D uTex;
-            uniform float uOpacity;
-            uniform float uFlicker;
-            varying float vRot;
-            void main() {
-              vec2 c = gl_PointCoord - 0.5;
-              float cs = cos(vRot);
-              float sn = sin(vRot);
-              vec2 rUv = vec2(c.x * cs - c.y * sn, c.x * sn + c.y * cs) + 0.5;
-              vec4 tex = texture2D(uTex, clamp(rUv, 0.0, 1.0));
-              if (tex.a < 0.02) discard;
-              vec3 col = vec3(1.55, 0.72, 0.28) * uFlicker;
-              gl_FragColor = vec4(col, tex.a * uOpacity * 0.72);
-            }
-          `}
-        />
-      </points>
-
       {/* ─── ROFI IGNITER & EXHAUST SPARKS ("TIA LỬA") ─── */}
       <points ref={padSparksRef} position={WORLD_ANCHORS.pad} visible={false}>
         <bufferGeometry>
@@ -687,7 +426,7 @@ export function SLSRocket({
         </bufferGeometry>
         <pointsMaterial
           map={sparkTex}
-          size={0.55}
+          size={0.28}
           transparent
           opacity={0.95}
           depthWrite={false}

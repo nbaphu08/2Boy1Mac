@@ -13,25 +13,36 @@ import {
   getVabFacadeTextures,
 } from "./rocketTextures";
 import { WORLD_ANCHORS } from "./trajectory";
+import { LAND_Y, VAB_POS, VAB_SCALE } from "./earth/earthShared";
+import { LagoonWater } from "./earth/LagoonWater";
+import { LaunchSmoke } from "./earth/LaunchSmoke";
+import { WetlandLandscape } from "./earth/WetlandLandscape";
+
+const CRAWLER_LEN_TOTAL = Math.hypot(VAB_POS[0], VAB_POS[2]);
+const CRAWLER_DIR: [number, number] = [VAB_POS[0] / CRAWLER_LEN_TOTAL, VAB_POS[2] / CRAWLER_LEN_TOTAL];
+/** Yaw that maps local +Z onto the pad → VAB direction. */
+const CRAWLER_YAW = Math.atan2(CRAWLER_DIR[0], CRAWLER_DIR[1]);
+const CRAWLER_START = 25;
+const CRAWLER_LEN = CRAWLER_LEN_TOTAL - CRAWLER_START - 30;
 
 const TOWER_BAYS = [0.6, 1.9, 3.2, 4.5, 5.8, 7.1, 8.4, 9.7, 11.0, 12.3];
 const WORK_LIGHT_BAYS = [1.9, 4.5, 7.1, 9.7, 12.1];
 
+// Opus pad scene: triangle rotated 60° so no mast stands between the lagoon camera and the rocket
 const LIGHTNING_TOWER_COORDS: [number, number][] = [
-  [-15.2, -11.8],
-  [15.2, -11.8],
-  [0, 17.5],
+  [-2.62, -19.06],
+  [-17.82, 7.26],
+  [15.16, 8.75],
 ];
 
 const STADIUM_FLOOD_TOWERS: { pos: [number, number, number]; yaw: number; color: string; hdr: [number, number, number] }[] = [
-  { pos: [12.8, 0, 11.4], yaw: -0.78, color: "#DCE6FF", hdr: [2.1, 2.25, 2.6] },
+  { pos: [8.6, 0, 15.2], yaw: -0.5, color: "#DCE6FF", hdr: [2.1, 2.25, 2.6] },
   { pos: [-13.0, 0, 11.8], yaw: 0.78, color: "#FFE2BE", hdr: [2.5, 2.05, 1.55] },
   { pos: [13.6, 0, -10.8], yaw: -2.35, color: "#DCE6FF", hdr: [2.1, 2.25, 2.6] },
   { pos: [-13.6, 0, -10.8], yaw: 2.35, color: "#FFE2BE", hdr: [2.5, 2.05, 1.55] },
 ];
 
 const UP_AXIS = new THREE.Vector3(0, 1, 0);
-const SCRUB_WIND_UNIFORM = { value: 0 };
 
 /** Compute 3D strut instance matrix between two points `a` and `b` with uniform radius `r`. */
 function composeStrutMatrix(
@@ -59,269 +70,6 @@ function composeStrutMatrix(
   }
   vScale.set(r, Math.max(len, 1e-4), r);
   outMat.compose(vMid, vQuat, vScale);
-}
-
-/** E2 · Animated Atlantic Ocean water shader with wave normals, western dusk sun glint & coastal haze. */
-function AtlanticOceanSurface({ reducedMotion }: { reducedMotion: boolean }) {
-  const matRef = useRef<THREE.ShaderMaterial>(null);
-  const timeRef = useRef(0);
-
-  const uniforms = useMemo(
-    () => ({
-      uTime: { value: 0 },
-      uSunDir: { value: new THREE.Vector3(-0.82, 0.072, -0.57).normalize() },
-      uFogColor: { value: new THREE.Color("#323B4E") },
-      uHorizonGlow: { value: new THREE.Color("#C76F4E") },
-    }),
-    [],
-  );
-
-  useFrame((_, delta) => {
-    if (!matRef.current) return;
-    if (!reducedMotion) {
-      timeRef.current += Math.min(delta, 0.05);
-    }
-    matRef.current.uniforms.uTime.value = timeRef.current;
-  });
-
-  return (
-    <mesh position={[450, -1.85, -150]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow={false}>
-      <planeGeometry args={[4600, 4600, 1, 1]} />
-      <shaderMaterial
-        ref={matRef}
-        uniforms={uniforms}
-        fog={false}
-        vertexShader={`
-          varying vec3 vWorldPos;
-          void main() {
-            vec4 wp = modelMatrix * vec4(position, 1.0);
-            vWorldPos = wp.xyz;
-            gl_Position = projectionMatrix * viewMatrix * wp;
-          }
-        `}
-        fragmentShader={`
-          uniform float uTime;
-          uniform vec3 uSunDir;
-          uniform vec3 uFogColor;
-          uniform vec3 uHorizonGlow;
-          varying vec3 vWorldPos;
-
-          vec3 waveNormal(vec2 p, float t) {
-            // Single-pass analytical gradient across 4 directional Atlantic swell octaves
-            float dhx = 0.0;
-            float dhz = 0.0;
-            float ph1 = dot(p, vec2(0.42, 0.25)) - t * 1.15;
-            float c1 = cos(ph1) * 0.22;
-            dhx += c1 * 0.42; dhz += c1 * 0.25;
-
-            float ph2 = dot(p, vec2(-0.31, 0.54)) - t * 0.88;
-            float c2 = cos(ph2) * 0.16;
-            dhx += c2 * -0.31; dhz += c2 * 0.54;
-
-            float ph3 = dot(p, vec2(0.95, -0.68)) + t * 1.55;
-            float c3 = cos(ph3) * 0.09;
-            dhx += c3 * 0.95; dhz += c3 * -0.68;
-
-            float ph4 = dot(p, vec2(-1.45, -0.92)) - t * 2.15;
-            float c4 = cos(ph4) * 0.055;
-            dhx += c4 * -1.45; dhz += c4 * -0.92;
-
-            return normalize(vec3(-dhx * 0.85, 1.0, -dhz * 0.85));
-          }
-
-          void main() {
-            vec2 p = vWorldPos.xz * 0.34;
-            vec3 N = waveNormal(p, uTime);
-
-            vec3 V = normalize(cameraPosition - vWorldPos);
-            float dist = length(cameraPosition - vWorldPos);
-
-            // Fresnel water reflection (deep ocean nadir -> warm-cool dusk horizon sky)
-            float fresnel = clamp(0.03 + 0.97 * pow(1.0 - max(dot(N, V), 0.0), 4.2), 0.0, 1.0);
-            vec3 R = reflect(-V, N);
-            float skySunDot = max(dot(normalize(R), uSunDir), 0.0);
-
-            vec3 deepSea = vec3(0.025, 0.068, 0.145);
-            vec3 skyRefl = mix(vec3(0.08, 0.14, 0.27), uHorizonGlow * 0.72, pow(skySunDot, 2.2) * (1.0 - smoothstep(0.02, 0.32, R.y)));
-            vec3 col = mix(deepSea, skyRefl, fresnel * 0.88);
-
-            // Specular sun glint path across ocean swells (~4 deg dusk sun)
-            vec3 H = normalize(uSunDir + V);
-            float specTight = pow(max(dot(N, H), 0.0), 180.0);
-            float specBroad = pow(max(dot(N, H), 0.0), 24.0);
-            col += vec3(1.0, 0.76, 0.48) * (specTight * 1.45 + specBroad * 0.18);
-
-            // Faint cool pad floodlight bounce near the shoreline
-            float padGlowDist = length(vWorldPos.xz - vec2(15.0, 0.0));
-            float padRefl = exp(-padGlowDist * 0.015) * max(dot(N, normalize(vec3(0.0, 0.4, 0.9) + V)), 0.0);
-            col += vec3(0.45, 0.58, 0.82) * pow(padRefl, 6.0) * 0.25;
-
-            // Subtle Atlantic surf foam whisper along beach edge (coastDist ~ 63..69 m)
-            float coastDist = vWorldPos.x * 0.867 - vWorldPos.z * 0.497;
-            float surf = smoothstep(73.0, 65.5, coastDist) * smoothstep(61.5, 65.0, coastDist);
-            float foamWave = 0.55 + 0.45 * sin(coastDist * 1.2 - uTime * 1.8 + sin(vWorldPos.z * 0.25) * 2.0);
-            col = mix(col, vec3(0.46, 0.5, 0.58), surf * foamWave * 0.42);
-
-            // Smooth atmospheric distance haze into horizon
-            float fogAmt = 1.0 - exp(-max(dist - 80.0, 0.0) * 0.00145);
-            float sunHazeDot = max(dot(normalize(vWorldPos - cameraPosition), uSunDir), 0.0);
-            vec3 hazeCol = mix(uFogColor, uHorizonGlow * 0.76, pow(sunHazeDot, 2.2) * 0.65);
-            col = mix(col, hazeCol, clamp(fogAmt, 0.0, 1.0));
-
-            gl_FragColor = vec4(col, 1.0);
-            #include <tonemapping_fragment>
-            #include <colorspace_fragment>
-          }
-        `}
-      />
-    </mesh>
-  );
-}
-
-/** E2 · Instanced KSC Coastal Wetland Scrub & Marsh Grass Field (1 draw call + breeze sway). */
-function MarshScrubField({
-  count,
-  reducedMotion,
-}: {
-  count: number;
-  reducedMotion: boolean;
-}) {
-  const meshRef = useRef<THREE.InstancedMesh>(null);
-
-  // Build compact 3-crossed-blade marsh grass/scrub tuft geometry
-  const tuftGeo = useMemo(() => {
-    const pos: number[] = [];
-    const norm: number[] = [];
-    const uvs: number[] = [];
-    const blades = 3;
-    for (let b = 0; b < blades; b++) {
-      const a = (b * Math.PI) / blades + 0.22;
-      const ca = Math.cos(a);
-      const sa = Math.sin(a);
-      const nx = -sa;
-      const nz = ca;
-      const w = 0.34;
-      const h = 0.78 + (b % 2) * 0.16;
-      const tilt = (b - 1) * 0.08;
-      // Two triangles per tuft blade (wider low, tapering up cleanly)
-      const x0 = -ca * w;
-      const z0 = -sa * w;
-      const x1 = ca * w;
-      const z1 = sa * w;
-      const tx0 = -ca * (w * 0.42) + tilt;
-      const tz0 = -sa * (w * 0.42);
-      const tx1 = ca * (w * 0.42) + tilt;
-      const tz1 = sa * (w * 0.42);
-
-      pos.push(x0, 0, z0, x1, 0, z1, tx1, h, tz1);
-      pos.push(x0, 0, z0, tx1, h, tz1, tx0, h, tz0);
-      for (let k = 0; k < 6; k++) norm.push(nx, 0.35, nz);
-      uvs.push(0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1);
-    }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-    g.setAttribute("normal", new THREE.Float32BufferAttribute(norm, 3));
-    g.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
-    g.computeVertexNormals();
-    return g;
-  }, []);
-
-  const scrubMat = useMemo(() => {
-    const m = new THREE.MeshStandardMaterial({
-      color: "#FFFFFF",
-      roughness: 0.92,
-      metalness: 0.02,
-      side: THREE.DoubleSide,
-    });
-    m.customProgramCacheKey = () => "marsh-scrub-wind-v1";
-    m.onBeforeCompile = (shader) => {
-      shader.uniforms.uWindTime = SCRUB_WIND_UNIFORM;
-      shader.vertexShader = `uniform float uWindTime;\n${shader.vertexShader}`.replace(
-        "#include <begin_vertex>",
-        `#include <begin_vertex>
-         float swayAmt = smoothstep(0.0, 0.9, uv.y);
-         #ifdef USE_INSTANCING
-           vec3 wp = (instanceMatrix * vec4(position, 1.0)).xyz;
-           float gust = sin(uWindTime * 1.65 + wp.x * 0.14 + wp.z * 0.11);
-           transformed.x += gust * 0.11 * swayAmt;
-           transformed.z += cos(uWindTime * 1.2 + wp.z * 0.18) * 0.07 * swayAmt;
-         #endif`,
-      );
-    };
-    return m;
-  }, []);
-
-  useEffect(() => {
-    const mesh = meshRef.current;
-    if (!mesh) return;
-    const dummy = new THREE.Object3D();
-    const col = new THREE.Color();
-    const palette = ["#202E1C", "#293822", "#314126", "#3E472D", "#1B2618"];
-
-    let placed = 0;
-    let attempt = 0;
-    while (placed < count && attempt < count * 8) {
-      attempt++;
-      // Deterministic Halton-like hash distribution around pad perimeter, dunes, and crawlerway
-      const h1 = ((attempt * 2654435761) >>> 0) / 4294967295;
-      const h2 = (((attempt + 97) * 2246822519) >>> 0) / 4294967295;
-      const h3 = (((attempt + 313) * 3266489917) >>> 0) / 4294967295;
-
-      let x = 0;
-      let z = 0;
-      if (placed % 4 === 0) {
-        // Flanking the Crawlerway toward the distant VAB
-        const tCrawl = 18 + h1 * 185;
-        const side = placed % 8 === 0 ? 1 : -1;
-        const lat = side * (9.5 + h2 * 44);
-        x = -0.5 * tCrawl + 0.866 * lat;
-        z = -0.866 * tCrawl - 0.5 * lat;
-      } else {
-        // Organic ring outside pad apron & along dune ridge
-        const ang = h1 * Math.PI * 2;
-        const rad = 52 + Math.pow(h2, 0.72) * 125;
-        x = Math.cos(ang) * rad;
-        z = Math.sin(ang) * rad;
-      }
-
-      // Skip concrete pad apron, ocean water (coastDist > 58), and Crawlerway roadbed
-      const padR = Math.hypot(x, z);
-      const coastDist = x * 0.867 - z * 0.497;
-      if (padR < 53 || coastDist > 58) continue;
-
-      const dCrawl = Math.abs(x * 0.866 - z * 0.5);
-      const alongCrawl = -(x * 0.5 + z * 0.866);
-      if (alongCrawl > 0 && dCrawl < 8.5) continue;
-
-      const s = 0.75 + h3 * 1.45;
-      dummy.position.set(x, -1.56, z);
-      dummy.rotation.set(0, h1 * Math.PI * 2, 0);
-      dummy.scale.set(s * (0.9 + h2 * 0.4), s * (0.85 + h1 * 0.55), s * (0.9 + h2 * 0.4));
-      dummy.updateMatrix();
-      mesh.setMatrixAt(placed, dummy.matrix);
-
-      col.set(palette[placed % palette.length]);
-      mesh.setColorAt(placed, col);
-      placed++;
-    }
-    mesh.count = placed;
-    mesh.instanceMatrix.needsUpdate = true;
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-    mesh.boundingSphere = new THREE.Sphere(new THREE.Vector3(-40, 0, -60), 230);
-  }, [count]);
-
-  useFrame((_, delta) => {
-    if (reducedMotion) return;
-    SCRUB_WIND_UNIFORM.value += Math.min(delta, 0.05);
-  });
-
-  return (
-    <instancedMesh
-      ref={meshRef}
-      args={[tuftGeo, scrubMat, count]}
-      receiveShadow={false}
-    />
-  );
 }
 
 /** E3 · 3 Tapered Steel Lattice Lightning Protection Towers (1 InstancedMesh draw call) + Fiberglass Masts + Catenary Wires. */
@@ -416,9 +164,9 @@ function LightningProtectionCage({
 
     const tips: [number, number, number][] = LIGHTNING_TOWER_COORDS.map(([x, z]) => [x, 18.85, z]);
     const guys: [number, number, number][] = [
-      [-26.5, -0.5, -18.5],
-      [26.5, -0.5, -18.5],
-      [0, -0.5, 29.0],
+      [-2.67, -0.5, -26.37],
+      [-24.17, -0.5, 10.87],
+      [20.78, -0.5, 12.0],
     ];
     pushArc(tips[0], tips[1], 1.15);
     pushArc(tips[1], tips[2], 1.25);
@@ -439,7 +187,7 @@ function LightningProtectionCage({
         args={[unitCyl, undefined, maxStruts]}
         castShadow={useShadows}
       >
-        <meshStandardMaterial color="#8B94A4" roughness={0.52} metalness={0.68} />
+        <meshStandardMaterial color="#6F7784" roughness={0.6} metalness={0.55} />
       </instancedMesh>
 
       {/* Upper white fiberglass lightning masts, concrete bases & pulsing aviation beacons */}
@@ -651,7 +399,7 @@ export function LaunchComplex({ reducedMotion = false }: { reducedMotion?: boole
     });
   });
 
-  const scrubCount = budget.tier === "high" ? 480 : budget.tier === "medium" ? 260 : 110;
+  const smokeCount = budget.tier === "high" ? 150 : budget.tier === "medium" ? 104 : 64;
 
   return (
     <group>
@@ -690,45 +438,33 @@ export function LaunchComplex({ reducedMotion = false }: { reducedMotion?: boole
       >
       {/* ─── LC-39B PAD APRON, ATLANTIC COASTLINE, DUNE BERM, WETLANDS & CRAWLERWAY ─── */}
       <group position={WORLD_ANCHORS.pad}>
-        {/* E2 · Animated Atlantic Ocean water shader with dusk glint */}
-        <AtlanticOceanSurface reducedMotion={reducedMotion} />
+        {/* Opus pad scene · lagoon water with planar reflection, wetland ground, tree lines, power line */}
+        <LagoonWater
+          reflect={budget.tier !== "low"}
+          reflectScale={budget.tier === "high" ? 0.5 : 0.36}
+          matHaze={budget.tier === "low" ? 1 : 0}
+          reducedMotion={reducedMotion}
+          activeRef={groupRef}
+        />
+        <WetlandLandscape
+          treeCount={budget.tier === "high" ? 1700 : budget.tier === "medium" ? 1150 : 650}
+          matHaze={budget.tier === "low" ? 1 : 0}
+        />
 
-        {/* E2 · Beach & coastal sand dune berm along the Florida shoreline (coastDist ≈ 60 m) */}
-        <mesh position={[56, -1.35, -32]} rotation={[0, 0.52, 0]} receiveShadow={useShadows}>
-          <boxGeometry args={[18, 1.05, 2400]} />
-          <meshStandardMaterial color="#675D4B" roughness={0.94} metalness={0.02} />
+        {/* Barrier-island beach berm between lagoon and Atlantic */}
+        <mesh position={[56, -1.62, -32]} rotation={[0, 0.52, 0]}>
+          <boxGeometry args={[14, 0.3, 2400]} />
+          <meshStandardMaterial color="#4A463E" roughness={0.96} metalness={0.02} />
         </mesh>
-
-        {/* E2 · Florida Space Coast mainland wetland soil inland of beach dunes */}
-        <mesh position={[-420, -1.56, -240]} rotation={[-Math.PI / 2, 0, 0.52]} receiveShadow={useShadows}>
-          <planeGeometry args={[960, 2400]} />
-          <meshStandardMaterial color="#182218" roughness={0.96} metalness={0.02} />
-        </mesh>
-
-        {/* Calm tidal Indian River / Banana Creek coastal lagoon strips catching dusk glow */}
-        <mesh position={[-128, -1.52, -210]} rotation={[-Math.PI / 2, 0, 0.42]}>
-          <planeGeometry args={[48, 220]} />
-          <meshStandardMaterial color="#182538" roughness={0.22} metalness={0.45} />
-        </mesh>
-
-        {/* E2 · Instanced wind-swaying KSC wetland marsh grass & palmetto scrub */}
-        <MarshScrubField count={scrubCount} reducedMotion={reducedMotion} />
 
         {/* E3 · Beveled concrete LC-39B octagonal pad perimeter embankment & blast apron */}
-        <mesh position={[0, -0.98, 0]} receiveShadow={useShadows}>
-          <cylinderGeometry args={[51, 58, 1.38, 12]} />
-          <meshStandardMaterial
-            map={padTex.map}
-            bumpMap={padTex.bumpMap}
-            bumpScale={0.05}
-            color="#969DAA"
-            roughness={0.88}
-            metalness={0.1}
-          />
+        <mesh position={[0, -0.93, 0]} receiveShadow={useShadows}>
+          <cylinderGeometry args={[24.5, 29.5, 1.28, 24]} />
+          <meshStandardMaterial color="#2C3127" roughness={0.97} metalness={0.0} />
         </mesh>
         {/* Inner scorched apron concrete pad around the Mobile Launcher */}
         <mesh position={[0, -0.24, 0]} receiveShadow={useShadows}>
-          <cylinderGeometry args={[22, 23, 0.16, 16]} />
+          <cylinderGeometry args={[21, 22, 0.16, 16]} />
           <meshStandardMaterial
             map={padTex.map}
             bumpMap={padTex.bumpMap}
@@ -739,28 +475,26 @@ export function LaunchComplex({ reducedMotion = false }: { reducedMotion?: boole
           />
         </mesh>
 
-        {/* E4 · Extended crushed river-rock Crawlerway leading 620 m inland toward distant VAB */}
-        <mesh position={[-148, -0.96, -256]} rotation={[0, 0.52, 0]} receiveShadow={useShadows}>
-          <boxGeometry args={[9.2, 1.2, 575]} />
-          <meshStandardMaterial color="#25282C" roughness={0.95} metalness={0.04} />
-        </mesh>
-        {[-2.4, 2.4].map((tx) => (
-          <mesh
-            key={tx}
-            position={[tx * 0.87 - 148, -0.32, -tx * 0.5 - 256]}
-            rotation={[0, 0.52, 0]}
-            receiveShadow={useShadows}
-          >
-            <boxGeometry args={[2.6, 0.08, 575]} />
-            <meshStandardMaterial
-              map={gravelTex.map}
-              bumpMap={gravelTex.bumpMap}
-              bumpScale={0.055}
-              roughness={0.94}
-              metalness={0.05}
-            />
+        {/* E4 · Crushed river-rock Crawlerway running from the pad to the distant VAB */}
+        <group rotation={[0, CRAWLER_YAW, 0]}>
+          <mesh position={[0, LAND_Y + 0.06, CRAWLER_START + CRAWLER_LEN / 2]} receiveShadow={useShadows}>
+            <boxGeometry args={[9.2, 0.12, CRAWLER_LEN]} />
+            <meshStandardMaterial color="#2A2C2F" roughness={0.95} metalness={0.04} />
           </mesh>
-        ))}
+          {[-2.4, 2.4].map((tx) => (
+            <mesh key={tx} position={[tx, LAND_Y + 0.13, CRAWLER_START + CRAWLER_LEN / 2]} receiveShadow={useShadows}>
+              <boxGeometry args={[2.6, 0.04, CRAWLER_LEN]} />
+              <meshStandardMaterial
+                map={gravelTex.map}
+                bumpMap={gravelTex.bumpMap}
+                bumpScale={0.055}
+                color="#8D8A84"
+                roughness={0.94}
+                metalness={0.05}
+              />
+            </mesh>
+          ))}
+        </group>
 
         {/* Concrete Flame Trench Walls & Angled Flame Deflector Wedge */}
         <mesh position={[-3.8, -0.1, 0]} castShadow={useShadows} receiveShadow={useShadows}>
@@ -1009,8 +743,8 @@ export function LaunchComplex({ reducedMotion = false }: { reducedMotion?: boole
         {/* ─── LH2 CRYOGENIC STORAGE SPHERE (x = -13.5, z = 7.5) ─── */}
         <group position={[-13.5, 0, 7.5]}>
           <mesh position={[0, 1.9, 0]} castShadow={useShadows}>
-            <sphereGeometry args={[1.65, 24, 20]} />
-            <meshStandardMaterial color="#DDE3EF" roughness={0.42} metalness={0.42} />
+            <sphereGeometry args={[1.65, 32, 24]} />
+            <meshStandardMaterial color="#D2D7DF" roughness={0.68} metalness={0.08} />
           </mesh>
           {[0, 1, 2, 3].map((si) => {
             const a = (si * Math.PI) / 2 + Math.PI / 4;
@@ -1026,19 +760,22 @@ export function LaunchComplex({ reducedMotion = false }: { reducedMotion?: boole
         {/* E3 · 3 Tapered Lattice Lightning Protection Towers + Overhead Catenary Wires */}
         <LightningProtectionCage beaconRefs={beaconRefs} useShadows={useShadows} />
 
+        {/* Opus pad scene · liftoff ground clouds + tall billowing smoke column */}
+        <LaunchSmoke count={smokeCount} reducedMotion={reducedMotion} />
+
         {/* E5 · KSC Stadium Floodlight Towers with Soft Halo Glows & Ground Light Pools (NO hard white cones) */}
         {STADIUM_FLOOD_TOWERS.map((ft, fi) => (
           <group key={fi} position={ft.pos} rotation={[0, ft.yaw, 0]}>
             <mesh position={[0, 3.1, 0]}>
-              <cylinderGeometry args={[0.07, 0.14, 6.2, 8]} />
+              <cylinderGeometry args={[0.05, 0.1, 6.2, 8]} />
               <meshStandardMaterial color="#58637A" roughness={0.52} metalness={0.65} />
             </mesh>
             <mesh position={[0, 6.25, 0]}>
-              <boxGeometry args={[1.15, 0.42, 0.16]} />
+              <boxGeometry args={[0.8, 0.34, 0.14]} />
               <meshStandardMaterial color="#2C3548" roughness={0.45} metalness={0.7} />
             </mesh>
-            <mesh position={[0, 6.25, -0.09]}>
-              <planeGeometry args={[1.02, 0.34]} />
+            <mesh position={[0, 6.25, -0.08]}>
+              <planeGeometry args={[0.7, 0.26]} />
               <meshBasicMaterial color={ft.hdr} toneMapped={false} />
             </mesh>
             <sprite position={[0, 6.25, -0.14]} scale={[3.4, 3.4, 1]}>
@@ -1056,7 +793,7 @@ export function LaunchComplex({ reducedMotion = false }: { reducedMotion?: boole
       </group>
 
       {/* ─── E4 · DISTANT VAB (~5 KM VISUAL SCALE) ALONG CRAWLERWAY HORIZON + LOW KSC BUILDINGS ─── */}
-      <group position={[-335, -1.55, -580]} scale={2.45}>
+      <group position={VAB_POS} rotation={[0, CRAWLER_YAW + Math.PI, 0]} scale={VAB_SCALE}>
         <mesh position={[0, 14.5, 0]}>
           <boxGeometry args={[27, 29, 23]} />
           <meshStandardMaterial
@@ -1141,9 +878,9 @@ export function LaunchComplex({ reducedMotion = false }: { reducedMotion?: boole
 
       {/* E4 · Spaced dusk sodium approach lamps receding along the Crawlerway toward VAB */}
       {[1, 2, 3, 4, 5, 6].map((ri) => {
-        const t = ri * 46;
+        const t = CRAWLER_START + ri * 46;
         return (
-          <group key={ri} position={[-0.5 * t + 7.5, -1.5, -0.866 * t]}>
+          <group key={ri} position={[CRAWLER_DIR[0] * t - CRAWLER_DIR[1] * 7.5, LAND_Y, CRAWLER_DIR[1] * t + CRAWLER_DIR[0] * 7.5]}>
             <mesh position={[0, 2.1, 0]}>
               <cylinderGeometry args={[0.06, 0.09, 4.2, 6]} />
               <meshStandardMaterial color="#2A3346" roughness={0.55} metalness={0.68} />
