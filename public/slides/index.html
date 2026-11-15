@@ -3,193 +3,237 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SpaceMuse — Project Deck (Team 2Boy1Mac)</title>
-<meta name="description" content="SpaceMuse: The Expedition to the Machines We Left Behind. NASA Space Apps Challenge 2026 — Abandoned but not Forgotten. Team 2Boy1Mac.">
+<title>SpaceMuse — Project Deck · Team 2Boy1Mac</title>
+<meta name="description" content="SpaceMuse: The Expedition to the Machines We Left Behind. NASA Space Apps Challenge 2026 — Abandoned but not Forgotten. Team 2Boy1Mac (Vietnam): Nguyễn Bá Phú, Võ Bảo Duy.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@125,700;125,800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@125,600;125,700;125,800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root{--void:#04060b;--surface:#0a0e18;--raised:#111727;--line:#1e2638;--text:#e8ecf4;--mute:#8a93a8;--platinum:#c7cdd8;--starlight:#9db8ff;--ignite:#ff6a3d;}
-  *{box-sizing:border-box;margin:0;padding:0}
-  html,body{background:#000;color:var(--text);font-family:Inter,system-ui,sans-serif}
-  .deck{display:flex;flex-direction:column;align-items:center;gap:28px;padding:28px 16px}
-  .slide{position:relative;width:min(100%,1280px);aspect-ratio:16/9;background:var(--void);overflow:hidden;border:1px solid var(--line);border-radius:10px}
-  .inner{position:absolute;inset:0;padding:5.2% 5.8%;display:flex;flex-direction:column}
-  .eyebrow{font-family:"JetBrains Mono",monospace;font-size:clamp(9px,1.05vw,13px);letter-spacing:.16em;text-transform:uppercase;color:var(--starlight)}
-  h1,h2{font-family:Archivo,sans-serif;font-stretch:125%;font-weight:800;text-transform:uppercase;letter-spacing:.02em;line-height:1.02}
-  h1{font-size:clamp(28px,5.4vw,70px)}
-  h2{font-size:clamp(20px,3.1vw,40px);margin:.5em 0 .55em}
-  p,li{font-size:clamp(11px,1.45vw,18px);line-height:1.5;color:#cfd5e2}
-  .mute{color:var(--mute)}
-  .num{position:absolute;right:3.2%;bottom:4.2%;font-family:"JetBrains Mono",monospace;font-size:clamp(8px,.9vw,11px);color:var(--mute);letter-spacing:.12em}
-  .si{position:absolute;left:3.2%;bottom:4.2%;font-family:"JetBrains Mono",monospace;font-size:clamp(7px,.8vw,10px);color:var(--mute);opacity:.75;letter-spacing:.08em;text-transform:uppercase}
-  .bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-  .scrim{position:absolute;inset:0;background:linear-gradient(90deg,rgba(4,6,11,.94) 0%,rgba(4,6,11,.72) 45%,rgba(4,6,11,.1) 100%)}
-  .scrim-b{position:absolute;inset:0;background:linear-gradient(0deg,rgba(4,6,11,.95) 0%,rgba(4,6,11,.35) 55%,rgba(4,6,11,.15) 100%)}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:3.2%;flex:1;min-height:0}
-  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:2.4%}
-  .card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:5% 6%}
-  .card b{display:block;font-family:"JetBrains Mono",monospace;font-size:clamp(8px,.95vw,12px);letter-spacing:.14em;text-transform:uppercase;color:var(--starlight);margin-bottom:.5em}
-  .cards4 .card{padding:3.2% 5%}
-  .cards4 p{font-size:clamp(10px,1.2vw,15px);line-height:1.4}
-  .shot{width:100%;height:100%;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
-  .flow{display:flex;align-items:center;gap:1.2%;flex-wrap:wrap;margin-top:1.2em}
-  .step{background:var(--raised);border:1px solid var(--line);border-radius:999px;padding:.45em 1em;font-family:"JetBrains Mono",monospace;font-size:clamp(8px,1vw,13px);letter-spacing:.06em;color:var(--platinum);white-space:nowrap}
-  .arrow{color:var(--starlight);font-size:clamp(10px,1.2vw,16px)}
-  ul{list-style:none}
-  li{padding-left:1.1em;position:relative;margin:.35em 0}
-  li:before{content:"";position:absolute;left:0;top:.62em;width:.42em;height:.42em;border-radius:50%;background:var(--starlight)}
-  .quote{border-left:3px solid var(--starlight);padding-left:1em;font-style:italic;color:var(--starlight);font-size:clamp(12px,1.7vw,22px);line-height:1.4}
-  .big{font-family:Archivo,sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(22px,3.4vw,44px);color:var(--text);line-height:1}
-  .stat{font-family:"JetBrains Mono",monospace;font-size:clamp(8px,.95vw,12px);color:var(--mute);letter-spacing:.1em;text-transform:uppercase;margin-top:.4em}
-  a{color:var(--starlight);text-decoration:none}
-  @media print{
-    @page{size:1280px 720px;margin:0}
-    html,body{background:var(--void)}
-    .deck{padding:0;gap:0}
-    .slide{width:1280px;height:720px;border:0;border-radius:0;page-break-after:always;break-after:page}
-    p,li{font-size:18px} h1{font-size:70px} h2{font-size:40px}
-  }
+:root{
+  --void:#04060b;--surface:#0a0e18;--raised:#111727;--line:#1d2538;--line2:#2a3550;
+  --text:#eef1f7;--body:#c9d0de;--mute:#8790a6;--platinum:#c7cdd8;--starlight:#9db8ff;--ignite:#ff6a3d;--mars:#e0855a;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#020308;color:var(--text);font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.deck{display:flex;flex-direction:column;align-items:center;gap:32px;padding:32px 16px 64px}
+.frame{width:min(100%,1600px);aspect-ratio:16/9;position:relative;overflow:hidden;border-radius:12px;border:1px solid var(--line);background:var(--void)}
+.slide{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0;overflow:hidden;background:var(--void)}
+.hdr{position:absolute;left:96px;right:96px;top:60px;display:flex;justify-content:space-between;align-items:center;font-family:"JetBrains Mono",monospace;font-size:20px;letter-spacing:.18em;text-transform:uppercase}
+.hdr .sec{color:var(--starlight)} .hdr .brand{color:var(--mute)}
+.ftr{position:absolute;left:96px;right:96px;bottom:48px;display:flex;justify-content:space-between;align-items:flex-end;font-family:"JetBrains Mono",monospace;font-size:16px;letter-spacing:.1em;color:var(--mute);text-transform:uppercase}
+.ftr .pg{color:var(--platinum)}
+.body{position:absolute;left:96px;right:96px;top:130px;bottom:110px}
+.display{font-family:Archivo,sans-serif;font-stretch:125%;font-weight:800;text-transform:uppercase;letter-spacing:.01em;line-height:.98}
+h2.display{font-size:64px;margin-bottom:28px}
+.lead{font-size:28px;line-height:1.45;color:var(--body)}
+.k{font-family:"JetBrains Mono",monospace;font-size:17px;letter-spacing:.16em;text-transform:uppercase;color:var(--starlight)}
+p{font-size:22px;line-height:1.5;color:var(--body)}
+b,strong{color:var(--text);font-weight:600}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:28px 30px}
+.card h4{font-family:Archivo,sans-serif;font-stretch:125%;font-weight:700;font-size:26px;text-transform:uppercase;margin:10px 0 10px;color:var(--text)}
+.card p{font-size:20px}
+.shot{display:block;width:100%;height:100%;object-fit:cover;border-radius:14px;border:1px solid var(--line2)}
+.cap{font-family:"JetBrains Mono",monospace;font-size:14px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);margin-top:10px}
+.tag{display:inline-block;font-family:"JetBrains Mono",monospace;font-size:14px;letter-spacing:.14em;text-transform:uppercase;padding:5px 10px;border-radius:999px;border:1px solid var(--line2);color:var(--platinum)}
+.tag.moon{color:#c9d3ea;border-color:#3a4766} .tag.mars{color:#f0a37f;border-color:#6b3b28} .tag.live{color:var(--starlight);border-color:#3c5394}
+.stat .n{font-family:Archivo,sans-serif;font-stretch:125%;font-weight:800;font-size:72px;line-height:1;color:var(--text)}
+.stat .l{font-family:"JetBrains Mono",monospace;font-size:16px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin-top:8px}
+.bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.fade-l{position:absolute;inset:0;background:linear-gradient(90deg,rgba(4,6,11,.97) 0%,rgba(4,6,11,.88) 38%,rgba(4,6,11,.35) 70%,rgba(4,6,11,.15) 100%)}
+.fade-r{position:absolute;inset:0;background:linear-gradient(270deg,rgba(4,6,11,.97) 0%,rgba(4,6,11,.9) 48%,rgba(4,6,11,.35) 72%,rgba(4,6,11,.05) 100%)}
+a{color:var(--starlight);text-decoration:none}
+@media (max-width:700px){.deck{padding:12px 8px 40px;gap:16px}}
 </style>
 </head>
 <body>
 <main class="deck">
 
-<!-- 1 · Title -->
-<section class="slide" aria-label="Slide 1: Title">
-  <img class="bg" src="/media/images/hero_vab_sunrise_alt-2560.jpg" alt="The Vehicle Assembly Building at Kennedy Space Center at dusk (NASA photo)">
-  <div class="scrim"></div>
-  <div class="inner" style="justify-content:center">
-    <div class="eyebrow">NASA Space Apps Challenge 2026 · Abandoned but not Forgotten</div>
-    <h1 style="margin:.35em 0 .3em">SpaceMuse</h1>
-    <p style="max-width:52%;font-size:clamp(13px,1.9vw,24px);color:var(--text)">The Expedition to the Machines We Left Behind</p>
-    <p class="mute" style="margin-top:1.4em">Team <b style="color:var(--text)">2Boy1Mac</b> (Vietnam) · Nguyễn Bá Phú · Võ Bảo Duy</p>
-    <p class="mute">spacemuse-beta.vercel.app</p>
-  </div>
-  <div class="num">01 / 07</div>
-</section>
-
-<!-- 2 · Problem -->
-<section class="slide" aria-label="Slide 2: The problem">
-  <img class="bg" src="/media/three/posters/silence-1920x1080.jpg" alt="">
-  <div class="scrim"></div>
-  <div class="inner">
-    <div class="eyebrow">The problem</div>
-    <h2>Hundreds of objects are still out there.<br>Almost nobody knows their stories.</h2>
-    <ul style="max-width:58%">
-      <li>Since 1967, NASA has landed machines on the Moon and Mars. None of them came home.</li>
-      <li>NASA's own catalogue says the first step in preserving them is knowing <i>what is there and where it is</i>.</li>
-      <li>For students they are names in a list — not places, not stories, not heritage.</li>
-      <li>As the Moon gets busy again, these sites need people who know why they matter.</li>
-    </ul>
-  </div>
-  <div class="si">Background: illustrative 3D reconstruction · AI-assisted</div>
-  <div class="num">02 / 07</div>
-</section>
-
-<!-- 3 · Idea -->
-<section class="slide" aria-label="Slide 3: Our idea">
-  <div class="inner">
-    <div class="eyebrow">Our idea</div>
-    <h2>An expedition, not a list</h2>
-    <div class="flow">
-      <span class="step">Launch SLS · LC-39B</span><span class="arrow">→</span>
-      <span class="step">Lunar orbit · 5 targets</span><span class="arrow">→</span>
-      <span class="step">Land &amp; track</span><span class="arrow">→</span>
-      <span class="step">Mars entry · 7 targets</span><span class="arrow">→</span>
-      <span class="step">Hall of Silence</span><span class="arrow">→</span>
-      <span class="step">"Junk or history?"</span>
+<!-- 01 TITLE -->
+<div class="frame"><section class="slide" aria-label="Slide 1 — Title">
+  <img class="bg" src="/media/images/hero_vab_sunrise_alt-2560.jpg" alt="NASA photograph of the Vehicle Assembly Building at Kennedy Space Center at dusk">
+  <div class="fade-l"></div>
+  <div class="hdr"><span class="sec">NASA Space Apps Challenge 2026</span><span class="brand">Project deck · 7 slides</span></div>
+  <div class="body" style="display:flex;flex-direction:column;justify-content:center">
+    <div class="k" style="margin-bottom:26px;max-width:1300px;line-height:1.6">Challenge · Abandoned but not Forgotten: Storytelling about NASA's Discarded Equipment on the Moon and Mars</div>
+    <div class="display" style="font-size:168px">SpaceMuse</div>
+    <div style="font-size:44px;font-weight:500;margin:22px 0 26px;color:var(--text)">The Expedition to the Machines We Left Behind</div>
+    <p class="lead" style="max-width:980px">An interactive 3D museum where visitors launch, land and track down <b>twelve real NASA machines</b> left on the Moon and Mars — every fact sourced from NASA.</p>
+    <div style="display:flex;gap:70px;margin-top:60px;align-items:flex-end">
+      <div><div class="k">Team</div><div class="display" style="font-size:44px;margin-top:10px">2Boy1Mac</div><div style="font-size:22px;color:var(--mute);margin-top:6px">Vietnam</div></div>
+      <div><div class="k">Members</div><div style="font-size:30px;font-weight:600;margin-top:10px">Nguyễn Bá Phú</div><div style="font-size:30px;font-weight:600">Võ Bảo Duy</div></div>
+      <div><div class="k">Live project</div><div style="font-size:28px;margin-top:10px"><a href="https://spacemuse-beta.vercel.app">spacemuse-beta.vercel.app</a></div><div style="font-size:20px;color:var(--mute)">github.com/nbaphu08/2Boy1Mac</div></div>
     </div>
-    <div class="grid3" style="margin-top:3%;flex:1;min-height:0">
-      <img class="shot" src="/media/three/posters/enter-1920x1080.jpg" alt="SLS on the pad across the lagoon (3D)">
-      <img class="shot" src="/media/three/posters/moon-apollo-11-1920x1080.jpg" alt="Apollo 11 descent stage and laser reflector (3D)">
-      <img class="shot" src="/media/three/posters/mars-ingenuity-1920x1080.jpg" alt="Ingenuity helicopter in Jezero Crater (3D)">
-    </div>
-    <p class="mute" style="margin-top:2%">12 real machines · one continuous scroll · works on phones (Lightweight mode included)</p>
   </div>
-  <div class="si">Illustrative 3D reconstruction · AI-assisted</div>
-  <div class="num">03 / 07</div>
-</section>
+  <div class="ftr"><span>Photo: NASA — Vehicle Assembly Building, Kennedy Space Center</span><span class="pg">01 / 07</span></div>
+</section></div>
 
-<!-- 4 · Experience -->
-<section class="slide" aria-label="Slide 4: The visitor experience">
-  <div class="inner">
-    <div class="eyebrow">The visitor experience</div>
-    <h2>Every stop is a museum label</h2>
-    <div class="grid2" style="flex:none;height:72%">
-      <img class="shot" style="object-position:0% 60%" src="/slides/ui-exhibit.jpg" alt="Apollo 11 exhibit card with tracker and mini-map">
-      <div class="cards4" style="display:flex;flex-direction:column;gap:2.2%;min-height:0">
-        <div class="card"><b>Four questions</b><p>What is it? · Why is it still here? · What did it teach us? · What is left today?</p></div>
-        <div class="card"><b>Then / Now</b><p>NASA surface photo vs. LRO / HiRISE orbital image of the same spot today.</p></div>
-        <div class="card"><b>Hear it</b><p>An audio tour at every stop plus an audio guide per exhibit (AI voice, our sourced scripts).</p></div>
-        <div class="card"><b>Explore it</b><p>Mini-map with real coordinates (click to fly), Field Log stamps, a GRAIL simulation using NASA's gravity map.</p></div>
+<!-- 02 PROBLEM -->
+<div class="frame"><section class="slide" aria-label="Slide 2 — The problem">
+  <div class="hdr"><span class="sec">02 — The problem</span><span class="brand">SpaceMuse · Team 2Boy1Mac</span></div>
+  <div class="body" style="display:grid;grid-template-columns:1.08fr .92fr;gap:64px">
+    <div>
+      <h2 class="display">They are still out there.<br>Few people know<br>their stories.</h2>
+      <p class="lead" style="margin-bottom:30px">Since 1967, NASA has landed machines on the Moon and Mars. When their work was done, <b>none of them came home</b>. NASA's own catalogue says the first step in preserving them is establishing exactly <i>what is there and where it is</i>.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px">
+        <div class="card"><span class="tag">Invisible</span><h4>Unknown</h4><p>Hundreds of human-made objects rest on the Moon alone. Most students cannot name one.</p></div>
+        <div class="card"><span class="tag">Abstract</span><h4>Flat</h4><p>They are taught as names and dates — not as places with a reason, a result and a present.</p></div>
+        <div class="card"><span class="tag">At risk</span><h4>Unprotected</h4><p>As new landers head back to the Moon, these first sites beyond Earth need people who care.</p></div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:22px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div><img class="shot" style="height:300px" src="/media/thennow/SM-L-001_then_as11-40-5948-1600.jpg" alt="Apollo 11 lunar module Eagle on the Moon, July 1969 (NASA AS11-40-5948)"><div class="cap">Then · NASA AS11-40-5948 · 1969</div></div>
+        <div><img class="shot" style="height:300px" src="/media/thennow/SM-L-001_now_PIA12909-1600.jpg" alt="Apollo 11 landing site seen from orbit (NASA PIA12909)"><div class="cap">Now · NASA PIA12909 · from orbit</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px">
+        <div class="card stat"><div class="n">12</div><div class="l">Machines featured</div></div>
+        <div class="card stat"><div class="n">2</div><div class="l">Worlds · Moon &amp; Mars</div></div>
+        <div class="card stat"><div class="n">0</div><div class="l">Came home</div></div>
+        <div class="card stat" style="grid-column:span 2"><div class="n" style="font-size:56px">1967–2021</div><div class="l">Landing years in the collection</div></div>
+        <div class="card stat"><div class="n">1</div><div class="l">Still in use · Apollo 11 reflector</div></div>
       </div>
     </div>
   </div>
-  <div class="num">04 / 07</div>
-</section>
+  <div class="ftr"><span>Sources: NASA History Program Office, Catalogue of Manmade Material on the Moon (2012) · NSSDCA</span><span class="pg">02 / 07</span></div>
+</section></div>
 
-<!-- 5 · NASA data -->
-<section class="slide" aria-label="Slide 5: Built on NASA data">
-  <img class="bg" src="/media/three/posters/moon-grail-1920x1080.jpg" alt="">
-  <div class="scrim"></div>
-  <div class="inner">
-    <div class="eyebrow">Built on NASA open data</div>
-    <h2>Every number has a source</h2>
-    <div class="grid2" style="max-width:70%;flex:0 0 auto">
-      <ul>
-        <li><b>NSSDCA</b> — dates, dimensions, landing coordinates</li>
-        <li><b>LRO / LROC</b> — "now" images, GRAIL crater positions</li>
-        <li><b>HiRISE / MRO</b> — Mars landers seen from orbit</li>
-        <li><b>NASA SVS 4014</b> — GRAIL gravity map in the simulation</li>
-      </ul>
-      <ul>
-        <li><b>NASA 3D Resources</b> — LM, Viking, MER, InSight, Ingenuity</li>
-        <li><b>NASA History Office</b> — lunar artifact catalogue (2012)</li>
-        <li><b>Image &amp; Video Library</b> — Apollo / mission photos</li>
-        <li><b>CGI Moon Kit · Viking MDIM</b> — planet textures</li>
-      </ul>
+<!-- 03 SOLUTION -->
+<div class="frame"><section class="slide" aria-label="Slide 3 — Our solution">
+  <div class="hdr"><span class="sec">03 — Our solution</span><span class="brand">SpaceMuse · Team 2Boy1Mac</span></div>
+  <div class="body">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end">
+      <h2 class="display" style="margin:0">An expedition,<br>not a list</h2>
+      <p class="lead" style="max-width:820px">One continuous, scroll-driven 3D journey. The visitor is given a mission — <b>find the machines we left behind</b> — and earns each discovery by flying there.</p>
     </div>
-    <p class="mute" style="margin-top:auto;max-width:60%">Real NASA photos are shown unmodified with credits. 3D scenes are illustrative reconstructions built in code from NASA dimensions and imagery.</p>
-  </div>
-  <div class="si">Background: illustrative 3D reconstruction · AI-assisted</div>
-  <div class="num">05 / 07</div>
-</section>
-
-<!-- 6 · Message -->
-<section class="slide" aria-label="Slide 6: The message">
-  <img class="bg" src="/media/images/finale_artemis_era_earthrise-2560.jpg" alt="Earth rising over the Moon (NASA, Artemis era)">
-  <div class="scrim"></div>
-  <div class="inner" style="justify-content:center">
-    <div class="eyebrow">The message</div>
-    <p class="quote" style="max-width:55%;margin:1em 0">"Are these machines junk, or history?"</p>
-    <h2 style="max-width:60%">They are not junk.<br>They are history.</h2>
-    <ul style="max-width:55%">
-      <li><b>2011</b> — NASA asks future missions to keep away from Apollo sites, down to footprints and rover tracks.</li>
-      <li><b>2020</b> — U.S. law: the One Small Step to Protect Human Heritage in Space Act.</li>
-      <li>The first historic sites beyond Earth — and each one taught us something.</li>
-    </ul>
-  </div>
-  <div class="num">06 / 07</div>
-</section>
-
-<!-- 7 · Next + links -->
-<section class="slide" aria-label="Slide 7: What's next and links">
-  <div class="inner">
-    <div class="eyebrow">What's next</div>
-    <h2>A free classroom expedition</h2>
-    <div class="grid3" style="margin-bottom:4%">
-      <div class="card"><div class="big">+ Sites</div><div class="stat">Luna · Chang'e · Apollo 12/14/16</div></div>
-      <div class="card"><div class="big">Classroom</div><div class="stat">Teacher worksheets · discussion prompts</div></div>
-      <div class="card"><div class="big">Languages</div><div class="stat">Vietnamese and more</div></div>
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:18px;margin-top:40px">
+      <div><img class="shot" style="height:200px" src="/media/three/posters/enter-1920x1080.jpg" alt="SLS on pad 39B"><div class="k" style="margin-top:14px">01 · Launch</div><p style="font-size:19px;margin-top:6px">SLS / Orion from Launch Complex 39B at dusk.</p></div>
+      <div><img class="shot" style="height:200px" src="/media/three/posters/deep-space-1920x1080.jpg" alt="Lunar orbit with target pins"><div class="k" style="margin-top:14px">02 · Lunar orbit</div><p style="font-size:19px;margin-top:6px">Five glowing targets at their real coordinates.</p></div>
+      <div><img class="shot" style="height:200px" src="/media/three/posters/moon-apollo-15-lrv-1920x1080.jpg" alt="Apollo 15 rover"><div class="k" style="margin-top:14px">03 · Land &amp; track</div><p style="font-size:19px;margin-top:6px">Touch down, then fly low from site to site.</p></div>
+      <div><img class="shot" style="height:200px" src="/media/three/posters/mars-viking-1-1920x1080.jpg" alt="Viking 1 on Mars"><div class="k" style="margin-top:14px">04 · Mars entry</div><p style="font-size:19px;margin-top:6px">Seven more targets: entry, descent, landing.</p></div>
+      <div><img class="shot" style="height:200px" src="/media/three/posters/mars-ingenuity-1920x1080.jpg" alt="Ingenuity in Jezero Crater"><div class="k" style="margin-top:14px">05 · Mars search</div><p style="font-size:19px;margin-top:6px">Low flights between seven sites, to Ingenuity.</p></div>
+      <div><img class="shot" style="height:200px" src="/media/three/posters/finale-1920x1080.jpg" alt="Finale over the Moon"><div class="k" style="margin-top:14px">06 · The answer</div><p style="font-size:19px;margin-top:6px">Hall of Silence, then: junk or history?</p></div>
     </div>
-    <p><b>Live site</b> · <a href="https://spacemuse-beta.vercel.app">spacemuse-beta.vercel.app</a></p>
-    <p><b>Source</b> · <a href="https://github.com/nbaphu08/2Boy1Mac">github.com/nbaphu08/2Boy1Mac</a></p>
-    <p class="mute" style="margin-top:auto;max-width:80%">Built with AI assistance (Anthropic Claude, Google Gemini) for research cross-checks, writing, code and procedural 3D; narration voice by ElevenLabs (AI). Every fact verified by the team against the NASA sources cited on the site. Team 2Boy1Mac — Nguyễn Bá Phú, Võ Bảo Duy.</p>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:44px">
+      <div class="card"><span class="tag live">Place-based</span><h4>Go there</h4><p>Real landing coordinates, site cues (Hadley Rille, Troy, Twin Peaks) and real NASA maps.</p></div>
+      <div class="card"><span class="tag live">Honest</span><h4>Real facts, imagined trip</h4><p>The voyage is labelled imagined; every machine and number is real and sourced; 3D is labelled illustrative.</p></div>
+      <div class="card"><span class="tag live">For newcomers</span><h4>No prior knowledge</h4><p>A mission briefing, plain-language labels and a voice guide — built for a student's first visit.</p></div>
+    </div>
   </div>
-  <div class="num">07 / 07</div>
-</section>
+  <div class="ftr"><span>Frames: illustrative 3D reconstructions · AI-assisted · 23 scenes · ~10-minute visit · desktop &amp; phone</span><span class="pg">03 / 07</span></div>
+</section></div>
+
+<!-- 04 EXPERIENCE -->
+<div class="frame"><section class="slide" aria-label="Slide 4 — The visitor experience">
+  <div class="hdr"><span class="sec">04 — The visitor experience</span><span class="brand">SpaceMuse · Team 2Boy1Mac</span></div>
+  <div class="body" style="display:grid;grid-template-columns:1.12fr .88fr;gap:56px">
+    <div style="position:relative">
+      <h2 class="display">Every stop is a<br>museum label</h2>
+      <img class="shot" style="height:600px" src="/slides/ui-panel.jpg" alt="Apollo 11 exhibit panel with audio guide, facts, sources and Then/Now photos">
+      <img src="/slides/ui-mobile.jpg" alt="Ingenuity exhibit on a phone" style="position:absolute;right:-28px;bottom:-14px;width:230px;border-radius:26px;border:6px solid #1a2133;box-shadow:0 24px 60px rgba(0,0,0,.6)">
+      <div class="cap">Apollo 11 exhibit panel · phone view (Ingenuity)</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-content:start;margin-top:8px">
+      <div class="card"><span class="k">01</span><h4>Four questions</h4><p>What is it? Why is it still here? What did it teach us? What is left today?</p></div>
+      <div class="card"><span class="k">02</span><h4>Then / Now</h4><p>NASA surface photo vs. LRO or HiRISE image of the same spot today.</p></div>
+      <div class="card"><span class="k">03</span><h4>Voice guide</h4><p>An audio tour at every stop + an audio guide per exhibit, with play / pause.</p></div>
+      <div class="card"><span class="k">04</span><h4>Mini-map</h4><p>Target tracker with real coordinates; click a pin to fly to any site.</p></div>
+      <div class="card"><span class="k">05</span><h4>Field Log</h4><p>Each machine found is stamped — twelve to complete the expedition.</p></div>
+      <div class="card"><span class="k">06</span><h4>For everyone</h4><p>Keyboard navigation, reduced motion and a Lightweight no-3D mode.</p></div>
+    </div>
+  </div>
+  <div class="ftr"><span>Real screenshots of the live site · photos credited to NASA in every panel</span><span class="pg">04 / 07</span></div>
+</section></div>
+
+<!-- 05 TWELVE LESSONS -->
+<div class="frame"><section class="slide" aria-label="Slide 5 — Twelve machines, twelve lessons">
+  <div class="hdr"><span class="sec">05 — The collection</span><span class="brand">SpaceMuse · Team 2Boy1Mac</span></div>
+  <div class="body">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:30px">
+      <h2 class="display" style="margin:0">12 machines,<br>12 lessons</h2>
+      <p class="lead" style="max-width:820px">Each exhibit ends with <b>what it taught us</b> — so a discarded machine becomes a discovery, not just debris.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
+      <div class="card" style="padding:22px 24px"><span class="tag moon">Moon · 1969</span> <span class="tag live">Still active</span><h4 style="font-size:23px">Apollo 11</h4><p style="font-size:18px">Its mirrors show the Moon drifts about 3.8 cm farther from Earth every year.</p></div>
+      <div class="card" style="padding:22px 24px"><span class="tag moon">Moon · 1967</span><h4 style="font-size:23px">Surveyor 3</h4><p style="font-size:18px">Its camera, brought home by Apollo 12, showed how hardware survives on the Moon.</p></div>
+      <div class="card" style="padding:22px 24px"><span class="tag moon">Moon · 1971</span><h4 style="font-size:23px">Apollo 15 Rover</h4><p style="font-size:18px">The first car on another world; this crew found the Genesis Rock, original lunar crust.</p></div>
+      <div class="card" style="padding:22px 24px"><span class="tag moon">Moon · 1972</span><h4 style="font-size:23px">Apollo 17</h4><p style="font-size:18px">Orange soil here: glass beads from volcanoes that erupted billions of years ago.</p></div>
+      <div class="card" style="padding:22px 24px"><span class="tag moon">Moon · 2012</span><h4 style="font-size:23px">GRAIL Ebb &amp; Flow</h4><p style="font-size:18px">Mapped lunar gravity: the crust is only about 34–43 km thick.</p></div>
+      <div class="card" style="padding:22px 24px"><span class="tag mars">Mars · 1976</span><h4 style="font-size:23px">Viking 1</h4><p style="font-size:18px">Carried the first experiments to search for life on Mars.</p></div>
+      <div class="card" style="padding:22px 24px"><span class="tag mars">Mars · 1997</span><h4 style="font-size:23px">Pathfinder</h4><p style="font-size:18px">Proved the airbag landing that Spirit and Opportunity later used.</p></div>
+      <div class="card" style="padding:22px 24px"><span class="tag mars">Mars · 2004</span><h4 style="font-size:23px">Spirit</h4><p style="font-size:18px">Silica-rich soil: hot water once soaked this ground.</p></div>
+      <div class="card" style="padding:22px 24px"><span class="tag mars">Mars · 2004</span><h4 style="font-size:23px">Opportunity</h4><p style="font-size:18px">"Blueberries" and mineral veins: evidence of past liquid water.</p></div>
+      <div class="card" style="padding:22px 24px"><span class="tag mars">Mars · 2008</span><h4 style="font-size:23px">Phoenix</h4><p style="font-size:18px">Confirmed water ice just below the surface and found perchlorate.</p></div>
+      <div class="card" style="padding:22px 24px"><span class="tag mars">Mars · 2018</span><h4 style="font-size:23px">InSight</h4><p style="font-size:18px">Marsquakes revealed the planet's layers, including a liquid metal core.</p></div>
+      <div class="card" style="padding:22px 24px"><span class="tag mars">Mars · 2021</span><h4 style="font-size:23px">Ingenuity</h4><p style="font-size:18px">First powered flight on another planet, then a scout for Perseverance.</p></div>
+    </div>
+  </div>
+  <div class="ftr"><span>Sources per line: NASA / JPL, NSSDCA, NASA SP-284 &amp; SP-350, Science (GRAIL 2012; InSight 2021) — listed on the site</span><span class="pg">05 / 07</span></div>
+</section></div>
+
+<!-- 06 DATA & BUILD -->
+<div class="frame"><section class="slide" aria-label="Slide 6 — Built on NASA data">
+  <div class="hdr"><span class="sec">06 — NASA data &amp; how it works</span><span class="brand">SpaceMuse · Team 2Boy1Mac</span></div>
+  <div class="body" style="display:grid;grid-template-columns:1fr 1fr;gap:60px">
+    <div>
+      <h2 class="display">NASA open data<br>makes it possible</h2>
+      <div style="display:grid;grid-template-columns:auto 1fr;column-gap:26px;row-gap:16px;align-items:baseline">
+        <div class="k">NSSDCA</div><p>Mission dates, dimensions and landing coordinates</p>
+        <div class="k">LRO · LROC</div><p>"Now" images of Apollo sites; GRAIL crater positions</p>
+        <div class="k">HiRISE · MRO</div><p>Mars landers and rovers seen from orbit today</p>
+        <div class="k">SVS 4014</div><p>GRAIL gravity map, painted live in our simulation</p>
+        <div class="k">3D Resources</div><p>Apollo LM, Viking, MER, InSight, Ingenuity models</p>
+        <div class="k">History Office</div><p>Lunar artifact catalogue (2012) and 2011 site-protection guidance</p>
+        <div class="k">Image Library</div><p>Apollo and mission photography — unmodified, credited</p>
+        <div class="k">SVS · USGS</div><p>CGI Moon Kit and Viking MDIM textures for both worlds</p>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:34px">
+        <div class="card stat" style="padding:20px 22px"><div class="n" style="font-size:52px">11/12</div><div class="l">Sites with sourced coordinates</div></div>
+        <div class="card stat" style="padding:20px 22px"><div class="n" style="font-size:52px">23</div><div class="l">Scenes auto-tested</div></div>
+        <div class="card stat" style="padding:20px 22px"><div class="n" style="font-size:52px">100%</div><div class="l">Facts with a source</div></div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <img class="shot" style="height:300px" src="/slides/ui-grail.jpg" alt="GRAIL twins over the Moon painted with NASA's gravity map">
+      <div class="cap" style="margin-top:-6px">GRAIL simulation · NASA SVS 4014 gravity map · illustrative 3D · AI-assisted</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+        <div class="card" style="padding:18px"><div class="k" style="font-size:14px">Content</div><p style="font-size:17px;margin-top:6px">Typed text; a source ID on every number</p></div>
+        <div class="card" style="padding:18px"><div class="k" style="font-size:14px">3D</div><p style="font-size:17px;margin-top:6px">Three.js / React Three Fiber, one camera path</p></div>
+        <div class="card" style="padding:18px"><div class="k" style="font-size:14px">Web</div><p style="font-size:17px;margin-top:6px">Next.js 16, audio, map, quality tiers</p></div>
+        <div class="card" style="padding:18px"><div class="k" style="font-size:14px">Deploy</div><p style="font-size:17px;margin-top:6px">Vercel — public, no login</p></div>
+      </div>
+      <div class="card" style="padding:20px 24px"><div class="k" style="font-size:14px">Quality checks</div><p style="font-size:18px;margin-top:6px">Automated browser tests capture all 23 scenes, measure frame times while scrolling and fail on console errors. Shaders pre-compile during the launch so landings stay smooth.</p></div>
+    </div>
+  </div>
+  <div class="ftr"><span>Full source list: About page · every exhibit panel · repository docs</span><span class="pg">06 / 07</span></div>
+</section></div>
+
+<!-- 07 MESSAGE & FUTURE -->
+<div class="frame"><section class="slide" aria-label="Slide 7 — The message and what's next">
+  <img class="bg" src="/media/three/posters/finale-1920x1080.jpg" alt="Earth beyond the Moon, the SpaceMuse finale (illustrative 3D)">
+  <div class="fade-r"></div>
+  <div class="hdr"><span class="sec">07 — The message &amp; what's next</span><span class="brand">SpaceMuse · Team 2Boy1Mac</span></div>
+  <div class="body" style="left:860px">
+    <div style="font-size:30px;font-style:italic;color:var(--starlight);border-left:4px solid var(--starlight);padding-left:22px">"Are these machines junk, or history?"</div>
+    <div class="display" style="font-size:72px;margin:26px 0 24px">They are not junk.<br>They are history.</div>
+    <div style="display:grid;grid-template-columns:auto 1fr;column-gap:22px;row-gap:12px;margin-bottom:34px">
+      <div class="k">2011</div><p>NASA asks future missions to keep away from Apollo sites — down to footprints and rover tracks.</p>
+      <div class="k">2020</div><p>U.S. law: the One Small Step to Protect Human Heritage in Space Act.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:30px">
+      <div class="card" style="padding:20px 22px"><div class="k" style="font-size:14px">Impact</div><p style="font-size:18px;margin-top:6px">A free, one-click classroom visit to the first heritage sites beyond Earth.</p></div>
+      <div class="card" style="padding:20px 22px"><div class="k" style="font-size:14px">Next</div><p style="font-size:18px;margin-top:6px">More sites (Luna, Chang'e, Apollo 12 / 14 / 16) and teacher worksheets.</p></div>
+      <div class="card" style="padding:20px 22px"><div class="k" style="font-size:14px">Reach</div><p style="font-size:18px;margin-top:6px">More languages, starting with Vietnamese; updates as Artemis returns.</p></div>
+    </div>
+    <p style="font-size:24px"><b>Visit:</b> <a href="https://spacemuse-beta.vercel.app">spacemuse-beta.vercel.app</a> &nbsp;·&nbsp; <b>Code:</b> github.com/nbaphu08/2Boy1Mac</p>
+    <p style="font-size:17px;color:var(--mute);margin-top:18px;max-width:960px">Built with AI assistance (Anthropic Claude, Google Gemini) for research cross-checks, writing, code and procedural 3D; exhibit narration voice by ElevenLabs (AI). Every fact verified by the team against cited NASA sources. Team 2Boy1Mac — Nguyễn Bá Phú, Võ Bảo Duy.</p>
+  </div>
+  <div class="ftr"><span>Background: SpaceMuse finale · illustrative 3D reconstruction · AI-assisted</span><span class="pg">07 / 07</span></div>
+</section></div>
 
 </main>
+<script>
+  function fit(){document.querySelectorAll('.frame').forEach(function(f){var s=f.querySelector('.slide');s.style.transform='scale('+(f.clientWidth/1920)+')';});}
+  window.addEventListener('resize',fit);fit();
+</script>
 </body>
 </html>
