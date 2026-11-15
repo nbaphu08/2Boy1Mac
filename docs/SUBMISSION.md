@@ -14,32 +14,34 @@ Only use **https://spacemuse-beta.vercel.app** (deployment URLs like `spacemuse-
 SpaceMuse is a free, interactive online museum of twelve NASA machines left behind on the Moon and Mars, from Apollo 11's still-working laser mirror to the Ingenuity helicopter. Visitors don't browse a list: they launch on an SLS rocket, land on the Moon, track each machine down on the ground, then fly on to Mars and do the same. At every stop a museum label answers the questions a newcomer actually asks — *What is it? Why is it still here? What did it teach us? What is left today?* — with real NASA "then" photos and orbital "now" images. The tour opens with a question (*"Are these machines junk, or history?"*) and ends with the answer: they are the first historic sites beyond Earth, now protected by NASA guidance (2011) and U.S. law (2020). It answers "Abandoned but not Forgotten" by turning discarded hardware into stories students can follow, hear and remember — with every fact sourced.
 
 ## 3. Link to Project Demo
-`<public YouTube (unlisted) or Google Drive link to the 30-second video>` — script in §9.
+https://drive.google.com/file/d/1qXoWgO7DGME5F0zWnRyzlQEiVjsAWXxv/view?usp=sharing (29.9 s, English subtitles; verified public without login)
 
 ## 4. Link to Final Project
 **https://spacemuse-beta.vercel.app** — public, no login; desktop and phone; a Lightweight (no-3D) mode is built in.
 Also: 7-slide deck https://spacemuse-beta.vercel.app/slides (PDF: https://spacemuse-beta.vercel.app/slides/SpaceMuse-deck-2Boy1Mac.pdf) · source code https://github.com/nbaphu08/2Boy1Mac
 
-## 5. Detailed Project Description
-
+## 5. Project Details (form field "Project Details *") — paste as plain text, bold the headings
 **What it does**
-- **A guided expedition, not a gallery.** Landing page → *Visit gallery* → one continuous, scroll-driven 3D journey: SLS/Orion launch from Launch Complex 39B → lunar orbit with five target pins at their real coordinates → descent and touchdown → low flights from site to site → Mars orbit with seven pins → atmospheric entry and landing → the same search on Mars → *Hall of Silence* (each machine's last contact) → *Beyond* (machines still talking, e.g. Voyager 1) → finale.
-- **Twelve exhibits:** Apollo 11 (Eagle descent stage + laser reflector), Surveyor 3, Apollo 15 Lunar Roving Vehicle, Apollo 17, GRAIL Ebb & Flow impact site, Viking 1, Mars Pathfinder & Sojourner, Spirit, Opportunity, Phoenix, InSight, Ingenuity.
-- **Museum labels built for newcomers:** each exhibit answers *What is it? / Why is it still here? / What it taught us*; the full panel adds the story, key dates and numbers (each with its source), a Then/Now slider (NASA surface photo vs. LRO/HiRISE orbital image), sourced coordinates, and objects left nearby.
-- **A through-line message:** a mission briefing asks *"Are these machines junk, or history?"*; the finale answers with NASA's 2011 recommendations to protect Apollo sites and the *One Small Step to Protect Human Heritage in Space Act* (2020), then asks visitors what future crews should do with these machines.
-- **Interactive and accessible:** a target-tracking HUD with a mini-map (click a pin to fly there), a Field Log that stamps every machine you find, an audio tour that speaks at each stop plus an audio guide per exhibit, a 14-second GRAIL simulation that paints NASA's real gravity map onto the Moon, keyboard navigation, reduced-motion and Lightweight modes, and a Collection page with a story map.
+SpaceMuse is a free, interactive 3D museum of twelve NASA machines that were left behind on the Moon and Mars — from Apollo 11's laser reflector, still used today, to the Ingenuity helicopter. Instead of browsing a list, visitors go on an expedition: they launch on an SLS rocket from Launch Complex 39B, see five targets glowing on the Moon at their real coordinates, land, and track each machine down on the ground; then they fly on to Mars, enter the atmosphere, and find seven more. The journey ends in a "Hall of Silence" (the last time each machine talked to Earth) and a closing message.
 
 **How it works**
-Next.js 16 (App Router, TypeScript) and Tailwind on Vercel. The journey is React Three Fiber / Three.js driven by one scroll timeline (GSAP ScrollTrigger + Lenis) that moves a single continuous camera path. Scenes are built in code from NASA dimensions and imagery, plus NASA 3D Resources models (Apollo LM, Viking, MER, InSight, Ingenuity). Real NASA maps texture the worlds (LRO/CGI Moon Kit, Viking MDIM, GRAIL gravity map). Quality tiers adapt to the device, and shaders are pre-compiled during the launch so landings stay smooth. All text lives in typed content files with a source ID on every number.
+At every stop, a museum label answers the questions a newcomer actually asks: What is it? Why is it still here? What did it teach us? What is left today? A full panel adds the story, key dates and numbers (each with its source), sourced landing coordinates, and a Then/Now slider comparing a NASA surface photo with an orbital image of the same spot today (LRO or HiRISE). An audio tour speaks at every stop and each exhibit has its own audio guide. A tracker with a mini-map lets visitors fly to any site, and a Field Log stamps each machine they find. A 14-second GRAIL simulation paints NASA's real lunar gravity map onto the Moon.
 
-**Benefits**
-Students meet space history the way they meet places: by going there. Abstract hardware becomes a story with a reason (why it stayed), a result (what it taught us) and a present (what is there now). It shows that exploration leaves heritage, not just debris, and why that heritage matters as the Moon gets busy again.
+**Benefits and intended impact**
+Students meet space history the way they meet places: by going there. A discarded machine becomes a story with a reason (why it stayed), a result (what it taught us) and a present (what is there now). The tour opens with a question — "Are these machines junk, or history?" — and answers it with NASA's 2011 guidance and the 2020 U.S. law protecting Apollo sites: these are the first historic sites beyond Earth. Our goal is a one-click classroom visit that any teacher can use, on a laptop or a phone.
 
-**What we hope to achieve**
-A free classroom resource teachers can open in one click. Next: more sites (Luna, Chang'e, Apollo 12/14/16), teacher worksheets, more languages, and updates as Artemis crews return to the lunar surface.
+**How it is creative**
+We turned a catalogue into a mission: the visitor earns each discovery by flying, landing and searching, so the 3D is not decoration but the way the story is told. The GRAIL exhibit is not a model on a shelf but a short simulation using the mission's own gravity data. Each machine ends with "what it taught us", so debris becomes discovery.
+
+**Factors our team considered**
+- Accuracy: every number and date has a cited NASA or partner source; where sources disagree we do not state a number. The voyage is clearly labelled imagined, and 3D scenes are labelled illustrative reconstructions.
+- Audience: written for students with no prior knowledge — plain language, a mission briefing, and voice narration for visitors who prefer to listen.
+- Accessibility and devices: keyboard navigation, reduced-motion support, a Lightweight no-3D mode, and quality tiers so it runs on phones.
+- Honesty about AI: real NASA photos are shown unmodified and credited; AI-assisted 3D is watermarked; AI narration is disclosed in text and file metadata.
+- Respect for heritage: our generated 3D contains no NASA logos, flags or mission identifiers.
 
 **Tools**
-TypeScript, React 19, Next.js 16, Three.js / React Three Fiber / drei / postprocessing, GSAP + Lenis, Zustand, Tailwind CSS, Vercel; Playwright for automated visual and performance tests; ffmpeg for media; ElevenLabs for the narration voice; AI assistants (see §6).
+TypeScript, React 19, Next.js 16, Three.js / React Three Fiber, GSAP and Lenis for scroll animation, Tailwind CSS, Vercel hosting; Playwright for automated visual and performance tests; ffmpeg for media; ElevenLabs for the exhibit narration voice; AI assistants (Anthropic Claude, Google Gemini) for research cross-checking, writing support, code and procedural 3D. Data: NASA NSSDCA, LRO/LROC, HiRISE, NASA SVS (GRAIL gravity map, CGI Moon Kit), NASA 3D Resources, NASA Image and Video Library, NASA History Program Office.
 
 ## 6. Use of Super Intelligence (SI) *(data collection only, not shown to judges)*
 Yes. AI assistants — Anthropic Claude (Opus, Sonnet) and Google Gemini (via Antigravity) — helped us plan, research and cross-check facts against NASA sources, draft text, write code, and build the procedural 3D reconstructions. The idea, story and every fact were decided and verified by the team against the primary sources cited on the site. Narration audio is AI-generated speech (ElevenLabs) reading our own sourced scripts.
