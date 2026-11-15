@@ -1,6 +1,6 @@
 import type { SourceRef } from "./types";
 
-// Generated from docs/COPY.md "Sources" table (S1–S70). Do not edit by hand.
+// Generated from docs/COPY.md "Sources" table (S1–S72). Do not edit by hand.
 export const SOURCES: Record<string, SourceRef> = {
   "S1": {
     "id": "S1",
@@ -420,6 +420,18 @@ export const SOURCES: Record<string, SourceRef> = {
     "id": "S70",
     "title": "NASA Science — Voyager 1: What Is a Light-Day",
     "url": "https://science.nasa.gov/mission/voyager/voyager-1/voyager-1-what-is-a-light-day/",
+    "publisher": "NASA Science"
+  },
+  "S71": {
+    "id": "S71",
+    "title": "NASA GSFC (Glavin et al.) — In Situ Biological Contamination Studies of the Moon",
+    "url": "https://ntrs.nasa.gov/api/citations/20100036597/downloads/20100036597.pdf",
+    "publisher": "NASA Goddard Space Flight Center"
+  },
+  "S72": {
+    "id": "S72",
+    "title": "NASA Science — GRAIL (Ebb and Flow)",
+    "url": "https://science.nasa.gov/mission/grail/",
     "publisher": "NASA Science"
   }
 };

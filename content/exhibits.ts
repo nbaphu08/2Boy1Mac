@@ -104,6 +104,11 @@ export const exhibits: Exhibit[] = [
         "credit": "NASA/GSFC/Arizona State University"
       }
     },
+    "howItWorked": [
+      { "label": "Built to", "text": "Eagle's lower half was a landing stage and a launch pad in one. It set the crew down, then stayed behind so the upper half could carry them back to orbit.", "sourceId": "S5" },
+      { "label": "How it worked", "text": "The reflector is a panel of 100 small corner-cube prisms with no power at all. Observatories on Earth aim a laser at it and clock how long the light takes to come back.", "sourceId": "S7" },
+      { "label": "What we learned", "text": "Fifty years of these measurements show that the Earth and Moon are slowly drifting apart: about 3.8 cm a year, roughly as fast as your fingernails grow.", "sourceId": "S7" }
+    ],
     "sources": pickSources(["S1","S2","S3","S4","S5","S6","S7","S45"]),
     "verified": true
   },
@@ -181,7 +186,13 @@ export const exhibits: Exhibit[] = [
         "credit": "NASA/GSFC/Arizona State University"
       }
     },
-    "sources": pickSources(["S1","S8","S9"]),
+    "howItWorked": [
+      { "label": "Built to", "text": "Prove that a spacecraft could land softly on the Moon, and find out how firm the ground was before astronauts tried to walk on it.", "sourceId": "S8" },
+      { "label": "How it worked", "text": "Radar timed the firing of a solid-fuel braking rocket. Then three small throttled engines, guided by radar, lowered it to the surface. A scoop on a 1.5 m arm dug the soil while a TV camera watched.", "sourceId": "S8" },
+      { "label": "What we learned", "text": "Apollo 12 landed 155 m away and brought its camera and scoop home, so scientists could study what two and a half years on the Moon does to a spacecraft.", "sourceId": "S9" }
+    ],
+    "plotTwist": { "title": "Germs on the Moon?", "text": "Scientists found living Streptococcus mitis bacteria in a piece of foam inside the returned camera. Had Earth germs survived two and a half years on the Moon? Probably not: no other camera part held bacteria, and researchers later suggested the foam was contaminated back on Earth, during analysis in the Lunar Receiving Laboratory.", "sourceId": "S71" },
+    "sources": pickSources(["S1","S8","S9","S71"]),
     "verified": true
   },
   {
@@ -282,6 +293,11 @@ export const exhibits: Exhibit[] = [
         "credit": "NASA/GSFC/Arizona State University"
       }
     },
+    "howItWorked": [
+      { "label": "Built to", "text": "Carry two astronauts far beyond the distance they could safely walk in their spacesuits.", "sourceId": "S12" },
+      { "label": "How it worked", "text": "It flew to the Moon folded up on the side of the lunar module. Two batteries powered a separate electric motor in each of its four wheels, driven with a T-shaped hand controller.", "sourceId": "S10" },
+      { "label": "What we learned", "text": "Over three moonwalks it carried the crew 27.9 km, to the foot of the Apennine Mountains and the edge of Hadley Rille.", "sourceId": "S12" }
+    ],
     "sources": pickSources(["S1","S6","S10","S11","S12","S13","S14","S15","S16","S17"]),
     "verified": true
   },
@@ -349,6 +365,11 @@ export const exhibits: Exhibit[] = [
         "credit": "NASA/GSFC/Arizona State University"
       }
     },
+    "howItWorked": [
+      { "label": "Built to", "text": "Survey and sample the Taurus–Littrow valley. Its crew included Harrison Schmitt, a geologist and the first scientist-astronaut to land on the Moon.", "sourceId": "S18" },
+      { "label": "How it worked", "text": "The crew spent about 75 hours on the surface, set up an automated science station and drove a battery-powered rover from stop to stop.", "sourceId": "S18" },
+      { "label": "What we learned", "text": "They brought home 110.5 kg of rock and soil, including soil made almost entirely of tiny beads of orange glass.", "sourceId": "S19" }
+    ],
     "sources": pickSources(["S18","S19","S20","S21","S42"]),
     "verified": true
   },
@@ -416,7 +437,13 @@ export const exhibits: Exhibit[] = [
         "credit": "NASA/GSFC/Arizona State University"
       }
     },
-    "sources": pickSources(["S22","S23","S24"]),
+    "howItWorked": [
+      { "label": "Built to", "text": "Map the Moon's gravity in detail, to learn what lies hidden beneath its surface.", "sourceId": "S72" },
+      { "label": "How it worked", "text": "Twin spacecraft, Ebb and Flow, flew one behind the other. Over areas of stronger gravity they moved slightly toward or away from each other, and an instrument measured every change.", "sourceId": "S72" },
+      { "label": "What we learned", "text": "The highest-resolution gravity map of any world, showing a crust only 34 to 43 km thick on average.", "sourceId": "S24" }
+    ],
+    "eyes": { "id": "sc_grail_a", "label": "See Ebb and Flow in NASA's Eyes" },
+    "sources": pickSources(["S22","S23","S24","S72"]),
     "verified": true
   },
   {
@@ -490,6 +517,12 @@ export const exhibits: Exhibit[] = [
         "credit": "NASA/JPL-Caltech/University of Arizona"
       }
     },
+    "howItWorked": [
+      { "label": "Built to", "text": "Land safely on Mars, photograph it, and run experiments that looked for signs of life in its soil.", "sourceId": "S27" },
+      { "label": "How it worked", "text": "Two nuclear power generators kept it running. A sampler arm scooped soil into a small onboard laboratory, while cameras and a weather boom watched the world around it.", "sourceId": "S27" },
+      { "label": "What we learned", "text": "Its biology experiments found unexpected, puzzling chemistry in the soil, but no clear evidence of living microbes.", "sourceId": "S27" }
+    ],
+    "eyes": { "id": "sc_viking_1_lander", "label": "See Viking 1 in NASA's Eyes" },
     "sources": pickSources(["S25","S26","S27"]),
     "verified": true
   },
@@ -569,6 +602,12 @@ export const exhibits: Exhibit[] = [
         "credit": "NASA/JPL-Caltech/University of Arizona"
       }
     },
+    "howItWorked": [
+      { "label": "Built to", "text": "Test a new way of landing on Mars and carry a small rover, Sojourner, to explore around the lander.", "sourceId": "S28" },
+      { "label": "How it worked", "text": "A parachute slowed it down. About 100 m above the ground, giant airbags inflated, and the lander bounced across the surface like a beach ball before rolling to a stop.", "sourceId": "S28" },
+      { "label": "What we learned", "text": "Sojourner rolled down a ramp and measured what rocks and soils were made of. Together, lander and rover found that Mars may once have been warm and wet.", "sourceId": "S28" }
+    ],
+    "eyes": { "id": "sc_mars_pathfinder", "label": "See Mars Pathfinder in NASA's Eyes" },
     "sources": pickSources(["S28","S29","S30"]),
     "verified": true
   },
@@ -648,6 +687,12 @@ export const exhibits: Exhibit[] = [
         "credit": "NASA/JPL-Caltech/University of Arizona"
       }
     },
+    "howItWorked": [
+      { "label": "Built to", "text": "Work as a robot geologist, looking for signs of past water on Mars.", "sourceId": "S32" },
+      { "label": "How it worked", "text": "When one front wheel stopped turning, Spirit kept driving and dragged it along. The stuck wheel scraped away the top layer of soil as the rover moved.", "sourceId": "S33" },
+      { "label": "What we learned", "text": "Underneath lay bright, nearly pure silica, probably made by hot springs or steam vents. Strong evidence that ancient Mars was much wetter.", "sourceId": "S33" }
+    ],
+    "eyes": { "id": "sc_mars_exploration_rover_2", "label": "See Spirit in NASA's Eyes" },
     "sources": pickSources(["S31","S32","S33","S34","S35","S36","S37","S38","S39"]),
     "verified": true
   },
@@ -735,7 +780,13 @@ export const exhibits: Exhibit[] = [
         }
       ]
     },
-    "sources": pickSources(["S47","S48","S49","S50","S51","S52"]),
+    "howItWorked": [
+      { "label": "Built to", "text": "Like its twin Spirit, work as a robot geologist looking for signs of past water on Mars.", "sourceId": "S32" },
+      { "label": "How it worked", "text": "Its toolkit included a Rock Abrasion Tool to grind into rocks, a microscopic imager and two spectrometers to tell what the rocks were made of.", "sourceId": "S47" },
+      { "label": "What we learned", "text": "The rocks told a water story: hematite \"blueberries\" formed by acidic groundwater, and later, clays formed in water friendly enough for ancient microbes.", "sourceId": "S49" }
+    ],
+    "eyes": { "id": "sc_mars_exploration_rover_1", "label": "See Opportunity in NASA's Eyes" },
+    "sources": pickSources(["S47","S48","S49","S50","S51","S52","S32"]),
     "verified": true
   },
   {
@@ -803,6 +854,12 @@ export const exhibits: Exhibit[] = [
         "credit": "NASA/JPL-Caltech/University of Arizona"
       }
     },
+    "howItWorked": [
+      { "label": "Built to", "text": "Land in the far north of Mars and dig for water ice.", "sourceId": "S53" },
+      { "label": "How it worked", "text": "A 2.5 m robotic arm dug trenches and delivered soil to tiny ovens on the deck, which heated the samples to see what gases came out.", "sourceId": "S53" },
+      { "label": "What we learned", "text": "Bright clumps in a trench vanished within days, and the ovens confirmed water in a soil sample. The team also found perchlorate salts in the soil.", "sourceId": "S53" }
+    ],
+    "eyes": { "id": "sc_phoenix", "label": "See Phoenix in NASA's Eyes" },
     "sources": pickSources(["S53","S54","S55"]),
     "verified": true
   },
@@ -884,6 +941,12 @@ export const exhibits: Exhibit[] = [
         }
       ]
     },
+    "howItWorked": [
+      { "label": "Built to", "text": "Study the deep inside of Mars, not its surface.", "sourceId": "S56" },
+      { "label": "How it worked", "text": "Its 1.8 m robotic arm lifted a seismometer from the deck and placed it on the ground, where it listened for marsquakes.", "sourceId": "S56" },
+      { "label": "What we learned", "text": "Reading the waves from 1,319 marsquakes, scientists mapped the layers of Mars, down to a liquid core about 1,800 km in radius.", "sourceId": "S58" }
+    ],
+    "eyes": { "id": "sc_insight", "label": "See InSight in NASA's Eyes" },
     "sources": pickSources(["S56","S57","S58","S59"]),
     "verified": true
   },
@@ -971,6 +1034,12 @@ export const exhibits: Exhibit[] = [
         "credit": "NASA/JPL-Caltech/University of Arizona"
       }
     },
+    "howItWorked": [
+      { "label": "Built to", "text": "Find out whether a helicopter could fly in the air of Mars, which is less than 1% as dense as Earth's.", "sourceId": "S61" },
+      { "label": "How it worked", "text": "A solar panel charged its batteries, with enough energy for one flight of about 90 seconds per Martian day. Its rotor blades spanned about 1.2 m, tip to tip.", "sourceId": "S61" },
+      { "label": "What we learned", "text": "Planned for up to five flights, it flew 72, scouting ahead for the Perseverance rover.", "sourceId": "S62" }
+    ],
+    "eyes": { "id": "sc_mars_2020", "label": "See Perseverance, which carried Ingenuity, in NASA's Eyes" },
     "sources": pickSources(["S60","S61","S62","S63","S64","S65"]),
     "verified": true
   }

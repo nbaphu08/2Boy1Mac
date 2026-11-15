@@ -1,5 +1,6 @@
 import type { Exhibit } from "@/content/types";
 import { expedition, guide } from "@/content/guide";
+import { site } from "@/content/site";
 import { AgeCounter } from "@/components/ui/AgeCounter";
 import { AudioGuide } from "./AudioGuide";
 import { ModelViewer } from "./ModelViewer";
@@ -15,6 +16,8 @@ export function ageLabel(ex: Exhibit) {
   if (ex.catalogNo === "SM-L-005") return "SINCE IMPACT";
   return ex.hall === "moon" ? "ON THE MOON FOR" : "ON MARS FOR";
 }
+
+const X = site.exhibitExtras;
 
 function Heading({ children }: { children: React.ReactNode }) {
   return <h3 className="font-hud mt-8 mb-3 text-xs text-mute">{children}</h3>;
@@ -98,14 +101,36 @@ export function ExhibitText({ ex, headingId, autoAudio = false }: { ex: Exhibit;
       <Heading>{expedition.questions.did}</Heading>
       <Plaque text={ex.plaque} />
 
+      {ex.howItWorked && ex.howItWorked.length > 0 && (
+        <>
+          <Heading>{X.how}</Heading>
+          <ol className="relative space-y-4 border-l border-line pl-5">
+            {ex.howItWorked.map((step, i) => (
+              <li key={i} className="relative">
+                <span
+                  aria-hidden="true"
+                  className={`font-hud absolute -left-[1.95rem] top-0 flex h-5 w-5 items-center justify-center rounded-full border bg-void text-[10px] ${
+                    i === ex.howItWorked!.length - 1 ? "border-starlight text-starlight" : "border-line text-mute"
+                  }`}
+                >
+                  {i + 1}
+                </span>
+                <p className="font-hud text-[11px] tracking-[0.15em] text-platinum">{step.label.toUpperCase()}</p>
+                <p className="mt-1 text-text">
+                  {step.text} <SourceTag id={step.sourceId} sources={ex.sources} />
+                </p>
+              </li>
+            ))}
+          </ol>
+        </>
+      )}
+
       {guide[ex.slug] ? (
         <>
           <Heading>{expedition.questions.why}</Heading>
           <p className="text-text">{guide[ex.slug].why}</p>
         </>
       ) : null}
-
-      <Heading>{expedition.questions.now}</Heading>
 
       <Heading>The story</Heading>
       <div className="space-y-3">
@@ -121,11 +146,36 @@ export function ExhibitText({ ex, headingId, autoAudio = false }: { ex: Exhibit;
         ))}
       </ul>
 
+      {ex.plotTwist && (
+        <aside className="mt-6 rounded-md border border-ignite/50 bg-ignite/5 p-4">
+          <p className="font-hud text-[11px] tracking-[0.15em] text-ignite">{X.twist}</p>
+          <p className="font-display mt-1 text-lg text-text">{ex.plotTwist.title}</p>
+          <p className="mt-2 text-sm text-text">
+            {ex.plotTwist.text} <SourceTag id={ex.plotTwist.sourceId} sources={ex.sources} />
+          </p>
+        </aside>
+      )}
+
       <Heading>Why it went silent</Heading>
       <p>{ex.whySilent}</p>
 
       <Heading>★ For young explorers</Heading>
       <p className="rounded-md border border-line bg-raised/50 p-4">{ex.youngExplorer}</p>
+
+      {ex.eyes && (
+        <>
+          <Heading>{X.eyesTitle}</Heading>
+          <a
+            href={X.eyesUrl(ex.eyes.id)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-full border border-starlight/60 px-4 py-2 text-sm text-starlight transition-colors hover:bg-starlight/10"
+          >
+            {ex.eyes.label} <span aria-hidden="true">↗</span>
+          </a>
+          <p className="mt-2 text-xs text-mute">{X.eyesNote}</p>
+        </>
+      )}
 
       {ex.vitrine && (
         <>

@@ -21,6 +21,9 @@ export type Exhibit = {
   youngExplorer: string;
   curatorNotes?: string;
   vitrine?: { title: string; items: { name: string; text: string; sourceId: string }[] };
+  howItWorked?: { label: string; text: string; sourceId: string }[]; // Built to → How it worked → What we learned
+  plotTwist?: { title: string; text: string; sourceId: string };
+  eyes?: { id: string; label: string }; // NASA's Eyes on the Solar System object id (eyes.nasa.gov/apps/solar-system/#/<id>)
   media: {
     model?: string;
     fallbackImage: string;

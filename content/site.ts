@@ -41,6 +41,14 @@ export const site = {
     ],
     secondary: { collection: "Browse the collection", about: "About the project" },
   },
+  // Exhibit panel extras: "How did it work?" strip, plot twist, NASA's Eyes link (data in content/exhibits.ts).
+  exhibitExtras: {
+    how: "HOW DID IT WORK?",
+    twist: "PLOT TWIST",
+    eyesTitle: "EXPLORE IT YOURSELF",
+    eyesNote: "NASA's Eyes on the Solar System is a free 3D app built on real NASA mission data. Opens in a new tab.",
+    eyesUrl: (id: string) => `https://eyes.nasa.gov/apps/solar-system/#/${id}`,
+  },
   // Story map on /collection. Coordinates come only from content/exhibits.ts (cited NASA/PDS/LROC sources).
   map: {
     eyebrow: "STORY MAP",
