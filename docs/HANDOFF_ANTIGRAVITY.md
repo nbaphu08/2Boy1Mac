@@ -530,3 +530,6 @@ Merged. `docs/antigravity/shots/review-AG16-earth.jpg` (enter, ignition, ascent-
    - Merged the 6 `@react-three/drei <Line>` (`Line2` fat-line) catenaries into 1 `<lineSegments>` draw call (`lineBasicMaterial`), added `customProgramCacheKey` and accurate bounding spheres (`frustumCulled` enabled) on `MarshScrubField` & `LightningProtectionCage` so offscreen Mars/Moon warmup never draws pad grass/towers.
    - Trimmed ignition volumetric steam counts (`130/84/48`) and clamped `gl_PointSize` to cut pixel overdraw.
 5. **Verification**: `npx tsc --noEmit`, `npx eslint components/journey/three` (0 errors, 0 warnings), and `npx next build --webpack` (`36/36` routes) all exited `0`. `MoonModels.tsx`, `MarsModels.tsx`, `MarsDioramas.tsx`, `PathfinderLandscape.tsx`, and `ExhibitStage3D.tsx` untouched; zero posters generated.
+
+## Opus review — AG-16b accepted (15/11)
+- Full-journey max frame 117 ms (was 1017 ms after AG-16), 0 console errors; visuals unchanged; Opus model pass intact. Merged.
