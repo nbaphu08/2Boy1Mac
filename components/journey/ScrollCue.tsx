@@ -64,7 +64,7 @@ export function ScrollCue() {
       className="pointer-events-none fixed left-1/2 top-[21rem] z-30 -translate-x-1/2 sm:top-[5.4rem]"
     >
       <div
-        className={`font-hud flex items-center gap-2.5 whitespace-nowrap text-[12px] uppercase tracking-[0.28em] text-white sm:text-[13px] ${reducedMotion ? "" : "sm-scroll-cue"}`}
+        className={`font-hud flex items-center gap-2.5 whitespace-nowrap text-[12px] uppercase tracking-[0.28em] text-white sm:text-[13px]`}
         style={{ textShadow: "0 1px 10px rgba(4,6,11,0.85), 0 0 2px rgba(4,6,11,0.9)" }}
       >
         <span>{label}</span>
@@ -73,9 +73,7 @@ export function ScrollCue() {
         </span>
       </div>
       <style>{`
-        @keyframes smCuePulse { 0%,100% { opacity: .45 } 50% { opacity: 1 } }
         @keyframes smCueArrow { 0%,100% { transform: translateY(-2px) } 50% { transform: translateY(3px) } }
-        .sm-scroll-cue { animation: smCuePulse 1.6s ease-in-out infinite; }
         .sm-scroll-cue-arrow { display: inline-block; animation: smCueArrow 1.6s ease-in-out infinite; }
       `}</style>
     </div>
