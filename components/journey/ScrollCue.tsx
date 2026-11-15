@@ -64,7 +64,8 @@ export function ScrollCue() {
       className="pointer-events-none fixed left-1/2 top-[21rem] z-30 -translate-x-1/2 sm:top-[5.4rem]"
     >
       <div
-        className={`font-hud flex items-center gap-2.5 whitespace-nowrap rounded-full border border-starlight/50 bg-void/70 px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-starlight shadow-[0_0_24px_rgba(157,184,255,0.25)] backdrop-blur-md sm:px-5 sm:text-xs ${reducedMotion ? "" : "sm-scroll-cue"}`}
+        className={`font-hud flex items-center gap-2.5 whitespace-nowrap text-[12px] uppercase tracking-[0.28em] text-white sm:text-[13px] ${reducedMotion ? "" : "sm-scroll-cue"}`}
+        style={{ textShadow: "0 1px 10px rgba(4,6,11,0.85), 0 0 2px rgba(4,6,11,0.9)" }}
       >
         <span>{label}</span>
         <span aria-hidden className={reducedMotion ? "" : "sm-scroll-cue-arrow"}>
