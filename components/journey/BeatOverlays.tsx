@@ -5,7 +5,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { beatIndexById, beats } from "@/content/beats";
 import { grailSim, journey, transitTimeline } from "@/content/journey";
-import { expedition, guide } from "@/content/guide";
+import { expedition, guide, legacy, thesis } from "@/content/guide";
 import { narrationFor } from "@/lib/expedition";
 import { replayGrailSim } from "@/components/journey/three/simulationBus";
 import { exhibitBySlug } from "@/content/exhibits";
@@ -126,6 +126,9 @@ function Briefing() {
     >
       <p className="font-hud text-[10px] text-starlight sm:text-[11px]">{b.eyebrow}</p>
       <h2 className="font-display mt-1.5 text-lg leading-tight text-text sm:text-2xl">{b.title}</h2>
+      <p className="mt-2 border-l-2 border-starlight pl-2.5 text-[12px] italic leading-snug text-starlight sm:hidden">
+        {thesis.question}
+      </p>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -142,6 +145,9 @@ function Briefing() {
         ))}
         <p className="mt-3 text-xs leading-relaxed text-mute">{b.honesty}</p>
         <p className="font-hud mt-3 text-[9px] leading-snug text-mute/80">{b.source}</p>
+        <p className="mt-4 hidden border-l-2 border-starlight pl-3 text-[15px] font-medium italic leading-snug text-starlight sm:block">
+          {thesis.question}
+        </p>
       </div>
     </div>
   );
@@ -295,12 +301,18 @@ function ExhibitBeatOverlay({ beat }: { beat: Beat }) {
           <div className="mt-3 space-y-2.5">
             <div>
               <p className="font-hud text-[10px] text-starlight">{expedition.questions.what}</p>
-              <p className="mt-0.5 text-[13px] leading-snug text-text/90 sm:text-sm">{g.what}</p>
+              <p className="mt-0.5 line-clamp-2 text-[13px] leading-snug text-text/90 sm:line-clamp-none sm:text-sm">{g.what}</p>
             </div>
             <div>
               <p className="font-hud text-[10px] text-starlight">{expedition.questions.why}</p>
               <p className="mt-0.5 line-clamp-3 text-[13px] leading-snug text-text/90 sm:line-clamp-none sm:text-sm">{g.why}</p>
             </div>
+            {legacy[ex.slug] ? (
+              <div>
+                <p className="font-hud text-[10px] text-starlight">{expedition.questions.taught}</p>
+                <p className="mt-0.5 line-clamp-3 text-[13px] leading-snug text-text/90 sm:line-clamp-none sm:text-sm">{legacy[ex.slug]}</p>
+              </div>
+            ) : null}
           </div>
         ) : null}
 
@@ -502,8 +514,24 @@ function FinaleOverlay() {
   return (
     <div className="relative flex h-full w-full items-end px-6 pb-14 pr-14 sm:px-12 sm:pb-20 sm:pr-32">
       <div data-hud-card className="pointer-events-auto relative z-10 max-w-2xl">
-        <p className="font-hud text-shadow-copy mb-3 text-[11px] text-platinum">{journey.finale.eyebrow}</p>
-        <div className="mt-6 flex flex-wrap items-center gap-4">
+        <div
+          data-lenis-prevent
+          className="max-h-[calc(100svh-24rem)] overflow-y-auto sm:max-h-[calc(100svh-9rem)] rounded-lg border border-line/80 bg-surface/80 p-5 backdrop-blur-md sm:p-7"
+        >
+          <p className="font-hud text-[10px] text-starlight sm:text-[11px]">{thesis.finale.eyebrow}</p>
+          <h2 className="font-display mt-2 text-xl leading-tight text-text sm:text-4xl">{thesis.finale.title}</h2>
+          {thesis.finale.body.map((p, k) => (
+            <p key={k} className="mt-3 text-[13px] leading-relaxed text-text/90 sm:text-[15px]">
+              {p}
+            </p>
+          ))}
+          <p className="mt-4 border-l-2 border-starlight pl-3 text-[15px] font-medium italic leading-snug text-starlight sm:text-lg">
+            {thesis.finale.prompt}
+          </p>
+          <p className="font-hud mt-3 text-[9px] leading-snug text-mute/80">{thesis.finale.sources}</p>
+        </div>
+        <p className="font-hud text-shadow-copy mt-4 text-[10px] text-platinum">{journey.finale.eyebrow}</p>
+        <div className="mt-4 flex flex-wrap items-center gap-4">
           <Link
             href="/collection"
             className="font-hud rounded border border-starlight/60 bg-raised/85 px-4 py-2 text-xs text-starlight transition-colors hover:bg-starlight hover:text-void"

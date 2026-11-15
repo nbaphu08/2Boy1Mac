@@ -1,5 +1,5 @@
 import type { Exhibit } from "@/content/types";
-import { expedition, guide } from "@/content/guide";
+import { expedition, guide, legacy } from "@/content/guide";
 import { site } from "@/content/site";
 import { AgeCounter } from "@/components/ui/AgeCounter";
 import { AudioGuide } from "./AudioGuide";
@@ -129,6 +129,13 @@ export function ExhibitText({ ex, headingId, autoAudio = false }: { ex: Exhibit;
         <>
           <Heading>{expedition.questions.why}</Heading>
           <p className="text-text">{guide[ex.slug].why}</p>
+        </>
+      ) : null}
+
+      {legacy[ex.slug] ? (
+        <>
+          <Heading>{expedition.questions.taught}</Heading>
+          <p className="text-text">{legacy[ex.slug]}</p>
         </>
       ) : null}
 
