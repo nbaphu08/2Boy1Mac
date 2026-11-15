@@ -30,6 +30,9 @@ export const expedition = {
     region: "Audio guide player",
   },
 
+  // First-visit cue on the launch pad (disappears on the first scroll).
+  scrollCue: { pointer: "Scroll to interact", touch: "Swipe up to interact" },
+
   // Auto tour: the journey advances beat by beat on its own.
   autoTour: {
     start: "Auto tour",

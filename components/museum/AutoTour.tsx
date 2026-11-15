@@ -113,7 +113,7 @@ export function AutoTourController() {
     <div
       role="status"
       data-autotour-hint=""
-      className="font-hud pointer-events-auto fixed bottom-16 right-3 z-30 flex w-60 items-start gap-2 rounded-xl border border-starlight/40 bg-surface/90 px-3 py-2 text-[10px] leading-snug text-platinum backdrop-blur-md sm:bottom-auto sm:right-10 sm:top-16 sm:w-72"
+      className="font-hud pointer-events-auto fixed bottom-[8.75rem] right-3 z-30 flex w-60 items-start gap-2 rounded-xl border border-starlight/40 bg-surface/90 px-3 py-2 text-[10px] leading-snug text-platinum backdrop-blur-md sm:bottom-auto sm:right-10 sm:top-16 sm:w-72"
     >
       <span className="flex-1">{t.hint}</span>
       <button type="button" onClick={dismiss} aria-label="Dismiss" className="cursor-pointer text-mute hover:text-text">

@@ -27,6 +27,7 @@ import { ExhibitPanel } from "@/components/museum/ExhibitPanel";
 import { PassportSheet } from "@/components/museum/PassportSheet";
 import { BeatSection } from "./BeatOverlays";
 import { TrackerHud } from "./TrackerHud";
+import { ScrollCue } from "./ScrollCue";
 import { StaticPoster } from "./StaticPoster";
 
 function hasWebGL(): boolean {
@@ -496,6 +497,7 @@ export default function Stage() {
 
       <TopHudBar />
       <TrackerHud />
+      <ScrollCue />
       <ProgressRail />
       <ScrollLiveCaption />
       <ExhibitPanel />
