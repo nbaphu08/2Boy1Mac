@@ -17,6 +17,7 @@ function formatCoords(lat?: number, lon?: number): string | null {
 /** Target tracker: current target, its real coordinates and a proximity bar. Hidden outside the expedition. */
 export function TrackerHud() {
   const rootRef = useRef<HTMLDivElement>(null);
+  const pillRef = useRef<HTMLButtonElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
   const statusRef = useRef<HTMLSpanElement>(null);
   const [slug, setSlug] = useState<string | null>(null);
@@ -30,6 +31,11 @@ export function TrackerHud() {
     let lastSlug: string | null = null;
     const apply = () => {
       const show = trackerActive(scrollState.current);
+      const pill = pillRef.current;
+      if (pill) {
+        pill.style.opacity = show ? "1" : "0";
+        pill.style.visibility = show ? "visible" : "hidden";
+      }
       if (!show) setSheetOpen(false);
       root.style.opacity = show ? "1" : "0";
       root.style.visibility = show ? "visible" : "hidden";
@@ -63,7 +69,7 @@ export function TrackerHud() {
     <>
       <div
         ref={rootRef}
-        className="pointer-events-none fixed right-12 top-[10.5rem] z-20 w-44 rounded border border-line/70 bg-surface/70 px-2.5 py-2 backdrop-blur-md sm:bottom-5 sm:right-24 sm:top-auto sm:w-[17rem] sm:px-3 sm:py-2.5"
+        className="pointer-events-none fixed bottom-5 right-24 z-20 hidden w-[17rem] rounded border border-line/70 bg-surface/70 px-3 py-2.5 backdrop-blur-md sm:block"
         style={{ opacity: 0, visibility: "hidden" }}
       >
         <div className="hidden sm:block">
@@ -77,13 +83,6 @@ export function TrackerHud() {
           />
           <div className="my-2 h-px bg-line/60" />
         </div>
-        <button
-          type="button"
-          onClick={() => setSheetOpen(true)}
-          className="font-hud pointer-events-auto mb-1.5 min-h-11 w-full cursor-pointer rounded border border-line/80 px-2 text-[10px] text-platinum sm:hidden"
-        >
-          {T.open}
-        </button>
         <div aria-hidden>
           <p className="font-hud hidden text-[9px] text-mute sm:block">
             {expedition.tracker.label}
@@ -109,6 +108,15 @@ export function TrackerHud() {
           </span>
         </div>
       </div>
+      <button
+        ref={pillRef}
+        type="button"
+        onClick={() => setSheetOpen(true)}
+        className="font-hud pointer-events-auto fixed bottom-1.5 right-3 z-20 flex h-11 min-w-11 cursor-pointer items-center justify-center rounded-full border border-line/80 bg-surface/80 px-3 text-[10px] text-platinum backdrop-blur-md sm:hidden"
+        style={{ opacity: 0, visibility: "hidden" }}
+      >
+        {T.open}
+      </button>
       {sheetOpen && (
         <MiniMapSheet
           hall={hall}
