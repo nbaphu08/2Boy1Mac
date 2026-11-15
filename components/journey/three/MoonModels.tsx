@@ -3,12 +3,12 @@
 import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
+import { LunarRover } from "./models/LunarRover";
 
 let cachedLrrrPrismTex: THREE.CanvasTexture | null = null;
 let cachedBootprintTex: THREE.CanvasTexture | null = null;
 let cachedRoverTrackTex: THREE.CanvasTexture | null = null;
 let cachedDarkEjectaTex: THREE.CanvasTexture | null = null;
-let cachedWireMeshTex: THREE.CanvasTexture | null = null;
 let cachedSurveyorSolarTex: THREE.CanvasTexture | null = null;
 let cachedSurveyorPlanarTex: THREE.CanvasTexture | null = null;
 let cachedSurveyorBoxTex: THREE.CanvasTexture | null = null;
@@ -217,52 +217,6 @@ export function getDarkEjectaTexture(): THREE.CanvasTexture {
   return tex;
 }
 
-/** Woven wire-mesh + titanium chevron tread texture for LRV wheels. */
-function getLrvWheelTexture(): THREE.CanvasTexture {
-  if (cachedWireMeshTex) return cachedWireMeshTex;
-  const canvas = document.createElement("canvas");
-  canvas.width = 256;
-  canvas.height = 128;
-  const ctx = canvas.getContext("2d")!;
-
-  ctx.fillStyle = "#5B5852";
-  ctx.fillRect(0, 0, 256, 128);
-
-  // Fine zinc-coated woven steel wire mesh
-  ctx.strokeStyle = "rgba(180, 184, 192, 0.35)";
-  ctx.lineWidth = 1;
-  for (let x = 0; x < 256; x += 6) {
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x + 16, 128);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(x + 16, 0);
-    ctx.lineTo(x, 128);
-    ctx.stroke();
-  }
-
-  // Titanium chevron tread strips (~50% coverage)
-  ctx.fillStyle = "#8C929E";
-  for (let x = 8; x < 256; x += 16) {
-    ctx.beginPath();
-    ctx.moveTo(x, 18);
-    ctx.lineTo(x + 7, 64);
-    ctx.lineTo(x, 110);
-    ctx.lineTo(x + 5, 110);
-    ctx.lineTo(x + 12, 64);
-    ctx.lineTo(x + 5, 18);
-    ctx.closePath();
-    ctx.fill();
-  }
-
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.wrapS = THREE.RepeatWrapping;
-  tex.wrapT = THREE.ClampToEdgeWrapping;
-  cachedWireMeshTex = tex;
-  return tex;
-}
-
 /** 792-cell photovoltaic grid texture with silver busbars and 2.5-year lunar dust-tan weathering for Surveyor 3. */
 function getSurveyorSolarTexture(): THREE.CanvasTexture {
   if (cachedSurveyorSolarTex) return cachedSurveyorSolarTex;
@@ -444,54 +398,12 @@ export function DistantApolloLmSilhouette({
 }
 
 /**
- * Clean flat octagonal interstage deck cap + gold Kapton foil rim for the clipped Apollo LM
- * descent stage (shared by SM-L-001 Apollo 11 Eagle and SM-L-004 Apollo 17 Challenger).
- */
-export function ClippedLmTopCap({ baseY, scale = 1 }: { baseY: number; scale?: number }) {
-  return (
-    <group position={[0, baseY + 0.765 * scale, 0]} scale={scale}>
-      {/* Outer gold Kapton octagonal collar rim */}
-      <mesh rotation={[0, Math.PI / 8, 0]}>
-        <cylinderGeometry args={[0.86, 0.88, 0.045, 8]} />
-        <meshStandardMaterial color="#C88A2E" roughness={0.38} metalness={0.76} />
-      </mesh>
-      {/* Flat dark-anodized octagonal interstage structural deck cap */}
-      <mesh position={[0, 0.024, 0]} rotation={[0, Math.PI / 8, 0]}>
-        <cylinderGeometry args={[0.82, 0.82, 0.014, 8]} />
-        <meshStandardMaterial color="#1D222B" roughness={0.58} metalness={0.68} />
-      </mesh>
-      {/* Central ascent-engine blast deflector depression & structural cross-ribs */}
-      <mesh position={[0, 0.033, 0]}>
-        <cylinderGeometry args={[0.32, 0.32, 0.008, 16]} />
-        <meshStandardMaterial color="#12151C" roughness={0.7} metalness={0.5} />
-      </mesh>
-      <mesh position={[0, 0.034, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.31, 0.36, 16]} />
-        <meshStandardMaterial color="#9CA3B0" roughness={0.42} metalness={0.78} />
-      </mesh>
-      {[0, Math.PI / 4, Math.PI / 2, (3 * Math.PI) / 4].map((rot, idx) => (
-        <mesh key={idx} position={[0, 0.032, 0]} rotation={[0, rot, 0]}>
-          <boxGeometry args={[1.56, 0.01, 0.028]} />
-          <meshStandardMaterial color="#6C7380" roughness={0.45} metalness={0.75} />
-        </mesh>
-      ))}
-      {/* Conical descent engine bell underneath center bay */}
-      <mesh position={[0, -0.54, 0]}>
-        <cylinderGeometry args={[0.21, 0.33, 0.3, 16, 1, true]} />
-        <meshStandardMaterial color="#2A2F3A" roughness={0.5} metalness={0.8} side={THREE.DoubleSide} />
-      </mesh>
-    </group>
-  );
-}
-
-/**
- * Apollo 11 (SM-L-001) specific props per REF_MOON.md:
- * 1. Top octagonal interstage deck cap + Kapton foil accents on the clipped LM Eagle descent stage
- * 2. Forward leg egress platform + 9-rung ladder + commemorative plaque plate behind the ladder (no text)
+ * Apollo 11 (SM-L-001) specific props per REF_MOON.md (the descent stage itself, with its ladder,
+ * porch and plaque, is `models/ApolloLmDescentStage.tsx`):
  * 3. EASEP package (~17 m south, scaled into diorama foreground): square gold-Kapton body, two canted east/west solar panels, short cylindrical antenna mast
  * 4. LRRR (~5 m NNW of EASEP): flat tilted stand with 10×10 corner-cube prism array (no power, no cables) + faint 532 nm green laser line from the sky
  */
-export function Apollo11SiteProps({ baseY, lmScale = 1 }: { baseY: number; lmScale?: number }) {
+export function Apollo11SiteProps({ baseY }: { baseY: number }) {
   const prismTex = useMemo(() => getLrrrPrismTexture(), []);
   const laserRef = useRef<THREE.Mesh>(null);
   const elapsedRef = useRef(0);
@@ -505,42 +417,6 @@ export function Apollo11SiteProps({ baseY, lmScale = 1 }: { baseY: number; lmSca
 
   return (
     <group position={[0, baseY, 0]}>
-      {/* 1. Clipped LM Descent Stage Top-Deck Structural Cap & Gold Kapton Thermal Foil Rim */}
-      <ClippedLmTopCap baseY={0} scale={lmScale} />
-
-      {/* 2. Forward Leg Egress Platform, 9-Rung Ladder & Commemorative Plaque Plate */}
-      <group position={[0, 0, 0.95 * lmScale]} scale={lmScale}>
-        {/* Small egress porch platform at top of forward leg */}
-        <mesh position={[0, 0.96, -0.08]}>
-          <boxGeometry args={[0.26, 0.03, 0.28]} />
-          <meshStandardMaterial color="#C7CDD8" roughness={0.4} metalness={0.78} />
-        </mesh>
-        {/* Ladder side rails */}
-        {[-0.08, 0.08].map((rx, ri) => (
-          <mesh key={ri} position={[rx, 0.52, 0.14]} rotation={[-0.36, 0, 0]}>
-            <cylinderGeometry args={[0.01, 0.01, 0.94, 6]} />
-            <meshStandardMaterial color="#D6DCE6" roughness={0.35} metalness={0.82} />
-          </mesh>
-        ))}
-        {/* 9 Ladder rungs */}
-        {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((ri) => {
-          const t = ri / 8;
-          const ry = 0.14 + t * 0.76;
-          const rz = 0.28 - t * 0.29;
-          return (
-            <mesh key={ri} position={[0, ry, rz]} rotation={[0, 0, Math.PI / 2]}>
-              <cylinderGeometry args={[0.006, 0.006, 0.16, 6]} />
-              <meshStandardMaterial color="#DCE2EC" roughness={0.35} metalness={0.85} />
-            </mesh>
-          );
-        })}
-        {/* Commemorative plaque plate mounted on the strut behind the ladder (small curved metal plate, no text) */}
-        <mesh position={[0, 0.58, 0.09]} rotation={[-0.36, 0, 0]}>
-          <boxGeometry args={[0.11, 0.075, 0.008]} />
-          <meshStandardMaterial color="#E4E9F2" roughness={0.22} metalness={0.92} />
-        </mesh>
-      </group>
-
       {/* 3. EASEP Package (Passive Seismic Experiment — south of LM) */}
       <group position={[-1.05, 0.02, 3.85]} rotation={[0, 0.25, 0]} scale={1.35}>
         {/* Square thermal base skirt */}
@@ -1150,218 +1026,9 @@ export function Surveyor3Model({
   );
 }
 
-/**
- * SM-L-003 & SM-L-004 · Apollo Lunar Roving Vehicle (LRV) procedural 3D model per REF_MOON.md & AG-3a:
- * - Frame length 3.1 m, wheelbase 2.3 m, max height 1.14 m, ground clearance 0.36 m
- * - 4 woven wire-mesh wheels (0.818 m diameter, 0.23 m wide) with titanium chevrons + spun aluminum hubs
- * - Curved dust guards (fenders) above each wheel
- * - 2 side-by-side folding tubular seats with nylon webbing, footrests & T-shaped hand controller
- * - Front center mast with wire-mesh parabolic high-gain dish antenna + gold-blanketed TV camera
- */
-export function LunarRovingVehicleModel({ scale = 0.72 }: { scale?: number }) {
-  const wheelTex = useMemo(() => getLrvWheelTexture(), []);
-  const wheelPositions: [number, number, number, number][] = [
-    [-0.78, 0.41, 1.15, 1],   // Front-left
-    [0.78, 0.41, 1.15, -1],   // Front-right
-    [-0.78, 0.41, -1.15, 1],  // Rear-left
-    [0.78, 0.41, -1.15, -1],  // Rear-right
-  ];
-
-  return (
-    <group scale={scale}>
-      {/* 3-part hinged welded aluminum tubular chassis & beaded floor panels (ground clearance 0.36 m) */}
-      <mesh position={[0, 0.38, 0]}>
-        <boxGeometry args={[1.18, 0.06, 3.05]} />
-        <meshStandardMaterial color="#D4DAE4" roughness={0.42} metalness={0.72} />
-      </mesh>
-      {/* Perimeter chassis frame rails */}
-      {[-0.58, 0.58].map((rx, ri) => (
-        <mesh key={ri} position={[rx, 0.41, 0]}>
-          <boxGeometry args={[0.045, 0.07, 3.1]} />
-          <meshStandardMaterial color="#E2E7F0" roughness={0.35} metalness={0.78} />
-        </mesh>
-      ))}
-
-      {/* 4 Wire-Mesh Wheels (0.818 m diameter = 0.409 m radius, 0.23 m wide) + Dust Fenders */}
-      {wheelPositions.map(([wx, wy, wz, side], wi) => (
-        <group key={wi} position={[wx, wy, wz]}>
-          {/* Suspension A-arm strut */}
-          <mesh position={[-side * 0.16, -0.02, 0]} rotation={[0, 0, Math.PI / 2]}>
-            <cylinderGeometry args={[0.025, 0.025, 0.32, 8]} />
-            <meshStandardMaterial color="#B8C0CE" roughness={0.4} metalness={0.78} />
-          </mesh>
-          {/* Woven steel wire-mesh tire with titanium chevrons */}
-          <mesh rotation={[0, 0, Math.PI / 2]}>
-            <torusGeometry args={[0.31, 0.1, 12, 24]} />
-            <meshStandardMaterial map={wheelTex} roughness={0.62} metalness={0.58} />
-          </mesh>
-          {/* Inner aluminum rim disc & bump-stop hub */}
-          <mesh rotation={[0, 0, Math.PI / 2]}>
-            <cylinderGeometry args={[0.24, 0.24, 0.08, 16]} />
-            <meshStandardMaterial color="#DCE2EC" roughness={0.35} metalness={0.75} />
-          </mesh>
-          <mesh position={[side * 0.05, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-            <sphereGeometry args={[0.11, 12, 10]} />
-            <meshStandardMaterial color="#B8BFC8" roughness={0.42} metalness={0.7} />
-          </mesh>
-          {/* Curved grey/silver metallic dust guard (fender) above wheel (AG-1b #5) */}
-          <mesh position={[0, 0.06, 0]} rotation={[0.25, Math.PI / 2, 0]}>
-            <torusGeometry args={[0.44, 0.082, 6, 14, Math.PI * 0.72]} />
-            <meshStandardMaterial color="#9E9F9C" roughness={0.44} metalness={0.64} />
-          </mesh>
-        </group>
-      ))}
-
-      {/* 2 Side-by-Side Folding Tubular Aluminum Seats + Open Nylon Webbing Straps (AG-1b #5) */}
-      {[-0.3, 0.3].map((sx, si) => (
-        <group key={si} position={[sx, 0.44, -0.1]}>
-          {/* Seat bottom left/right tubular rails */}
-          {[-0.19, 0.19].map((tx, ti) => (
-            <mesh key={`sr-${ti}`} position={[tx, 0.04, 0.12]} rotation={[Math.PI / 2, 0, 0]}>
-              <cylinderGeometry args={[0.012, 0.012, 0.42, 8]} />
-              <meshStandardMaterial color="#CFD6E2" roughness={0.35} metalness={0.82} />
-            </mesh>
-          ))}
-          {/* Seat bottom front/rear crossbars */}
-          {[-0.08, 0.32].map((tz, ti) => (
-            <mesh key={`sc-${ti}`} position={[0, 0.04, tz]} rotation={[0, 0, Math.PI / 2]}>
-              <cylinderGeometry args={[0.012, 0.012, 0.38, 8]} />
-              <meshStandardMaterial color="#CFD6E2" roughness={0.35} metalness={0.82} />
-            </mesh>
-          ))}
-          {/* Seat bottom 5 nylon webbing straps with open gaps */}
-          {[-0.03, 0.045, 0.12, 0.195, 0.27].map((wz, wi) => (
-            <mesh key={`sw-${wi}`} position={[0, 0.042, wz]}>
-              <boxGeometry args={[0.36, 0.008, 0.048]} />
-              <meshStandardMaterial color="#8E8B82" roughness={0.82} metalness={0.08} />
-            </mesh>
-          ))}
-
-          {/* Backrest tubular frame + 5 horizontal nylon webbing straps with open gaps */}
-          <group position={[0, 0.31, -0.09]} rotation={[-0.14, 0, 0]}>
-            {[-0.19, 0.19].map((tx, ti) => (
-              <mesh key={`br-${ti}`} position={[tx, 0, 0]}>
-                <cylinderGeometry args={[0.012, 0.012, 0.54, 8]} />
-                <meshStandardMaterial color="#CFD6E2" roughness={0.35} metalness={0.82} />
-              </mesh>
-            ))}
-            {[-0.26, 0.26].map((ty, ti) => (
-              <mesh key={`bc-${ti}`} position={[0, ty, 0]} rotation={[0, 0, Math.PI / 2]}>
-                <cylinderGeometry args={[0.012, 0.012, 0.38, 8]} />
-                <meshStandardMaterial color="#CFD6E2" roughness={0.35} metalness={0.82} />
-              </mesh>
-            ))}
-            {[-0.19, -0.095, 0, 0.095, 0.19].map((wy, wi) => (
-              <mesh key={`bw-${wi}`} position={[0, wy, 0]}>
-                <boxGeometry args={[0.36, 0.052, 0.008]} />
-                <meshStandardMaterial color="#8E8B82" roughness={0.82} metalness={0.08} />
-              </mesh>
-            ))}
-          </group>
-
-          {/* Tubular side armrests */}
-          {[-0.19, 0.19].map((ax, ai) => (
-            <mesh key={`arm-${ai}`} position={[ax, 0.18, 0.08]} rotation={[Math.PI / 2, 0, 0]}>
-              <cylinderGeometry args={[0.01, 0.01, 0.32, 6]} />
-              <meshStandardMaterial color="#C8D0DC" roughness={0.38} metalness={0.78} />
-            </mesh>
-          ))}
-
-          {/* Footrest pan ahead of seat */}
-          <mesh position={[0, 0.03, 0.68]} rotation={[0.45, 0, 0]}>
-            <boxGeometry args={[0.32, 0.02, 0.22]} />
-            <meshStandardMaterial color="#C8D0DC" roughness={0.45} metalness={0.7} />
-          </mesh>
-        </group>
-      ))}
-
-      {/* Center Console & T-Shaped Hand Controller between the seats */}
-      <group position={[0, 0.52, 0.22]}>
-        <mesh position={[0, 0.08, 0.08]} rotation={[-0.35, 0, 0]}>
-          <boxGeometry args={[0.22, 0.18, 0.14]} />
-          <meshStandardMaterial color="#E2E7F0" roughness={0.4} metalness={0.6} />
-        </mesh>
-        {/* T-handle controller stem & grip */}
-        <mesh position={[0, 0.22, -0.02]} rotation={[0.2, 0, 0]}>
-          <cylinderGeometry args={[0.012, 0.015, 0.22, 8]} />
-          <meshStandardMaterial color="#9CA4B2" roughness={0.4} metalness={0.8} />
-        </mesh>
-        <mesh position={[0, 0.32, 0.02]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.016, 0.016, 0.14, 8]} />
-          <meshStandardMaterial color="#242934" roughness={0.5} metalness={0.4} />
-        </mesh>
-      </group>
-
-      {/* Forward Electronics Battery Boxes & Gold Kapton LCRU (Lunar Communications Relay Unit) */}
-      <mesh position={[0, 0.52, 0.96]}>
-        <boxGeometry args={[0.88, 0.22, 0.52]} />
-        <meshStandardMaterial color="#E4E8F0" roughness={0.42} metalness={0.55} />
-      </mesh>
-      <mesh position={[-0.28, 0.66, 1.12]}>
-        <boxGeometry args={[0.28, 0.16, 0.22]} />
-        <meshStandardMaterial color="#C88B2E" roughness={0.35} metalness={0.8} />
-      </mesh>
-
-      {/* Front TV Camera on Pan/Tilt Mast (aimed forward toward the LM) */}
-      <group position={[0.32, 0.78, 1.15]}>
-        <mesh position={[0, -0.14, 0]}>
-          <cylinderGeometry args={[0.016, 0.02, 0.32, 8]} />
-          <meshStandardMaterial color="#D8DEE8" roughness={0.38} metalness={0.75} />
-        </mesh>
-        <mesh position={[0, 0.04, 0.02]}>
-          <boxGeometry args={[0.11, 0.12, 0.22]} />
-          <meshStandardMaterial color="#D49532" roughness={0.32} metalness={0.82} />
-        </mesh>
-        <mesh position={[0, 0.04, 0.15]} rotation={[Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[0.032, 0.036, 0.08, 10]} />
-          <meshStandardMaterial color="#1E2430" roughness={0.3} metalness={0.8} />
-        </mesh>
-      </group>
-
-      {/* Front Center Mast + Wire-Mesh Parabolic High-Gain Dish Antenna */}
-      <group position={[-0.08, 0.62, 0.85]}>
-        <mesh position={[0, 0.42, 0]}>
-          <cylinderGeometry args={[0.018, 0.022, 0.88, 8]} />
-          <meshStandardMaterial color="#DCE2EE" roughness={0.35} metalness={0.78} />
-        </mesh>
-        {/* Parabolic mesh dish */}
-        <group position={[0, 0.88, 0.04]} rotation={[0.52, 0.25, 0]}>
-          <mesh>
-            <coneGeometry args={[0.42, 0.18, 16, 1, true]} />
-            <meshStandardMaterial
-              color="#D8E0EC"
-              roughness={0.35}
-              metalness={0.75}
-              wireframe
-              side={THREE.DoubleSide}
-            />
-          </mesh>
-          <mesh>
-            <coneGeometry args={[0.42, 0.18, 16, 1, true]} />
-            <meshStandardMaterial
-              color="#C8D2E2"
-              roughness={0.45}
-              metalness={0.65}
-              transparent
-              opacity={0.42}
-              side={THREE.DoubleSide}
-            />
-          </mesh>
-          {/* Feed horn */}
-          <mesh position={[0, -0.12, 0]}>
-            <cylinderGeometry args={[0.014, 0.024, 0.24, 8]} />
-            <meshStandardMaterial color="#E6ECF5" roughness={0.35} metalness={0.8} />
-          </mesh>
-        </group>
-      </group>
-
-      {/* Aft Lunar Payload Stowage Rack (scientific tools rack behind seats) */}
-      <mesh position={[0, 0.62, -1.08]}>
-        <boxGeometry args={[0.92, 0.36, 0.34]} />
-        <meshStandardMaterial color="#DCE2EC" roughness={0.45} metalness={0.62} />
-      </mesh>
-    </group>
-  );
+/** SM-L-003 & SM-L-004 · Lunar Roving Vehicle — rebuilt in `models/LunarRover.tsx` (Opus M2). */
+export function LunarRovingVehicleModel({ scale = 1 }: { scale?: number }) {
+  return <LunarRover scale={scale} />;
 }
 
 /**
