@@ -100,3 +100,12 @@ export function audioManifest(): Promise<Manifest> {
     });
   return manifestP;
 }
+
+// Probe registered by the audio-tour controller: seconds left in the clip speaking for `beatId`, or null.
+let clipProbe: ((beatId: string) => number | null) | null = null;
+export function setClipProbe(fn: ((beatId: string) => number | null) | null) {
+  clipProbe = fn;
+}
+export function clipRemaining(beatId: string): number | null {
+  return clipProbe ? clipProbe(beatId) : null;
+}

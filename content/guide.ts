@@ -30,6 +30,15 @@ export const expedition = {
     region: "Audio guide player",
   },
 
+  // Auto tour: the journey advances beat by beat on its own.
+  autoTour: {
+    start: "Auto tour",
+    pause: "Pause tour",
+    resume: "Resume tour",
+    hint: "Sit back — the tour moves on its own. Scroll or tap to take control.",
+    ended: "Tour complete",
+  },
+
   // Audio tour (one short AI-narrated clip per beat on /journey; same on/off preference as the audio guide).
   tour: {
     on: "Audio tour on",

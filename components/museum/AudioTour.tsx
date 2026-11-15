@@ -8,6 +8,7 @@ import {
   getAudio,
   getAudioPref,
   setAudioPref,
+  setClipProbe,
   subscribeAudioPref,
 } from "@/lib/audioGuide";
 import { scrollState } from "@/lib/scroll/progress";
@@ -169,10 +170,16 @@ export function AudioTourController() {
       }
     };
     const iv = window.setInterval(tick, 100);
+    setClipProbe((beatId) => {
+      if (current !== beatId || !isTour(a) || a.paused || a.ended) return null;
+      const r = a.duration - a.currentTime;
+      return Number.isFinite(r) && r > 0 ? r : null;
+    });
 
     return () => {
       dead = true;
       window.clearInterval(iv);
+      setClipProbe(null);
       a.removeEventListener("play", onPlay);
       a.removeEventListener("pause", onPause);
       a.removeEventListener("ended", onEnded);

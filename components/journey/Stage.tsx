@@ -13,11 +13,15 @@ import { narrationFor } from "@/lib/expedition";
 import { site } from "@/content/site";
 import type { Beat } from "@/content/types";
 import {
+  registerScrollBusy,
   registerScroller,
   scrollState,
   scrollToBeat,
+  type ScrollOpts,
 } from "@/lib/scroll/progress";
 import { useMuseum } from "@/lib/store";
+import { isTourRunning } from "@/lib/autoTour";
+import { AutoTourButton, AutoTourController } from "@/components/museum/AutoTour";
 import { AudioTourController, AudioTourToggle } from "@/components/museum/AudioTour";
 import { ExhibitPanel } from "@/components/museum/ExhibitPanel";
 import { PassportSheet } from "@/components/museum/PassportSheet";
@@ -114,6 +118,8 @@ function TopHudBar() {
           <span className="hidden sm:inline">{expedition.fieldLogShort(visitedCount)}</span>
         </button>
         <span aria-hidden className="text-line">|</span>
+        <AutoTourButton variant="bar" />
+        <span aria-hidden className="hidden text-line sm:inline">|</span>
         <AudioTourToggle />
         <span aria-hidden className="text-line">|</span>
         <button
@@ -285,7 +291,7 @@ export default function Stage() {
     const onLenisSettle = () => {
       window.clearTimeout(snapTimer);
       snapTimer = window.setTimeout(() => {
-        if (!lenis || useMuseum.getState().reducedMotion) return;
+        if (!lenis || useMuseum.getState().reducedMotion || isTourRunning()) return;
         if (useMuseum.getState().activeExhibit !== null || document.querySelector('[role="dialog"][aria-modal="true"]')) return;
         const pos = MIN_BEAT + window.scrollY / Math.max(window.innerHeight, 1);
         const nearest = Math.max(MIN_BEAT, Math.min(beats.length - 1, Math.round(pos)));
@@ -331,21 +337,38 @@ export default function Stage() {
       },
     });
 
-    const scrollTo = (index: number, instant = false) => {
+    let tweenRaf = 0;
+    let tweening = false;
+    const scrollTo = (index: number, instant = false, opts?: ScrollOpts) => {
       const top = (Math.max(MIN_BEAT, Math.min(maxIdx, index)) - MIN_BEAT) * vh();
+      const immediate = instant || useMuseum.getState().reducedMotion;
       if (lenis) {
         lenis.scrollTo(top, {
-          immediate: instant || useMuseum.getState().reducedMotion,
-          duration: 1.35,
+          immediate,
+          duration: opts?.duration ?? 1.35,
+          ...(opts?.easing ? { easing: opts.easing } : {}),
         });
+      } else if (opts?.duration && !immediate) {
+        // Static / lightweight mode: manual tween so the auto tour gets exact cinematic timing.
+        cancelAnimationFrame(tweenRaf);
+        const from = window.scrollY;
+        const t0 = performance.now();
+        const ease = opts.easing ?? ((t: number) => t);
+        tweening = true;
+        const step = (now: number) => {
+          const t = Math.min(1, (now - t0) / (opts.duration! * 1000));
+          window.scrollTo({ top: from + (top - from) * ease(t), behavior: "instant" as ScrollBehavior });
+          if (t < 1) tweenRaf = requestAnimationFrame(step);
+          else tweening = false;
+        };
+        tweenRaf = requestAnimationFrame(step);
       } else {
-        window.scrollTo({
-          top,
-          behavior: instant || useMuseum.getState().reducedMotion ? "auto" : "smooth",
-        });
+        cancelAnimationFrame(tweenRaf);
+        tweening = false;
+        window.scrollTo({ top, behavior: immediate ? "instant" : "smooth" } as ScrollToOptions);
       }
     };
-
+    registerScrollBusy(() => (lenis ? !!lenis.isScrolling : tweening));
     registerScroller(scrollTo);
 
     // Jump immediately to initial URL hash if present (e.g. /#ignition or /#moon-apollo-11)
@@ -429,6 +452,7 @@ export default function Stage() {
       window.removeEventListener("keydown", onKeyDown);
       window.clearTimeout(hashTimer);
       registerScroller(null);
+      registerScrollBusy(null);
       unsubStore();
       window.removeEventListener("hashchange", onHashChange);
       masterTrigger.kill();
@@ -476,6 +500,8 @@ export default function Stage() {
       <ScrollLiveCaption />
       <ExhibitPanel />
       <AudioTourController />
+      <AutoTourController />
+      <AutoTourButton variant="pill" />
     </div>
   );
 }
