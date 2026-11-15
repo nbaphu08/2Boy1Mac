@@ -675,7 +675,7 @@ export default function SpaceScene() {
 
   return (
     <div aria-hidden className={`fixed inset-0 bg-void ${posterBeat !== null ? "z-50" : "z-0"}`}>
-      <p className="font-hud pointer-events-none absolute bottom-1.5 left-3 z-10 select-none text-[10px] uppercase tracking-wide text-platinum/60 sm:left-10">{site.siWatermark}</p>
+      <p className="font-hud pointer-events-none absolute bottom-1.5 left-3 z-10 max-w-[11.5rem] select-none text-[9px] uppercase leading-tight tracking-wide text-platinum/60 sm:left-10 sm:max-w-none sm:text-[10px]">{site.siWatermark}</p>
       <Canvas
         shadows={budget.tier !== "low" ? "soft" : false}
         frameloop={isPageHidden ? "never" : "always"}

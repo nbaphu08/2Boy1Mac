@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { expedition } from "@/content/guide";
 import { pauseTour, toggleTour, useTourStatus } from "@/lib/autoTour";
+import { beats } from "@/content/beats";
+import { useMuseum } from "@/lib/store";
 
 const t = expedition.autoTour;
 const HINT_KEY = "spacemuse:autotour-hint";
@@ -73,6 +75,9 @@ export function AutoTourButton({ variant }: { variant: "bar" | "pill" }) {
 /** Mounts the one-time hint toast. The engine itself lives in lib/autoTour.ts. */
 export function AutoTourController() {
   const [hint, setHint] = useState(false);
+  // Never cover an exhibit card (its Explore button): show the hint only on non-exhibit beats.
+  const beatId = useMuseum((s) => s.beatId);
+  const onExhibit = !!beats.find((b) => b.id === beatId)?.exhibitSlug;
 
   useEffect(() => {
     let seen = false;
@@ -88,7 +93,7 @@ export function AutoTourController() {
 
   useEffect(() => {
     if (!hint) return;
-    const hide = window.setTimeout(() => dismiss(), 10000);
+    const hide = window.setTimeout(() => dismiss(), 7000);
     return () => window.clearTimeout(hide);
   }, [hint]);
 
@@ -103,7 +108,7 @@ export function AutoTourController() {
     }
   }
 
-  if (!hint) return null;
+  if (!hint || onExhibit) return null;
   return (
     <div
       role="status"
