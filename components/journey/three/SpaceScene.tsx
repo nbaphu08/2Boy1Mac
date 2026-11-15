@@ -84,7 +84,6 @@ function SceneChoreographer({
   const hemiRef = useRef<THREE.HemisphereLight>(null);
   const marsModelSpotRef = useRef<THREE.SpotLight>(null);
   const grailImpactLightRef = useRef<THREE.PointLight>(null);
-  const fogRef = useRef<THREE.FogExp2>(null);
   const elapsedRef = useRef(0);
   const shadowModeRef = useRef<"pad" | "exhibit">("pad");
   const sunTarget = useMemo(() => new THREE.Object3D(), []);
@@ -93,8 +92,6 @@ function SceneChoreographer({
   const simCamPos = useMemo(() => new THREE.Vector3(), []);
   const simCamLook = useMemo(() => new THREE.Vector3(), []);
   const duskSunColor = useMemo(() => new THREE.Color("#FF964C"), []);
-  const duskFogColor = useMemo(() => new THREE.Color("#2D3549"), []);
-  const climbFogColor = useMemo(() => new THREE.Color("#101A33"), []);
   const orbitalSunColor = useMemo(() => new THREE.Color("#F5F8FF"), []);
   const moonSunColor = useMemo(() => new THREE.Color("#FFFDF7"), []);
   const marsSunColor = useMemo(() => new THREE.Color("#FFD6B0"), []);
@@ -290,12 +287,6 @@ function SceneChoreographer({
         sunRef.current.intensity = THREE.MathUtils.damp(sunRef.current.intensity, targetSun, 6, dt);
       }
     }
-    if (fogRef.current) {
-      // Gentle aerial perspective on distant VAB & ocean coast during beats 0..2; vanishes above cloud deck (p >= 3.25)
-      const padHaze = 1 - smoothstep(2.05, 3.25, p);
-      fogRef.current.density = padHaze * 0.00125;
-      fogRef.current.color.copy(duskFogColor).lerp(climbFogColor, smoothstep(1.9, 3.2, p));
-    }
     if (rimRef.current) {
       if (inMoonHall) {
         // Airless black lunar sky -> zero secondary rim fill
@@ -338,7 +329,6 @@ function SceneChoreographer({
 
   return (
     <>
-      <fogExp2 ref={fogRef} attach="fog" args={["#2D3549", 0.00125]} />
       <primitive object={sunTarget} />
       <primitive object={marsSpotTarget} />
       <ambientLight ref={ambRef} color="#1A2644" intensity={0.42} />
@@ -427,16 +417,68 @@ function initSubtreeTextures(
   });
 }
 
+function countSubtreeRenderables(root: THREE.Object3D): number {
+  let count = 0;
+  root.traverse((obj) => {
+    const anyObj = obj as THREE.Mesh & THREE.Points & THREE.Line;
+    if (anyObj.isMesh || anyObj.isPoints || anyObj.isLine) {
+      count++;
+    }
+  });
+  return count;
+}
+
+function positionWarmupCamera(offCam: THREE.PerspectiveCamera, target: THREE.Object3D) {
+  const anchor = target.userData?.anchorPos as [number, number, number] | undefined;
+  const camPos = target.userData?.camPos as [number, number, number] | undefined;
+  if (!anchor) return;
+  if (camPos) {
+    offCam.position.set(camPos[0], camPos[1], camPos[2]);
+  } else {
+    offCam.position.set(anchor[0], anchor[1] + 2.8, anchor[2] + 8.5);
+  }
+  offCam.lookAt(anchor[0], anchor[1] + 0.6, anchor[2]);
+  offCam.updateMatrixWorld(true);
+}
+
+function collectVisibilitySnapshot(target: THREE.Object3D, scene: THREE.Scene) {
+  const saved: [THREE.Object3D, boolean][] = [];
+  let parent = target.parent;
+  while (parent && parent !== scene) {
+    saved.push([parent, parent.visible]);
+    parent = parent.parent;
+  }
+  target.traverse((node) => {
+    if (node.userData?.skipWarmup) return;
+    saved.push([node, node.visible]);
+  });
+  return saved;
+}
+
+function forceSnapshotVisible(saved: [THREE.Object3D, boolean][], target: THREE.Object3D) {
+  for (const [node] of saved) {
+    node.visible = true;
+  }
+  target.updateMatrixWorld(true);
+}
+
+function restoreSnapshotVisible(saved: [THREE.Object3D, boolean][]) {
+  for (let i = saved.length - 1; i >= 0; i--) {
+    saved[i][0].visible = saved[i][1];
+  }
+}
+
 /**
- * AG-13 §1: Staggered GPU asset & shader warmup during launch beats (0..6).
- * Uploads all textures (`gl.initTexture`), runs `compileAsync`, and renders a 16x16 offscreen RT
- * pass per exhibit plinth before p = 6.5 (Moon) and p = 12.5 (Mars) so surface transitions never hitch.
+ * AG-13 §1 + AG-16b: Staggered GPU asset & shader warmup during launch beats (0..2).
+ * Uploads all textures (`gl.initTexture`), runs `compileAsync` with full descendant visibility,
+ * and renders a 16x16 offscreen RT pass per earth/sky/rocket/planet/exhibit target so
+ * transitions at TLI (6.6), Mars (14..20), Beyond (22) and Finale (23) never lazily compile mid-scroll.
  */
 function MaterialPrewarmer() {
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
   const camera = useThree((s) => s.camera);
-  const warmedSubtreesRef = useRef(new Set<string>());
+  const warmedMeshCountsRef = useRef(new Map<string, number>());
   const warmedTexIdsRef = useRef(new Set<number>());
   const inFlightRef = useRef(false);
   const offCamRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -444,7 +486,7 @@ function MaterialPrewarmer() {
   const coreCompiledRef = useRef(false);
 
   useEffect(() => {
-    const offCam = new THREE.PerspectiveCamera(45, 1, 0.2, 420);
+    const offCam = new THREE.PerspectiveCamera(45, 1, 0.2, 2600);
     const rt = new THREE.WebGLRenderTarget(16, 16, {
       depthBuffer: true,
       stencilBuffer: false,
@@ -457,43 +499,51 @@ function MaterialPrewarmer() {
     const collectTargets = (): THREE.Object3D[] => {
       const targets: THREE.Object3D[] = [];
       scene.traverse((obj) => {
-        if (obj.userData?.warmup && obj.name && !warmedSubtreesRef.current.has(obj.name)) {
+        if (!obj.userData?.warmup || !obj.name) return;
+        const prevCount = warmedMeshCountsRef.current.get(obj.name);
+        const curCount = countSubtreeRenderables(obj);
+        if (prevCount === undefined || curCount > prevCount) {
           targets.push(obj);
         }
       });
-      targets.sort((a, b) => (Number(a.userData?.beatIndex ?? 99) - Number(b.userData?.beatIndex ?? 99)));
+      targets.sort((a, b) => Number(a.userData?.beatIndex ?? 99) - Number(b.userData?.beatIndex ?? 99));
       return targets;
     };
 
     const warmOne = async (target: THREE.Object3D) => {
       if (cancelled || !offCamRef.current || !rtRef.current) return;
-      warmedSubtreesRef.current.add(target.name);
+      const curCount = countSubtreeRenderables(target);
+      warmedMeshCountsRef.current.set(target.name, curCount);
       initSubtreeTextures(gl, target, warmedTexIdsRef.current);
 
-      const prevVis = target.visible;
-      target.visible = true;
-      target.updateMatrixWorld(true);
-
-      const anchor = target.userData?.anchorPos as [number, number, number] | undefined;
-      if (anchor) {
-        offCamRef.current.position.set(anchor[0], anchor[1] + 2.8, anchor[2] + 8.5);
-        offCamRef.current.lookAt(anchor[0], anchor[1] + 0.6, anchor[2]);
-        offCamRef.current.updateMatrixWorld(true);
-      }
-
+      const savedVis = collectVisibilitySnapshot(target, scene);
       try {
-        await gl.compileAsync(target, offCamRef.current, scene);
-      } catch {
-        gl.compile(scene, offCamRef.current);
-      }
+        forceSnapshotVisible(savedVis, target);
+        positionWarmupCamera(offCamRef.current, target);
 
-      if (!cancelled && rtRef.current && offCamRef.current) {
-        const prevTarget = gl.getRenderTarget();
-        gl.setRenderTarget(rtRef.current);
-        gl.render(scene, offCamRef.current);
-        gl.setRenderTarget(prevTarget);
+        try {
+          await gl.compileAsync(target, offCamRef.current, scene);
+        } catch {
+          gl.compile(scene, offCamRef.current);
+        }
+
+        if (!cancelled && rtRef.current && offCamRef.current) {
+          // Re-assert subtree visibility synchronously right before RT render so useFrame never hides children mid-await
+          forceSnapshotVisible(savedVis, target);
+          const prevAutoShadow = gl.shadowMap.autoUpdate;
+          gl.shadowMap.autoUpdate = false;
+          const prevTarget = gl.getRenderTarget();
+          try {
+            gl.setRenderTarget(rtRef.current);
+            gl.render(scene, offCamRef.current);
+          } finally {
+            gl.setRenderTarget(prevTarget);
+            gl.shadowMap.autoUpdate = prevAutoShadow;
+          }
+        }
+      } finally {
+        restoreSnapshotVisible(savedVis);
       }
-      target.visible = prevVis;
     };
 
     const tick = async () => {
@@ -519,14 +569,14 @@ function MaterialPrewarmer() {
     };
 
     const intervalId = window.setInterval(() => {
-      if (!cancelled && warmedSubtreesRef.current.size < 14) {
+      if (!cancelled) {
         void tick();
       }
-    }, 140);
+    }, 55);
 
     const bootTimer = window.setTimeout(() => {
       void tick();
-    }, 180);
+    }, 35);
 
     return () => {
       cancelled = true;
@@ -538,34 +588,49 @@ function MaterialPrewarmer() {
     };
   }, [gl, scene, camera]);
 
-  // Safety flush: synchronously warm a hall's remaining targets if user jumps fast before idle queue finishes
+  // Safety flush: synchronously warm upcoming hall targets if user jumps fast before idle queue finishes
   useFrame(() => {
     const p = Math.max(scrollState.current, scrollState.target);
-    const needMoon = p >= 5.5 && p < 7.5;
-    const needMars = p >= 11.6 && p < 13.6;
-    if (!needMoon && !needMars) return;
+    const needLaunch = p >= 1.2 && p < 6.8;
+    const needMoon = p >= 5.2 && p < 7.6;
+    const needMars = p >= 11.0 && p < 20.6;
+    const needBeyond = p >= 18.5;
+    if (!needLaunch && !needMoon && !needMars && !needBeyond) return;
     if (!offCamRef.current || !rtRef.current) return;
 
     scene.traverse((obj) => {
-      if (!obj.userData?.warmup || !obj.name || warmedSubtreesRef.current.has(obj.name)) return;
+      if (!obj.userData?.warmup || !obj.name) return;
       const hall = obj.userData.hall;
-      if ((needMoon && hall === "moon") || (needMars && hall === "mars")) {
-        warmedSubtreesRef.current.add(obj.name);
-        initSubtreeTextures(gl, obj, warmedTexIdsRef.current);
-        const prevVis = obj.visible;
-        obj.visible = true;
-        const anchor = obj.userData?.anchorPos as [number, number, number] | undefined;
-        if (anchor && offCamRef.current && rtRef.current) {
-          offCamRef.current.position.set(anchor[0], anchor[1] + 2.8, anchor[2] + 8.5);
-          offCamRef.current.lookAt(anchor[0], anchor[1] + 0.6, anchor[2]);
-          offCamRef.current.updateMatrixWorld(true);
+      const match =
+        (needLaunch && hall === "launch") ||
+        (needMoon && hall === "moon") ||
+        (needMars && hall === "mars") ||
+        (needBeyond && hall === "beyond");
+      if (!match) return;
+
+      const curCount = countSubtreeRenderables(obj);
+      const prevCount = warmedMeshCountsRef.current.get(obj.name);
+      if (prevCount !== undefined && curCount <= prevCount) return;
+
+      warmedMeshCountsRef.current.set(obj.name, curCount);
+      initSubtreeTextures(gl, obj, warmedTexIdsRef.current);
+
+      const savedVis = collectVisibilitySnapshot(obj, scene);
+      const prevAutoShadow = gl.shadowMap.autoUpdate;
+      const prevRt = gl.getRenderTarget();
+      try {
+        forceSnapshotVisible(savedVis, obj);
+        if (offCamRef.current && rtRef.current) {
+          positionWarmupCamera(offCamRef.current, obj);
           gl.compile(scene, offCamRef.current);
-          const prevRt = gl.getRenderTarget();
+          gl.shadowMap.autoUpdate = false;
           gl.setRenderTarget(rtRef.current);
           gl.render(scene, offCamRef.current);
-          gl.setRenderTarget(prevRt);
         }
-        obj.visible = prevVis;
+      } finally {
+        gl.setRenderTarget(prevRt);
+        gl.shadowMap.autoUpdate = prevAutoShadow;
+        restoreSnapshotVisible(savedVis);
       }
     });
   });

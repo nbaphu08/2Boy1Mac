@@ -148,8 +148,8 @@ export function SLSRocket({
   const padBounceLightRef = useRef<THREE.PointLight>(null);
   const elapsedRef = useRef(0);
   const budget = usePerfBudget();
-  const steamCount = budget.tier === "high" ? 180 : budget.tier === "medium" ? 110 : 60;
-  const glowSteamCount = Math.max(28, Math.floor(steamCount * 0.45));
+  const steamCount = budget.tier === "high" ? 130 : budget.tier === "medium" ? 84 : 48;
+  const glowSteamCount = Math.max(22, Math.floor(steamCount * 0.42));
   const sparkCount = budget.sparkCount;
   const pyroCount = budget.pyroCount;
 
@@ -458,7 +458,7 @@ export function SLSRocket({
           arr[i * 3 + 0] = px;
           arr[i * 3 + 1] = py;
           arr[i * 3 + 2] = pz;
-          sArr[i] = (4.2 + cyc * 8.4 + hBias * 2.4) * (0.85 + 0.3 * steamActive);
+          sArr[i] = (3.6 + cyc * 6.8 + hBias * 2.0) * (0.86 + 0.28 * steamActive);
           rArr[i] = uRand * 6.28 + (reducedMotion ? 0 : (i % 2 === 0 ? 0.32 : -0.28) * t);
 
           const distPad = Math.hypot(px, py * 1.4, pz);
@@ -577,6 +577,10 @@ export function SLSRocket({
         distance={68}
         decay={1.55}
       />
+      <group
+        name="warmup-sls-pad-fx"
+        userData={{ warmup: true, anchorPos: [0, 2, 0], camPos: [14, 6, 22], hall: "launch", beatIndex: 0 }}
+      >
       <points ref={padSteamRef} position={WORLD_ANCHORS.pad} visible={false}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[steamData.positions, 3]} />
@@ -601,7 +605,7 @@ export function SLSRocket({
               vRot = aRot;
               vHeat = aHeat;
               vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-              gl_PointSize = aSize * uPointScale / max(-mvPosition.z, 1.0);
+              gl_PointSize = clamp(aSize * uPointScale / max(-mvPosition.z, 1.0), 3.0, uPointScale * 0.45);
               gl_Position = projectionMatrix * mvPosition;
             }
           `}
@@ -653,7 +657,7 @@ export function SLSRocket({
             void main() {
               vRot = aRot;
               vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-              gl_PointSize = aSize * uPointScale / max(-mvPosition.z, 1.0);
+              gl_PointSize = clamp(aSize * uPointScale / max(-mvPosition.z, 1.0), 3.0, uPointScale * 0.42);
               gl_Position = projectionMatrix * mvPosition;
             }
           `}
@@ -692,9 +696,14 @@ export function SLSRocket({
           blending={THREE.AdditiveBlending}
         />
       </points>
+      </group>
 
       {/* ─── MAIN SLS BLOCK 1 + ORION SPACECRAFT ASSEMBLY ─── */}
-      <group ref={rocketRef}>
+      <group
+        ref={rocketRef}
+        name="warmup-sls-rocket"
+        userData={{ warmup: true, anchorPos: [0, 8, 0], camPos: [16, 9, 25], hall: "launch", beatIndex: 0 }}
+      >
         <pointLight
           ref={engineLightRef}
           position={[0, -0.8, 1.0]}

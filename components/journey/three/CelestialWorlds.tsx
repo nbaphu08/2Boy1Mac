@@ -165,7 +165,12 @@ function AscentSkyDome({ reducedMotion }: { reducedMotion: boolean }) {
   });
 
   return (
-    <mesh ref={meshRef} renderOrder={-10}>
+    <mesh
+      ref={meshRef}
+      name="warmup-earth-sky"
+      userData={{ warmup: true, anchorPos: [0, 5, 0], camPos: [0, 5, 10], hall: "launch", beatIndex: 0 }}
+      renderOrder={-10}
+    >
       <sphereGeometry args={[850, 40, 28]} />
       <shaderMaterial
         ref={matRef}
@@ -211,14 +216,18 @@ function AscentSkyDome({ reducedMotion }: { reducedMotion: boolean }) {
 
           float fbmCloud(vec2 p) {
             float v = 0.0;
-            float amp = 0.5;
+            float amp = 0.52;
             mat2 rot = mat2(0.8, 0.6, -0.6, 0.8);
-            for (int i = 0; i < 4; i++) {
+            for (int i = 0; i < 3; i++) {
               v += amp * vnoise(p);
               p = rot * p * 2.04 + vec2(11.3, 7.1);
               amp *= 0.5;
             }
             return v;
+          }
+
+          float fbmCloudShadow(vec2 p) {
+            return 0.58 * vnoise(p) + 0.34 * vnoise(mat2(0.8, 0.6, -0.6, 0.8) * p * 2.04 + vec2(11.3, 7.1));
           }
 
           void main() {
@@ -246,7 +255,7 @@ function AscentSkyDome({ reducedMotion }: { reducedMotion: boolean }) {
               float n = fbmCloud(uv);
               // Directional sample toward western sun for rim vs belly self-shadowing
               vec2 toSun = normalize(uSunDir.xz);
-              float nSun = fbmCloud(uv + toSun * 0.16);
+              float nSun = fbmCloudShadow(uv + toSun * 0.16);
 
               float cloudMask = smoothstep(0.45, 0.77, n);
               float altFade = smoothstep(0.012, 0.09, dir.y) * (1.0 - smoothstep(0.42, 0.78, dir.y));
@@ -310,7 +319,12 @@ function AscentCoastAndCloudDeck() {
   });
 
   return (
-    <group ref={groupRef} visible={false}>
+    <group
+      ref={groupRef}
+      name="warmup-earth-clouds"
+      userData={{ warmup: true, anchorPos: [4, 44, -14], camPos: [12, 28, 30], hall: "launch", beatIndex: 0 }}
+      visible={false}
+    >
       {/* Lower cumulus deck (~y=44): emerges smoothly during ascent-2 */}
       <mesh position={[4, 44, -14]} rotation={[-Math.PI / 2, 0, 0.24]} renderOrder={-3}>
         <planeGeometry args={[320, 320]} />
@@ -381,7 +395,13 @@ function MarsDaytimeSkyDome() {
   });
 
   return (
-    <mesh ref={domeRef} renderOrder={-12} visible={false}>
+    <mesh
+      ref={domeRef}
+      name="warmup-mars-sky"
+      userData={{ warmup: true, anchorPos: [0, 5, -20], camPos: [0, 5, 0], hall: "mars", beatIndex: 2 }}
+      renderOrder={-12}
+      visible={false}
+    >
       <sphereGeometry args={[850, 32, 24]} />
       <shaderMaterial
         ref={matRef}
@@ -659,7 +679,19 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
       <MarsDaytimeSkyDome />
 
       {/* ─── 3D EARTH (Below ascent & visible during edge-of-space / deep-space) ─── */}
-      <group ref={earthRef} position={WORLD_ANCHORS.earthCenter} rotation={[0.15, -1.9, 0.1]}>
+      <group
+        ref={earthRef}
+        name="warmup-earth-globe"
+        userData={{
+          warmup: true,
+          anchorPos: WORLD_ANCHORS.earthCenter,
+          camPos: [0, 80, 240],
+          hall: "launch",
+          beatIndex: 0,
+        }}
+        position={WORLD_ANCHORS.earthCenter}
+        rotation={[0.15, -1.9, 0.1]}
+      >
         <mesh>
           <sphereGeometry args={[WORLD_ANCHORS.earthRadius, 72, 56]} />
           <meshStandardMaterial map={earthTex} roughness={0.68} metalness={0.1} />
@@ -668,7 +700,7 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
       </group>
 
       {/* ─── TRANS-LUNAR INJECTION & SEA OF TRANQUILITY DESCENT ARC (beats 6.5..7.7) ─── */}
-      <group ref={lunarApproachArcRef} visible={false}>
+      <group ref={lunarApproachArcRef} userData={{ skipWarmup: true }} visible={false}>
         <Line
           points={lunarApproachPoints}
           color="#9DB8FF"
@@ -682,7 +714,19 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
       </group>
 
       {/* ─── 3D MOON (Orbital arrival with 5 glowing site pins + orbit ring — beats 6.5..7.5 & departure) ─── */}
-      <group ref={moonRef} position={WORLD_ANCHORS.moonCenter} rotation={[0.24, -1.55, 0]}>
+      <group
+        ref={moonRef}
+        name="warmup-moon-globe"
+        userData={{
+          warmup: true,
+          anchorPos: WORLD_ANCHORS.moonCenter,
+          camPos: [0, 348, -145],
+          hall: "moon",
+          beatIndex: 1,
+        }}
+        position={WORLD_ANCHORS.moonCenter}
+        rotation={[0.24, -1.55, 0]}
+      >
         <mesh>
           <sphereGeometry args={[WORLD_ANCHORS.moonRadius, 72, 56]} />
           <meshStandardMaterial
@@ -730,7 +774,7 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
       </group>
 
       {/* ─── TRANSIT TRAJECTORY ARC + 7 MISSION TICK MARKERS (Moon -> Mars, beat 13, AG-5) ─── */}
-      <group ref={transitArcRef} visible={false}>
+      <group ref={transitArcRef} userData={{ skipWarmup: true }} visible={false}>
         <Line
           points={transitPoints}
           color="#9DB8FF"
@@ -770,7 +814,19 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
       </group>
 
       {/* ─── 3D MARS (Mars orbital arrival with 7 glowing site pins + orbit ring — beat 13 & departure) ─── */}
-      <group ref={marsRef} position={WORLD_ANCHORS.marsCenter} rotation={[0.2, -1.65, 0.05]}>
+      <group
+        ref={marsRef}
+        name="warmup-mars-globe"
+        userData={{
+          warmup: true,
+          anchorPos: WORLD_ANCHORS.marsCenter,
+          camPos: [0, 492, -340],
+          hall: "mars",
+          beatIndex: 2,
+        }}
+        position={WORLD_ANCHORS.marsCenter}
+        rotation={[0.2, -1.65, 0.05]}
+      >
         <mesh>
           <sphereGeometry args={[WORLD_ANCHORS.marsRadius, 72, 56]} />
           <meshStandardMaterial ref={marsMatRef} map={marsTex} roughness={0.86} metalness={0.05} transparent opacity={1} />
@@ -813,7 +869,18 @@ export function CelestialWorlds({ reducedMotion }: { reducedMotion: boolean }) {
       <pointLight ref={finalePointLightRef} position={[-18, 575, -610]} intensity={0} distance={160} color="#88B8FF" />
 
       {/* ─── FINALE EARTHRISE (Artemis Era Earthrise: cratered Moon limb + rising blue Earth, beat 23) ─── */}
-      <group ref={finaleRef} visible={false}>
+      <group
+        ref={finaleRef}
+        name="warmup-finale-earthrise"
+        userData={{
+          warmup: true,
+          anchorPos: [-8, 558, -610],
+          camPos: [6, 552, -520],
+          hall: "beyond",
+          beatIndex: 2,
+        }}
+        visible={false}
+      >
 
         {/* Foreground Lunar Limb sweeping across the lower-right horizon */}
         <group ref={finaleMoonGroupRef} position={[8, 535.5, -566]} rotation={[0.25, -1.55, 0.12]}>
