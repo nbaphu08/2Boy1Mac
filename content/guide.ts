@@ -148,7 +148,7 @@ export const thesis = {
       "In 2020, the United States made that a law: the One Small Step to Protect Human Heritage in Space Act.",
       "These are the first historic sites beyond Earth. Every machine you found still holds a piece of what we learned.",
     ],
-    prompt: "The next crews will walk past what we left. What should they do with it?",
+    prompt: "When they reach these machines, what should they do with them?",
     sources: "NASA, Recommendations to Protect U.S. Government Lunar Artifacts (2011) · Public Law 116-275 (2020)",
   },
 };
