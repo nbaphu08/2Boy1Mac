@@ -82,7 +82,7 @@ export const site = {
     body: "SpaceMuse treats the machines humanity left on the Moon and Mars as museum objects. Every date and number on this site comes from NASA, JPL, NSSDCA or the Smithsonian, and every exhibit lists its sources. Images come from the NASA Image and Video Library, the Lunar Reconnaissance Orbiter Camera (LROC) and HiRISE.",
     builtFor:
       "NASA Space Apps Challenge 2026 — \"Abandoned but not Forgotten: Storytelling about NASA's Discarded Equipment on the Moon and Mars.\"",
-    team: "2Boy1Mac",
+    team: "Team 2Boy1Mac (Vietnam): Nguyễn Bá Phú, Võ Bảo Duy",
     ai: "SpaceMuse was planned and built with the help of AI assistants (Anthropic Claude models and Google Gemini) for research, writing, code and procedural 3D reconstructions. All facts were checked against the primary sources listed below. Every photograph is a real NASA or partner image; the 3D scenes are illustrative reconstructions built in code from NASA dimensions and imagery; no AI-generated image is presented as real (illustrations are labelled \"Artist's concept\"). The audio tour and audio guide narration is AI-generated speech (ElevenLabs) reading our sourced scripts.",
     credits: [
       "NASA Image and Video Library",

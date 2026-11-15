@@ -14,6 +14,8 @@ const nextConfig: NextConfig = {
         permanent: false,
       },
       { source: "/gallery", destination: "/collection", permanent: true },
+      // 7-slide project deck (static file in public/slides/).
+      { source: "/slides", destination: "/slides/index.html", permanent: false },
     ];
   },
   turbopack: {

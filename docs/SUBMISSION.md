@@ -18,7 +18,7 @@ SpaceMuse is a free, interactive online museum of twelve NASA machines left behi
 
 ## 4. Link to Final Project
 **https://spacemuse-beta.vercel.app** — public, no login; desktop and phone; a Lightweight (no-3D) mode is built in.
-Also: 7-slide deck `<public link — see §10>` · source code https://github.com/nbaphu08/2Boy1Mac
+Also: 7-slide deck https://spacemuse-beta.vercel.app/slides (PDF: https://spacemuse-beta.vercel.app/slides/SpaceMuse-deck-2Boy1Mac.pdf) · source code https://github.com/nbaphu08/2Boy1Mac
 
 ## 5. Detailed Project Description
 
@@ -67,7 +67,7 @@ Yes. AI assistants — Anthropic Claude (Opus, Sonnet) and Google Gemini (via An
 Recorded from the live site; the SI label is visible on all 3D frames.
 | Time | Picture | Subtitle |
 |---|---|---|
-| 0:00–0:02 | Title card over the landing VAB photo | Team 2Boy1Mac · Vietnam |
+| 0:00–0:02 | Title card over the landing VAB photo | Team 2Boy1Mac (Vietnam): Nguyễn Bá Phú, Võ Bảo Duy |
 | 0:02–0:05 | Landing hero, cursor on *Visit gallery* | Challenge: Abandoned but not Forgotten — NASA's equipment left on the Moon and Mars. |
 | 0:05–0:10 | SLS on the pad across the lagoon → ignition | SpaceMuse: an expedition to the machines we left behind. |
 | 0:10–0:15 | Lunar orbit with 5 pins → touchdown → Apollo 11 card | Fly, land and track down 12 real machines — built from NASA data, images and 3D models. |
@@ -75,7 +75,7 @@ Recorded from the live site; the SI label is visible on all 3D frames.
 | 0:20–0:30 | Finale "They are not junk. They are history." + URL | The first historic sites beyond Earth — worth remembering. spacemuse-beta.vercel.app |
 
 ## 10. Slide deck — 7 slides (extra visual aid, linked from §4)
-1. **Title** — SpaceMuse · Team 2Boy1Mac · members `<names>` · Challenge: *Abandoned but not Forgotten*.
+1. **Title** — SpaceMuse · Team 2Boy1Mac · members Nguyễn Bá Phú, Võ Bảo Duy · Challenge: *Abandoned but not Forgotten*.
 2. **The problem** — hundreds of objects left on the Moon and Mars; most people don't know they exist, why they stayed, or why they matter.
 3. **Our idea** — an expedition, not a list: launch → land → track down 12 machines.
 4. **The visitor experience** — exhibit card (questions), Then/Now, audio tour, mini-map, Field Log.
@@ -86,7 +86,7 @@ Recorded from the live site; the SI label is visible on all 3D frames.
 ---
 
 ## 11. Pre-submit checklist
-- [ ] Team members' full names (slide 1, About page, form).
+- [x] Team members: Nguyễn Bá Phú, Võ Bảo Duy (slide 1, About page, form).
 - [ ] Demo video ≤ 30 s, English subtitles, uploaded public — tested in a private window.
 - [ ] Slide deck ≤ 7 slides, public link — tested in a private window.
 - [ ] Site opens without login in a private window (desktop + phone).

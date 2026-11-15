@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SpaceMuse — Project Deck (Team 2Boy1Mac)</title>
+<meta name="description" content="SpaceMuse: The Expedition to the Machines We Left Behind. NASA Space Apps Challenge 2026 — Abandoned but not Forgotten. Team 2Boy1Mac.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@125,700;125,800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{--void:#04060b;--surface:#0a0e18;--raised:#111727;--line:#1e2638;--text:#e8ecf4;--mute:#8a93a8;--platinum:#c7cdd8;--starlight:#9db8ff;--ignite:#ff6a3d;}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:#000;color:var(--text);font-family:Inter,system-ui,sans-serif}
+  .deck{display:flex;flex-direction:column;align-items:center;gap:28px;padding:28px 16px}
+  .slide{position:relative;width:min(100%,1280px);aspect-ratio:16/9;background:var(--void);overflow:hidden;border:1px solid var(--line);border-radius:10px}
+  .inner{position:absolute;inset:0;padding:5.2% 5.8%;display:flex;flex-direction:column}
+  .eyebrow{font-family:"JetBrains Mono",monospace;font-size:clamp(9px,1.05vw,13px);letter-spacing:.16em;text-transform:uppercase;color:var(--starlight)}
+  h1,h2{font-family:Archivo,sans-serif;font-stretch:125%;font-weight:800;text-transform:uppercase;letter-spacing:.02em;line-height:1.02}
+  h1{font-size:clamp(28px,5.4vw,70px)}
+  h2{font-size:clamp(20px,3.1vw,40px);margin:.5em 0 .55em}
+  p,li{font-size:clamp(11px,1.45vw,18px);line-height:1.5;color:#cfd5e2}
+  .mute{color:var(--mute)}
+  .num{position:absolute;right:3.2%;bottom:4.2%;font-family:"JetBrains Mono",monospace;font-size:clamp(8px,.9vw,11px);color:var(--mute);letter-spacing:.12em}
+  .si{position:absolute;left:3.2%;bottom:4.2%;font-family:"JetBrains Mono",monospace;font-size:clamp(7px,.8vw,10px);color:var(--mute);opacity:.75;letter-spacing:.08em;text-transform:uppercase}
+  .bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .scrim{position:absolute;inset:0;background:linear-gradient(90deg,rgba(4,6,11,.94) 0%,rgba(4,6,11,.72) 45%,rgba(4,6,11,.1) 100%)}
+  .scrim-b{position:absolute;inset:0;background:linear-gradient(0deg,rgba(4,6,11,.95) 0%,rgba(4,6,11,.35) 55%,rgba(4,6,11,.15) 100%)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:3.2%;flex:1;min-height:0}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:2.4%}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:5% 6%}
+  .card b{display:block;font-family:"JetBrains Mono",monospace;font-size:clamp(8px,.95vw,12px);letter-spacing:.14em;text-transform:uppercase;color:var(--starlight);margin-bottom:.5em}
+  .cards4 .card{padding:3.2% 5%}
+  .cards4 p{font-size:clamp(10px,1.2vw,15px);line-height:1.4}
+  .shot{width:100%;height:100%;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+  .flow{display:flex;align-items:center;gap:1.2%;flex-wrap:wrap;margin-top:1.2em}
+  .step{background:var(--raised);border:1px solid var(--line);border-radius:999px;padding:.45em 1em;font-family:"JetBrains Mono",monospace;font-size:clamp(8px,1vw,13px);letter-spacing:.06em;color:var(--platinum);white-space:nowrap}
+  .arrow{color:var(--starlight);font-size:clamp(10px,1.2vw,16px)}
+  ul{list-style:none}
+  li{padding-left:1.1em;position:relative;margin:.35em 0}
+  li:before{content:"";position:absolute;left:0;top:.62em;width:.42em;height:.42em;border-radius:50%;background:var(--starlight)}
+  .quote{border-left:3px solid var(--starlight);padding-left:1em;font-style:italic;color:var(--starlight);font-size:clamp(12px,1.7vw,22px);line-height:1.4}
+  .big{font-family:Archivo,sans-serif;font-stretch:125%;font-weight:800;font-size:clamp(22px,3.4vw,44px);color:var(--text);line-height:1}
+  .stat{font-family:"JetBrains Mono",monospace;font-size:clamp(8px,.95vw,12px);color:var(--mute);letter-spacing:.1em;text-transform:uppercase;margin-top:.4em}
+  a{color:var(--starlight);text-decoration:none}
+  @media print{
+    @page{size:1280px 720px;margin:0}
+    html,body{background:var(--void)}
+    .deck{padding:0;gap:0}
+    .slide{width:1280px;height:720px;border:0;border-radius:0;page-break-after:always;break-after:page}
+    p,li{font-size:18px} h1{font-size:70px} h2{font-size:40px}
+  }
+</style>
+</head>
+<body>
+<main class="deck">
+
+<!-- 1 · Title -->
+<section class="slide" aria-label="Slide 1: Title">
+  <img class="bg" src="/media/images/hero_vab_sunrise_alt-2560.jpg" alt="The Vehicle Assembly Building at Kennedy Space Center at dusk (NASA photo)">
+  <div class="scrim"></div>
+  <div class="inner" style="justify-content:center">
+    <div class="eyebrow">NASA Space Apps Challenge 2026 · Abandoned but not Forgotten</div>
+    <h1 style="margin:.35em 0 .3em">SpaceMuse</h1>
+    <p style="max-width:52%;font-size:clamp(13px,1.9vw,24px);color:var(--text)">The Expedition to the Machines We Left Behind</p>
+    <p class="mute" style="margin-top:1.4em">Team <b style="color:var(--text)">2Boy1Mac</b> (Vietnam) · Nguyễn Bá Phú · Võ Bảo Duy</p>
+    <p class="mute">spacemuse-beta.vercel.app</p>
+  </div>
+  <div class="num">01 / 07</div>
+</section>
+
+<!-- 2 · Problem -->
+<section class="slide" aria-label="Slide 2: The problem">
+  <img class="bg" src="/media/three/posters/silence-1920x1080.jpg" alt="">
+  <div class="scrim"></div>
+  <div class="inner">
+    <div class="eyebrow">The problem</div>
+    <h2>Hundreds of objects are still out there.<br>Almost nobody knows their stories.</h2>
+    <ul style="max-width:58%">
+      <li>Since 1967, NASA has landed machines on the Moon and Mars. None of them came home.</li>
+      <li>NASA's own catalogue says the first step in preserving them is knowing <i>what is there and where it is</i>.</li>
+      <li>For students they are names in a list — not places, not stories, not heritage.</li>
+      <li>As the Moon gets busy again, these sites need people who know why they matter.</li>
+    </ul>
+  </div>
+  <div class="si">Background: illustrative 3D reconstruction · AI-assisted</div>
+  <div class="num">02 / 07</div>
+</section>
+
+<!-- 3 · Idea -->
+<section class="slide" aria-label="Slide 3: Our idea">
+  <div class="inner">
+    <div class="eyebrow">Our idea</div>
+    <h2>An expedition, not a list</h2>
+    <div class="flow">
+      <span class="step">Launch SLS · LC-39B</span><span class="arrow">→</span>
+      <span class="step">Lunar orbit · 5 targets</span><span class="arrow">→</span>
+      <span class="step">Land &amp; track</span><span class="arrow">→</span>
+      <span class="step">Mars entry · 7 targets</span><span class="arrow">→</span>
+      <span class="step">Hall of Silence</span><span class="arrow">→</span>
+      <span class="step">"Junk or history?"</span>
+    </div>
+    <div class="grid3" style="margin-top:3%;flex:1;min-height:0">
+      <img class="shot" src="/media/three/posters/enter-1920x1080.jpg" alt="SLS on the pad across the lagoon (3D)">
+      <img class="shot" src="/media/three/posters/moon-apollo-11-1920x1080.jpg" alt="Apollo 11 descent stage and laser reflector (3D)">
+      <img class="shot" src="/media/three/posters/mars-ingenuity-1920x1080.jpg" alt="Ingenuity helicopter in Jezero Crater (3D)">
+    </div>
+    <p class="mute" style="margin-top:2%">12 real machines · one continuous scroll · works on phones (Lightweight mode included)</p>
+  </div>
+  <div class="si">Illustrative 3D reconstruction · AI-assisted</div>
+  <div class="num">03 / 07</div>
+</section>
+
+<!-- 4 · Experience -->
+<section class="slide" aria-label="Slide 4: The visitor experience">
+  <div class="inner">
+    <div class="eyebrow">The visitor experience</div>
+    <h2>Every stop is a museum label</h2>
+    <div class="grid2" style="flex:none;height:72%">
+      <img class="shot" style="object-position:0% 60%" src="/slides/ui-exhibit.jpg" alt="Apollo 11 exhibit card with tracker and mini-map">
+      <div class="cards4" style="display:flex;flex-direction:column;gap:2.2%;min-height:0">
+        <div class="card"><b>Four questions</b><p>What is it? · Why is it still here? · What did it teach us? · What is left today?</p></div>
+        <div class="card"><b>Then / Now</b><p>NASA surface photo vs. LRO / HiRISE orbital image of the same spot today.</p></div>
+        <div class="card"><b>Hear it</b><p>An audio tour at every stop plus an audio guide per exhibit (AI voice, our sourced scripts).</p></div>
+        <div class="card"><b>Explore it</b><p>Mini-map with real coordinates (click to fly), Field Log stamps, a GRAIL simulation using NASA's gravity map.</p></div>
+      </div>
+    </div>
+  </div>
+  <div class="num">04 / 07</div>
+</section>
+
+<!-- 5 · NASA data -->
+<section class="slide" aria-label="Slide 5: Built on NASA data">
+  <img class="bg" src="/media/three/posters/moon-grail-1920x1080.jpg" alt="">
+  <div class="scrim"></div>
+  <div class="inner">
+    <div class="eyebrow">Built on NASA open data</div>
+    <h2>Every number has a source</h2>
+    <div class="grid2" style="max-width:70%;flex:0 0 auto">
+      <ul>
+        <li><b>NSSDCA</b> — dates, dimensions, landing coordinates</li>
+        <li><b>LRO / LROC</b> — "now" images, GRAIL crater positions</li>
+        <li><b>HiRISE / MRO</b> — Mars landers seen from orbit</li>
+        <li><b>NASA SVS 4014</b> — GRAIL gravity map in the simulation</li>
+      </ul>
+      <ul>
+        <li><b>NASA 3D Resources</b> — LM, Viking, MER, InSight, Ingenuity</li>
+        <li><b>NASA History Office</b> — lunar artifact catalogue (2012)</li>
+        <li><b>Image &amp; Video Library</b> — Apollo / mission photos</li>
+        <li><b>CGI Moon Kit · Viking MDIM</b> — planet textures</li>
+      </ul>
+    </div>
+    <p class="mute" style="margin-top:auto;max-width:60%">Real NASA photos are shown unmodified with credits. 3D scenes are illustrative reconstructions built in code from NASA dimensions and imagery.</p>
+  </div>
+  <div class="si">Background: illustrative 3D reconstruction · AI-assisted</div>
+  <div class="num">05 / 07</div>
+</section>
+
+<!-- 6 · Message -->
+<section class="slide" aria-label="Slide 6: The message">
+  <img class="bg" src="/media/images/finale_artemis_era_earthrise-2560.jpg" alt="Earth rising over the Moon (NASA, Artemis era)">
+  <div class="scrim"></div>
+  <div class="inner" style="justify-content:center">
+    <div class="eyebrow">The message</div>
+    <p class="quote" style="max-width:55%;margin:1em 0">"Are these machines junk, or history?"</p>
+    <h2 style="max-width:60%">They are not junk.<br>They are history.</h2>
+    <ul style="max-width:55%">
+      <li><b>2011</b> — NASA asks future missions to keep away from Apollo sites, down to footprints and rover tracks.</li>
+      <li><b>2020</b> — U.S. law: the One Small Step to Protect Human Heritage in Space Act.</li>
+      <li>The first historic sites beyond Earth — and each one taught us something.</li>
+    </ul>
+  </div>
+  <div class="num">06 / 07</div>
+</section>
+
+<!-- 7 · Next + links -->
+<section class="slide" aria-label="Slide 7: What's next and links">
+  <div class="inner">
+    <div class="eyebrow">What's next</div>
+    <h2>A free classroom expedition</h2>
+    <div class="grid3" style="margin-bottom:4%">
+      <div class="card"><div class="big">+ Sites</div><div class="stat">Luna · Chang'e · Apollo 12/14/16</div></div>
+      <div class="card"><div class="big">Classroom</div><div class="stat">Teacher worksheets · discussion prompts</div></div>
+      <div class="card"><div class="big">Languages</div><div class="stat">Vietnamese and more</div></div>
+    </div>
+    <p><b>Live site</b> · <a href="https://spacemuse-beta.vercel.app">spacemuse-beta.vercel.app</a></p>
+    <p><b>Source</b> · <a href="https://github.com/nbaphu08/2Boy1Mac">github.com/nbaphu08/2Boy1Mac</a></p>
+    <p class="mute" style="margin-top:auto;max-width:80%">Built with AI assistance (Anthropic Claude, Google Gemini) for research cross-checks, writing, code and procedural 3D; narration voice by ElevenLabs (AI). Every fact verified by the team against the NASA sources cited on the site. Team 2Boy1Mac — Nguyễn Bá Phú, Võ Bảo Duy.</p>
+  </div>
+  <div class="num">07 / 07</div>
+</section>
+
+</main>
+</body>
+</html>
