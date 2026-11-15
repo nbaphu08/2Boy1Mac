@@ -64,6 +64,7 @@ export const expedition = {
 
   // Exhibit card headings — the four questions a newcomer actually asks.
   questions: {
+    taught: "WHAT IT TAUGHT US",
     what: "WHAT IS IT?",
     did: "WHAT DID IT DO?",
     why: "WHY IS IT STILL HERE?",
@@ -131,4 +132,51 @@ export const narrationV5: Record<string, string> = {
   enter: "Your ride: a rocket taller than most buildings. Your mission: find what we left behind.",
   "deep-space": "Below us, five places where machines were left on the Moon. We land at the first.",
   transit: "Mars is seven to ten months away. Seven more machines are waiting there.",
+};
+
+// v6 (Opus): the museum's through-line. A question at the start, an answer at the end.
+// Sources: NASA "Recommendations to Space-Faring Entities: How to Protect and Preserve the Historic and
+// Scientific Value of U.S. Government Lunar Artifacts" (20 Jul 2011); One Small Step to Protect Human
+// Heritage in Space Act, Public Law 116-275 (31 Dec 2020).
+export const thesis = {
+  question: "As you go, ask yourself: are these machines junk, or history?",
+  finale: {
+    eyebrow: "ABANDONED, BUT NOT FORGOTTEN",
+    title: "They are not junk. They are history.",
+    body: [
+      "In 2011, NASA asked every future mission to keep its distance from the Apollo landing sites, down to the footprints and rover tracks.",
+      "In 2020, the United States made that a law: the One Small Step to Protect Human Heritage in Space Act.",
+      "These are the first historic sites beyond Earth. Every machine you found still holds a piece of what we learned.",
+    ],
+    prompt: "The next crews will walk past what we left. What should they do with it?",
+    sources: "NASA, Recommendations to Protect U.S. Government Lunar Artifacts (2011) · Public Law 116-275 (2020)",
+  },
+};
+
+// "WHAT IT TAUGHT US" — one verified legacy line per exhibit (see docs/LEGACY_SOURCES.md).
+export const legacy: Record<string, string> = {
+  "moon-apollo-11":
+    "Laser pulses bounced off its mirrors show the Moon is drifting away from Earth by about 3.8 cm every year.",
+  "moon-surveyor-3":
+    "Apollo 12 brought its camera home. Engineers learned how well machines survive years of lunar days and nights.",
+  "moon-apollo-15-lrv":
+    "On this mission the crew found the Genesis Rock, a piece of the Moon's original crust.",
+  "moon-apollo-17":
+    "Geologist Harrison Schmitt found orange soil here: tiny beads of glass from volcanoes that erupted billions of years ago.",
+  "moon-grail":
+    "Its gravity map showed the Moon's crust is only about 34 to 43 km thick, thinner than scientists expected.",
+  "mars-viking-1":
+    "It carried the first experiments to search for life on Mars. Their puzzling results still shape how we search today.",
+  "mars-pathfinder":
+    "Its airbag landing worked so well that Spirit and Opportunity landed the same way, in a bigger version.",
+  "mars-spirit":
+    "Its silica-rich soil showed that hot water once soaked this ground: a place where life could have existed.",
+  "mars-opportunity":
+    "Its blueberries and mineral veins were evidence that liquid water once existed on the surface of Mars.",
+  "mars-phoenix":
+    "It confirmed water ice just below the surface and found perchlorate, a salt that matters for life and for future explorers.",
+  "mars-insight":
+    "Its marsquakes revealed the layers inside Mars, including a liquid metal core.",
+  "mars-ingenuity":
+    "After proving flight was possible, it became a scout, flying ahead to help the Perseverance rover plan its route.",
 };
