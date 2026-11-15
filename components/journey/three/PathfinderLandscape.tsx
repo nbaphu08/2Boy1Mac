@@ -8,12 +8,12 @@ import { getMarsRoverTrackTexture } from "./MarsModels";
 import {
   applyWorldTerrainShader,
   blendCorridorHeight,
-  createFracturedBasaltGeometry,
   createNearFieldHorizonGeometry,
 } from "./landscapeMaterials";
 import { EXHIBIT_PLINTH_ANCHORS } from "./trajectory";
 
 const SURFACE_Y = 0.22;
+const PF_ANCHOR = EXHIBIT_PLINTH_ANCHORS["mars-pathfinder"].pos;
 
 let cachedSolarPanelMap: THREE.CanvasTexture | null = null;
 let cachedAirbagMap: THREE.CanvasTexture | null = null;
@@ -87,7 +87,7 @@ function getDeflatedAirbagTextures(): { map: THREE.CanvasTexture; bumpMap: THREE
   b.height = size;
   const bCtx = b.getContext("2d")!;
 
-  cCtx.fillStyle = "#C9BBA4";
+  cCtx.fillStyle = "#B9A584";
   cCtx.fillRect(0, 0, size, size);
   bCtx.fillStyle = "#808080";
   bCtx.fillRect(0, 0, size, size);
@@ -187,6 +187,37 @@ function createDeflatedClothGeometry(seed: number, length: number, width: number
   return geo;
 }
 
+/**
+ * Opus M4: sharp-edged, flat-faceted basalt block (Ares Vallis flood debris in PIA00632 is angular
+ * and dark under a thin dust film). Jittered low-poly dodecahedron, non-indexed so each facet stays flat.
+ */
+function createAngularRockGeometry(seed: number): THREE.BufferGeometry {
+  let st = 7919 * seed + 13;
+  const rnd = () => {
+    st = (st * 1664525 + 1013904223) >>> 0;
+    return st / 4294967296;
+  };
+  const base = new THREE.DodecahedronGeometry(0.45, 0);
+  const pos = base.attributes.position as THREE.BufferAttribute;
+  // Move shared corners consistently: key by rounded position
+  const offsets = new Map<string, [number, number, number]>();
+  for (let i = 0; i < pos.count; i++) {
+    const key = `${pos.getX(i).toFixed(3)},${pos.getY(i).toFixed(3)},${pos.getZ(i).toFixed(3)}`;
+    let o = offsets.get(key);
+    if (!o) {
+      const k = 0.72 + rnd() * 0.55;
+      o = [k * (0.9 + rnd() * 0.3), k * (0.75 + rnd() * 0.2), k * (0.9 + rnd() * 0.3)];
+      offsets.set(key, o);
+    }
+    let y = pos.getY(i) * o[1];
+    if (y < -0.12) y = -0.12 - (y + 0.12) * 0.25; // flattish base sitting in the soil
+    pos.setXYZ(i, pos.getX(i) * o[0], y, pos.getZ(i) * o[2]);
+  }
+  // Polyhedron geometries are already non-indexed, so recomputed normals stay flat per facet
+  base.computeVertexNormals();
+  return base;
+}
+
 /** Continuous Ares Vallis flood plain + distant Twin Peaks hills + shared bridge corridor (PIA00632). */
 function createAresVallisLandscapeGeometry(): THREE.BufferGeometry {
   const anchor = EXHIBIT_PLINTH_ANCHORS["mars-pathfinder"].pos;
@@ -263,8 +294,8 @@ export function PathfinderLandscape({ reducedMotion: _reducedMotion }: { reduced
   }, [budget.tier]);
 
   const terrainGeo = useMemo(() => createAresVallisLandscapeGeometry(), []);
-  const rockGeoA = useMemo(() => createFracturedBasaltGeometry(1), []);
-  const rockGeoB = useMemo(() => createFracturedBasaltGeometry(2), []);
+  const rockGeoA = useMemo(() => createAngularRockGeometry(1), []);
+  const rockGeoB = useMemo(() => createAngularRockGeometry(2), []);
 
   // Open triangular petal geometry (1.02 m long × 1.18 m wide base -> ~2.75 m total opened span)
   const petalGeo = useMemo(() => {
@@ -287,16 +318,16 @@ export function PathfinderLandscape({ reducedMotion: _reducedMotion }: { reduced
   // Low, flat deflated Vectran cloth airbag geometries (tucked against/under petal edges)
   const airbagGeos = useMemo(
     () => [
-      createDeflatedClothGeometry(1, 0.56, 0.28, 0.19),
-      createDeflatedClothGeometry(2, 0.48, 0.24, 0.16),
-      createDeflatedClothGeometry(3, 0.54, 0.26, 0.18),
+      createDeflatedClothGeometry(1, 0.66, 0.34, 0.12),
+      createDeflatedClothGeometry(2, 0.58, 0.3, 0.1),
+      createDeflatedClothGeometry(3, 0.64, 0.32, 0.11),
     ],
     [],
   );
 
   // Faceted "Yogi" flood boulder (matching Sonnet AG-2c placement/scale at [1.78, SURFACE_Y, 1.2])
   const yogiRockGeo = useMemo(() => {
-    const g = createFracturedBasaltGeometry(4);
+    const g = createAngularRockGeometry(4);
     g.scale(1.65, 1.38, 1.45);
     return g;
   }, []);
@@ -374,12 +405,12 @@ export function PathfinderLandscape({ reducedMotion: _reducedMotion }: { reduced
       .replace(
         "#include <color_fragment>",
         `#include <color_fragment>
-        float topDust = smoothstep(0.18, 0.82, vRockWorldNorm.y);
-        diffuseColor.rgb = mix(vec3(0.18, 0.11, 0.08), vec3(0.52, 0.25, 0.13), topDust);`,
+        float topDust = smoothstep(0.5, 0.95, vRockWorldNorm.y);
+        diffuseColor.rgb = mix(vec3(0.075, 0.052, 0.042), vec3(0.3, 0.14, 0.075), topDust);`,
       )
       .replace(
         "#include <tonemapping_fragment>",
-        `float rockDist = length(vRockWorldPos.xz - vec2(-8.35, -371.0));
+        `float rockDist = length(vRockWorldPos.xz - vec2(${PF_ANCHOR[0].toFixed(2)}, ${PF_ANCHOR[2].toFixed(2)})); // Opus M4: was a stale anchor, hazing every rock to beige
         float rockHaze = smoothstep(22.0, 58.0, rockDist);
         gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.584, 0.238, 0.0998), rockHaze * 0.96);
         #include <tonemapping_fragment>`,
@@ -403,7 +434,7 @@ export function PathfinderLandscape({ reducedMotion: _reducedMotion }: { reduced
           roughness={0.93}
           metalness={0.04}
           onBeforeCompile={applyRockDustShader}
-          customProgramCacheKey={() => "ares-rock-dust-v2"}
+          customProgramCacheKey={() => "ares-rock-dust-v3"}
         />
       </instancedMesh>
       <instancedMesh ref={rockInstancesRefB} args={[rockGeoB, undefined, rockCountB]} castShadow receiveShadow>
@@ -411,7 +442,7 @@ export function PathfinderLandscape({ reducedMotion: _reducedMotion }: { reduced
           roughness={0.94}
           metalness={0.04}
           onBeforeCompile={applyRockDustShader}
-          customProgramCacheKey={() => "ares-rock-dust-v2"}
+          customProgramCacheKey={() => "ares-rock-dust-v3"}
         />
       </instancedMesh>
 
@@ -457,7 +488,7 @@ export function PathfinderLandscape({ reducedMotion: _reducedMotion }: { reduced
 
               {/* Deflated Crumpled Vectran Fabric Airbags pulled low & tucked against/under outer petal edges (PIA00614) */}
               {pi !== 0 ? (
-                <group position={[0.15, 0.025, 1.05]} rotation={[0, pi * 0.4, 0]}>
+                <group position={[0.15, 0.025, 1.05]} rotation={[0, pi * 0.4, 0]} scale={[1.1, 0.62, 1.1]}>
                   <mesh
                     geometry={airbagGeos[pi % airbagGeos.length]}
                     position={[0, 0.015, 0]}
@@ -469,6 +500,7 @@ export function PathfinderLandscape({ reducedMotion: _reducedMotion }: { reduced
                       map={airbagMap}
                       bumpMap={airbagBump}
                       bumpScale={0.045}
+                      color="#B5A286"
                       roughness={0.94}
                       metalness={0.02}
                     />
@@ -485,6 +517,7 @@ export function PathfinderLandscape({ reducedMotion: _reducedMotion }: { reduced
                       map={airbagMap}
                       bumpMap={airbagBump}
                       bumpScale={0.045}
+                      color="#B5A286"
                       roughness={0.94}
                       metalness={0.02}
                     />
@@ -602,7 +635,7 @@ export function PathfinderLandscape({ reducedMotion: _reducedMotion }: { reduced
             roughness={0.95}
             metalness={0.04}
             onBeforeCompile={applyRockDustShader}
-            customProgramCacheKey={() => "ares-rock-dust-v1"}
+            customProgramCacheKey={() => "ares-rock-dust-v3"}
           />
         </mesh>
       </group>

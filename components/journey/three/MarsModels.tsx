@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import * as THREE from "three";
+import { PhoenixLander } from "./models/PhoenixLander";
 
 let cachedPathfinderSolarTex: THREE.CanvasTexture | null = null;
 let cachedPhoenixSolarTex: THREE.CanvasTexture | null = null;
@@ -109,14 +110,14 @@ export function getMarsRoverTrackTexture(): THREE.CanvasTexture {
 
   for (const ry of [30, 98]) {
     const rutGrad = ctx.createLinearGradient(0, ry - 15, 0, ry + 15);
-    rutGrad.addColorStop(0, "rgba(185, 108, 68, 0.35)");
-    rutGrad.addColorStop(0.5, "rgba(48, 22, 12, 0.72)");
-    rutGrad.addColorStop(1, "rgba(185, 108, 68, 0.35)");
+    rutGrad.addColorStop(0, "rgba(185, 108, 68, 0)");
+    rutGrad.addColorStop(0.5, "rgba(88, 38, 20, 0.5)");
+    rutGrad.addColorStop(1, "rgba(185, 108, 68, 0)");
     ctx.fillStyle = rutGrad;
     ctx.fillRect(0, ry - 15, 512, 30);
 
-    ctx.strokeStyle = "rgba(32, 14, 8, 0.65)";
-    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = "rgba(60, 26, 14, 0.35)";
+    ctx.lineWidth = 2;
     for (let x = 6; x < 506; x += 12) {
       ctx.beginPath();
       ctx.moveTo(x, ry - 10);
@@ -127,6 +128,7 @@ export function getMarsRoverTrackTexture(): THREE.CanvasTexture {
   }
 
   const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
   cachedMarsTrackTex = tex;
   return tex;
 }
@@ -379,137 +381,13 @@ export function PathfinderAndSojournerModel({ baseY }: { baseY: number }) {
 }
 
 /**
- * AG-3b #3 · Phoenix Mars Lander (SM-M-005, Vastitas Borealis arctic plain)
- * - 1.5 m octagonal/round deck on 3 landing legs
- * - Two decagonal UltraFlex fan-fold solar arrays (5.52 m span deployed) with radial gore ribs
- * - One solar array visibly CRACKED / COLLAPSED downward under winter CO2 ice load (AG-2 #5 & AG-3b #3)
- * - 2.35 m articulated Robotic Arm (RA) with scoop resting over an excavated water-ice trench
- * - Surface Stereo Imager (SSI) mast camera + Meteorology (MET) mast
+ * SM-M-005 · Phoenix lander — rebuilt in `models/PhoenixLander.tsx` (Opus M3), true scale
+ * (the old `scale` prop is ignored so the 5.52 m array span stays real).
  */
-export function PhoenixLanderModel({ baseY, scale = 0.92 }: { baseY: number; scale?: number }) {
-  const decagonalTex = useMemo(() => getPhoenixDecagonalSolarTexture(), []);
-
+export function PhoenixLanderModel({ baseY }: { baseY: number; scale?: number }) {
   return (
-    <group position={[0, baseY, 0]} scale={scale}>
-      {/* Octagonal 1.5 m Spacecraft Science Deck + Copper-Gold Thermal MLI Enclosure */}
-      <mesh position={[0, 0.56, 0]}>
-        <cylinderGeometry args={[0.76, 0.72, 0.36, 8]} />
-        <meshStandardMaterial color="#B87A3D" roughness={0.46} metalness={0.68} />
-      </mesh>
-      {/* Dusty white/silver top instrument deck plate */}
-      <mesh position={[0, 0.75, 0]}>
-        <cylinderGeometry args={[0.75, 0.75, 0.04, 8]} />
-        <meshStandardMaterial color="#C8A286" roughness={0.62} metalness={0.35} />
-      </mesh>
-
-      {/* 3 Tripod Landing Legs + Footpads */}
-      {[0, 1, 2].map((li) => {
-        const a = (li * Math.PI * 2) / 3 + Math.PI / 6;
-        const lx = Math.cos(a) * 0.92;
-        const lz = Math.sin(a) * 0.92;
-        return (
-          <group key={li}>
-            <mesh
-              position={[lx * 0.74, 0.34, lz * 0.74]}
-              rotation={[Math.sin(a) * 0.52, 0, -Math.cos(a) * 0.52]}
-            >
-              <cylinderGeometry args={[0.042, 0.036, 0.78, 8]} />
-              <meshStandardMaterial color="#C8B8A8" roughness={0.48} metalness={0.62} />
-            </mesh>
-            <mesh position={[lx, 0.03, lz]}>
-              <cylinderGeometry args={[0.18, 0.21, 0.05, 14]} />
-              <meshStandardMaterial color="#8E6E5A" roughness={0.72} metalness={0.42} />
-            </mesh>
-          </group>
-        );
-      })}
-
-      {/* ─── LEFT DECAGONAL SOLAR ARRAY (Intact, heavily dust-coated, 10-sided UltraFlex fan) ─── */}
-      <group position={[-1.62, 0.74, 0]} rotation={[0.04, 0, 0.03]}>
-        {/* Boom arm */}
-        <mesh position={[0.68, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.028, 0.032, 0.52, 8]} />
-          <meshStandardMaterial color="#B89882" roughness={0.5} metalness={0.6} />
-        </mesh>
-        {/* 10-sided decagonal solar fan disc */}
-        <mesh>
-          <cylinderGeometry args={[0.96, 0.96, 0.022, 10]} />
-          <meshStandardMaterial map={decagonalTex} roughness={0.58} metalness={0.35} />
-        </mesh>
-      </group>
-
-      {/* ─── RIGHT DECAGONAL SOLAR ARRAY (CRACKED / COLLAPSED downward under winter CO2 ice load!) ─── */}
-      <group position={[0.78, 0.72, 0]}>
-        {/* Fractured, bent deployment yoke hinge */}
-        <mesh position={[0.18, -0.08, 0]} rotation={[0, 0, -0.58]}>
-          <cylinderGeometry args={[0.026, 0.03, 0.42, 8]} />
-          <meshStandardMaterial color="#9C7E6A" roughness={0.58} metalness={0.55} />
-        </mesh>
-        {/* Collapsed decagonal array drooping down to touch the arctic soil (-36° pitch/roll) with torn sector */}
-        <group position={[0.88, -0.38, 0.08]} rotation={[0.18, -0.12, -0.46]}>
-          <mesh>
-            <cylinderGeometry args={[0.94, 0.94, 0.022, 10, 1, false, 0, Math.PI * 1.65]} />
-            <meshStandardMaterial map={decagonalTex} roughness={0.68} metalness={0.28} />
-          </mesh>
-          {/* Detached/buckled solar gore shard resting beside the collapsed wing */}
-          <mesh position={[0.25, -0.12, 0.52]} rotation={[0.32, 0.4, 0.28]}>
-            <boxGeometry args={[0.48, 0.015, 0.32]} />
-            <meshStandardMaterial color="#4D3930" roughness={0.7} metalness={0.3} />
-          </mesh>
-        </group>
-      </group>
-
-      {/* ─── DECK INSTRUMENTS (TEGA ovens, MECA chemistry box, Bio-barrier) ─── */}
-      <mesh position={[-0.22, 0.88, -0.18]} rotation={[0, 0.3, 0]}>
-        <boxGeometry args={[0.38, 0.22, 0.28]} />
-        <meshStandardMaterial color="#C8B4A0" roughness={0.5} metalness={0.52} />
-      </mesh>
-      <mesh position={[0.24, 0.86, -0.22]} rotation={[0, -0.25, 0]}>
-        <boxGeometry args={[0.32, 0.18, 0.26]} />
-        <meshStandardMaterial color="#B88A58" roughness={0.45} metalness={0.65} />
-      </mesh>
-
-      {/* ─── SURFACE STEREO IMAGER (SSI) CAMERA MAST ─── */}
-      <group position={[-0.12, 0.76, 0.28]}>
-        <mesh position={[0, 0.42, 0]}>
-          <cylinderGeometry args={[0.034, 0.04, 0.84, 10]} />
-          <meshStandardMaterial color="#C4B2A0" roughness={0.48} metalness={0.58} />
-        </mesh>
-        <mesh position={[0, 0.86, 0]} rotation={[0.18, 0.25, 0]}>
-          <boxGeometry args={[0.22, 0.14, 0.15]} />
-          <meshStandardMaterial color="#D4C2B0" roughness={0.45} metalness={0.48} />
-        </mesh>
-      </group>
-
-      {/* ─── METEOROLOGY (MET) MAST (tall thin mast with wind teller) ─── */}
-      <mesh position={[0.36, 1.32, -0.12]}>
-        <cylinderGeometry args={[0.012, 0.018, 1.15, 8]} />
-        <meshStandardMaterial color="#D8C8B8" roughness={0.42} metalness={0.68} />
-      </mesh>
-
-      {/* ─── 2.35 m ARTICULATED ROBOTIC ARM + SCOOP poised over excavated water-ice trench ─── */}
-      <group position={[0.18, 0.82, 0.46]} rotation={[0, -0.18, 0]}>
-        {/* Shoulder turret */}
-        <mesh>
-          <cylinderGeometry args={[0.08, 0.09, 0.16, 12]} />
-          <meshStandardMaterial color="#B89882" roughness={0.45} metalness={0.68} />
-        </mesh>
-        {/* Upper arm boom */}
-        <mesh position={[0, 0.16, 0.48]} rotation={[1.18, 0, 0]}>
-          <cylinderGeometry args={[0.032, 0.036, 1.05, 10]} />
-          <meshStandardMaterial color="#B49A88" roughness={0.46} metalness={0.65} />
-        </mesh>
-        {/* Forearm boom */}
-        <mesh position={[0, -0.22, 1.18]} rotation={[2.12, 0, 0]}>
-          <cylinderGeometry args={[0.028, 0.032, 0.98, 10]} />
-          <meshStandardMaterial color="#B49A88" roughness={0.46} metalness={0.65} />
-        </mesh>
-        {/* Excavator scoop resting right above the bright ice trench */}
-        <mesh position={[0, -0.68, 1.54]} rotation={[0.35, 0, 0]}>
-          <boxGeometry args={[0.14, 0.09, 0.22]} />
-          <meshStandardMaterial color="#9E8472" roughness={0.52} metalness={0.62} />
-        </mesh>
-      </group>
+    <group position={[0, baseY, 0]}>
+      <PhoenixLander />
     </group>
   );
 }
@@ -518,6 +396,7 @@ export function PhoenixLanderModel({ baseY, scale = 0.92 }: { baseY: number; sca
  * SM-M-001 · Viking 1 Lander foreground sampler boom, trench & RTG wind screen accents (Chryse Planitia).
  */
 export function Viking1SiteProps({ baseY }: { baseY: number }) {
+  const trenchTex = useMemo(() => getTroyTrenchTexture(false), []);
   return (
     <group position={[0, baseY, 0]}>
       {/* Extended Surface Sampler Collector Arm reaching forward into Chryse soil */}
@@ -532,10 +411,18 @@ export function Viking1SiteProps({ baseY }: { baseY: number }) {
           <meshStandardMaterial color="#B89E88" roughness={0.55} metalness={0.58} />
         </mesh>
       </group>
-      {/* Excavated Chryse sample trench in front of collector head */}
-      <mesh position={[-0.08, 0.028, 1.58]} rotation={[-Math.PI / 2, 0, -0.22]}>
-        <planeGeometry args={[0.22, 0.62]} />
-        <meshStandardMaterial color="#4A2214" roughness={0.95} metalness={0.02} />
+      {/* Excavated Chryse sample trench in front of collector head (soft-edged, not a flat black slab) */}
+      <mesh position={[-0.08, 0.02, 1.58]} rotation={[-Math.PI / 2, 0, -0.22 + Math.PI]}>
+        <planeGeometry args={[0.36, 0.7]} />
+        <meshStandardMaterial
+          map={trenchTex}
+          transparent
+          depthWrite={false}
+          roughness={0.97}
+          metalness={0}
+          polygonOffset
+          polygonOffsetFactor={-2}
+        />
       </mesh>
     </group>
   );
@@ -603,16 +490,28 @@ export function InSightSurfaceInstruments({ baseY }: { baseY: number }) {
  * with Perseverance's conical backshell and supersonic parachute (PIA25219).
  */
 export function IngenuityAndBackshellProps({ baseY }: { baseY: number }) {
+  // Tapered carbon-fibre blade tip (≈25 cm piece, thin airfoil), extruded from a 2D outline
+  const bladeTipGeo = useMemo(() => {
+    const sh = new THREE.Shape();
+    sh.moveTo(0, -0.03);
+    sh.lineTo(0.2, -0.026);
+    sh.quadraticCurveTo(0.255, -0.012, 0.25, 0.012);
+    sh.lineTo(0.02, 0.034);
+    sh.lineTo(0.006, 0.006);
+    sh.lineTo(0.014, -0.004);
+    sh.closePath();
+    return new THREE.ExtrudeGeometry(sh, { depth: 0.006, bevelEnabled: false });
+  }, []);
+  useEffect(() => () => bladeTipGeo.dispose(), [bladeTipGeo]);
   return (
     <group position={[0, baseY, 0]}>
       {/* Detached carbon-fiber rotor blade tip lying on the sand ripple beside Ingenuity (Flight 72 damage) */}
-      <mesh position={[0.48, 0.036, 0.36]} rotation={[0.08, 0.58, 0.14]}>
-        <boxGeometry args={[0.22, 0.008, 0.052]} />
-        <meshStandardMaterial color="#1E2026" roughness={0.42} metalness={0.68} />
+      <mesh geometry={bladeTipGeo} position={[0.46, 0.012, -0.5]} rotation={[-Math.PI / 2 + 0.04, 0, 0.9]} castShadow>
+        <meshStandardMaterial color="#2E2A27" roughness={0.72} metalness={0.12} />
       </mesh>
 
       {/* Distant shattered Perseverance backshell + supersonic parachute resting on Martian sand (PIA25219) */}
-      <group position={[-2.35, -0.02, -2.6]} rotation={[0, 0.45, 0]}>
+      <group position={[-3.9, -0.02, -3.2]} rotation={[0, 0.45, 0]}>
         {/* Shattered cream-tan conical Perseverance backshell */}
         <mesh position={[0.12, 0.09, 0.12]} rotation={[0.22, 0.4, -0.18]} castShadow receiveShadow>
           <coneGeometry args={[0.26, 0.2, 14, 1, true]} />
@@ -628,6 +527,145 @@ export function IngenuityAndBackshellProps({ baseY }: { baseY: number }) {
           <meshStandardMaterial color="#E6D8C8" roughness={0.82} metalness={0.05} />
         </mesh>
       </group>
+    </group>
+  );
+}
+
+const trenchTexCache: Record<string, THREE.CanvasTexture> = {};
+/**
+ * Narrow churned trench with alpha-blended edges. `bright` = Spirit's sulfate-rich soil gouged by its
+ * dragging wheel; otherwise a darker freshly-dug sampler trench (Viking 1).
+ */
+function getTroyTrenchTexture(bright = true): THREE.CanvasTexture {
+  const key = bright ? "bright" : "dark";
+  if (trenchTexCache[key]) return trenchTexCache[key];
+  const coreA = bright ? "222,196,146" : "92,40,22";
+  const coreB = bright ? "228,204,156" : "78,32,18";
+  const W = 64;
+  const H = 256;
+  const c = document.createElement("canvas");
+  c.width = W;
+  c.height = H;
+  const ctx = c.getContext("2d")!;
+  ctx.clearRect(0, 0, W, H);
+  let seed = 316;
+  const rnd = () => {
+    seed = (seed * 16807) % 2147483647;
+    return seed / 2147483647;
+  };
+  for (let y = 0; y < H; y++) {
+    const t = y / H;
+    // narrower and fainter toward the far end of the trench
+    const wobble = Math.sin(y * 0.09) * 2.5 + (rnd() - 0.5) * 2;
+    const half = (W * 0.2 + rnd() * 3) * (1 - t * 0.35);
+    const cx = W / 2 + wobble;
+    const fade = 1 - Math.pow(t, 3);
+    // darker disturbed rim
+    const rim = ctx.createLinearGradient(cx - half * 1.9, 0, cx + half * 1.9, 0);
+    rim.addColorStop(0, "rgba(120,52,28,0)");
+    rim.addColorStop(0.25, `rgba(112,48,26,${0.55 * fade})`);
+    rim.addColorStop(0.5, `rgba(96,40,22,${0.65 * fade})`);
+    rim.addColorStop(0.75, `rgba(112,48,26,${0.55 * fade})`);
+    rim.addColorStop(1, "rgba(120,52,28,0)");
+    ctx.fillStyle = rim;
+    ctx.fillRect(cx - half * 1.9, y, half * 3.8, 1);
+    // bright churned core
+    const core = ctx.createLinearGradient(cx - half, 0, cx + half, 0);
+    core.addColorStop(0, `rgba(${coreA},0)`);
+    core.addColorStop(0.3, `rgba(${coreA},${0.8 * fade})`);
+    core.addColorStop(0.7, `rgba(${coreB},${0.8 * fade})`);
+    core.addColorStop(1, `rgba(${coreB},0)`);
+    ctx.fillStyle = core;
+    ctx.fillRect(cx - half, y, half * 2, 1);
+  }
+  // clods
+  for (let i = 0; i < 160; i++) {
+    const y = rnd() * H;
+    const x = W / 2 + (rnd() - 0.5) * W * 0.55;
+    ctx.fillStyle =
+      rnd() > 0.5 ? (bright ? "rgba(245,228,190,0.8)" : "rgba(150,74,42,0.7)") : "rgba(130,60,32,0.7)";
+    ctx.fillRect(x, y, 1 + rnd() * 2, 1 + rnd() * 2);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  trenchTexCache[key] = tex;
+  return tex;
+}
+
+/** MER-A wheel centres in the centred GLB frame (rover front = −Z, right = +X), metres. */
+const MER_WHEELS: [number, number][] = [
+  [0.525, -0.665],
+  [-0.525, -0.665],
+  [0.525, 0.045],
+  [-0.525, 0.045],
+  [0.525, 0.515],
+  [-0.525, 0.515],
+];
+
+/**
+ * SM-M-003 · Spirit at "Troy" (Opus M6): soil heaped around all six wheels, which sit sunk to their
+ * hubs, and a narrow trench of bright churned soil left by the dragging right-front wheel
+ * (Spirit drove backwards on five wheels, so the trench runs out ahead of the rover).
+ * Place inside the same yaw as the rover GLB; `groundY` is the local ground height.
+ */
+export function SpiritTroyProps({
+  groundY,
+  yaw = 0,
+  heightFn,
+}: {
+  groundY: number;
+  yaw?: number;
+  heightFn?: (x: number, z: number) => number;
+}) {
+  const trenchTex = useMemo(() => getTroyTrenchTexture(), []);
+  const bermGeo = useMemo(() => new THREE.SphereGeometry(1, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), []);
+  const bermMat = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: "#9C4E31", roughness: 1, metalness: 0 }),
+    [],
+  );
+  const brightMat = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: "#B88E6C", roughness: 1, metalness: 0 }),
+    [],
+  );
+  useEffect(
+    () => () => {
+      bermGeo.dispose();
+      bermMat.dispose();
+      brightMat.dispose();
+    },
+    [bermGeo, bermMat, brightMat],
+  );
+  // terrain height at a point given in the rover's (yawed) frame
+  const h = useMemo(() => {
+    const c = Math.cos(yaw);
+    const s = Math.sin(yaw);
+    return (x: number, z: number) => (heightFn ? heightFn(x * c + z * s, -x * s + z * c) : 0);
+  }, [yaw, heightFn]);
+  return (
+    <group position={[0, groundY, 0]}>
+      {MER_WHEELS.map(([x, z], i) => (
+        <mesh
+          key={i}
+          geometry={bermGeo}
+          material={i === 0 ? brightMat : bermMat}
+          position={[x + (x > 0 ? 0.02 : -0.02), h(x, z) - 0.02, z]}
+          scale={[0.13, 0.05, 0.2]}
+          receiveShadow
+        />
+      ))}
+      {/* Bright churned-soil trench running forward from the right-front wheel */}
+      <mesh position={[0.53, h(0.53, -1.42) + 0.012, -1.42]} rotation={[-Math.PI / 2, 0, 0.04]} receiveShadow>
+        <planeGeometry args={[0.36, 1.45]} />
+        <meshStandardMaterial
+          map={trenchTex}
+          transparent
+          depthWrite={false}
+          roughness={0.96}
+          metalness={0}
+          polygonOffset
+          polygonOffsetFactor={-2}
+        />
+      </mesh>
     </group>
   );
 }

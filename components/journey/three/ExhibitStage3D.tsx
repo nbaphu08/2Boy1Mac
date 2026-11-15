@@ -128,14 +128,17 @@ function GlbExhibitMesh({
             const nextMats = mats.map((m) => {
               const std = m.clone() as THREE.MeshStandardMaterial;
               if (marsDustFactor > 0) {
+                // Opus M7: solar arrays carry the heaviest dust film (they were mirror-blue before)
+                const isArray = /panel|solar/i.test(std.name) || /panel|solar/i.test(mesh.name);
+                const f = isArray ? Math.min(0.85, marsDustFactor + 0.22) : marsDustFactor;
                 if (std.color) {
-                  std.color.lerp(dustColor, marsDustFactor);
+                  std.color.lerp(dustColor, f);
                 }
                 if (typeof std.roughness === "number") {
-                  std.roughness = Math.min(0.96, std.roughness + marsDustFactor * 0.45);
+                  std.roughness = Math.min(0.96, Math.max(std.roughness, 0.35) + f * 0.5);
                 }
                 if (typeof std.metalness === "number") {
-                  std.metalness = Math.max(0.06, std.metalness * (1 - marsDustFactor * 0.65));
+                  std.metalness = Math.max(0.04, std.metalness * (1 - f * (isArray ? 0.85 : 0.65)));
                 }
               } else if (isMoonGlb && std.color) {
                 // Crinkled Kapton gold foil detection vs bare titanium/aluminum struts
