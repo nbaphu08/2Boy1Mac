@@ -17,8 +17,12 @@ import {
   IngenuityAndBackshellProps,
   InSightSurfaceInstruments,
   PhoenixLanderModel,
+  SpiritTroyProps,
   Viking1SiteProps,
 } from "./MarsModels";
+
+// Spirit faces screen-right so its right-front wheel (and the trench it gouged) is on the near side
+const SPIRIT_YAW = 0.15 + Math.PI;
 
 function getMarsAnchorXZ(slug: string): [number, number] {
   const pos = EXHIBIT_PLINTH_ANCHORS[slug]?.pos;
@@ -193,7 +197,7 @@ export function HallTwoMarsDiorama({
       anchorXZ,
       arcticPolygons: slug === "mars-phoenix",
       marsStorm: isStorm,
-      spiritTroyPatch: slug === "mars-spirit",
+      spiritTroyPatch: false, // Opus M6: the round bright disc read as a render error; trench is in SpiritTroyProps
       sandRipples: slug === "mars-ingenuity",
       qualityTier: budget.tier,
       fadeStart: 42,
@@ -288,23 +292,31 @@ export function HallTwoMarsDiorama({
       {/* ─── Beat 16: Spirit · MER GLB sunk into Bright Ferric-Sulfate Troy Sand Trap beside Home Plate ─── */}
       {slug === "mars-spirit" && (
         <group>
-          <group position={[0, -0.055, 0]} rotation={[0.06, 0.15, -0.09]}>
-            {children}
-          </group>
-          <mesh
-            position={[-0.45, DIORAMA_SURFACE_Y - 0.015, 0.65]}
-            rotation={[-Math.PI / 2, 0, 0.32]}
-          >
-            <planeGeometry args={[2.8, 0.85]} />
-            <meshBasicMaterial
-              map={trackTex}
-              transparent
-              opacity={0.72}
-              depthWrite={false}
-              polygonOffset
-              polygonOffsetFactor={-1}
+          {/* Opus M6: wheels sunk to the hubs, soil heaped around them, bright trench from the dragging wheel */}
+          <group rotation={[0, SPIRIT_YAW, 0]}>
+            <group position={[0, -0.14, 0]} rotation={[-0.03, 0, -0.07]}>
+              {children}
+            </group>
+            <SpiritTroyProps
+              groundY={DIORAMA_SURFACE_Y}
+              yaw={SPIRIT_YAW}
+              heightFn={(x, z) => getMarsTerrainHeight("mars-spirit", x, z)}
             />
-          </mesh>
+            {/* Wheel tracks leading in from ahead (Spirit backed into Troy) */}
+            <mesh position={[0, DIORAMA_SURFACE_Y + 0.004, -1.85]} rotation={[-Math.PI / 2, 0, Math.PI / 2]}>
+              <planeGeometry args={[2.2, 1.7]} />
+              <meshStandardMaterial
+                map={trackTex}
+                transparent
+                opacity={0.7}
+                roughness={1}
+                metalness={0}
+                depthWrite={false}
+                polygonOffset
+                polygonOffsetFactor={-1}
+              />
+            </mesh>
+          </group>
         </group>
       )}
 

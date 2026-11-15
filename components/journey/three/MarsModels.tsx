@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 
 let cachedPathfinderSolarTex: THREE.CanvasTexture | null = null;
@@ -109,14 +109,14 @@ export function getMarsRoverTrackTexture(): THREE.CanvasTexture {
 
   for (const ry of [30, 98]) {
     const rutGrad = ctx.createLinearGradient(0, ry - 15, 0, ry + 15);
-    rutGrad.addColorStop(0, "rgba(185, 108, 68, 0.35)");
-    rutGrad.addColorStop(0.5, "rgba(48, 22, 12, 0.72)");
-    rutGrad.addColorStop(1, "rgba(185, 108, 68, 0.35)");
+    rutGrad.addColorStop(0, "rgba(185, 108, 68, 0)");
+    rutGrad.addColorStop(0.5, "rgba(88, 38, 20, 0.5)");
+    rutGrad.addColorStop(1, "rgba(185, 108, 68, 0)");
     ctx.fillStyle = rutGrad;
     ctx.fillRect(0, ry - 15, 512, 30);
 
-    ctx.strokeStyle = "rgba(32, 14, 8, 0.65)";
-    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = "rgba(60, 26, 14, 0.35)";
+    ctx.lineWidth = 2;
     for (let x = 6; x < 506; x += 12) {
       ctx.beginPath();
       ctx.moveTo(x, ry - 10);
@@ -127,6 +127,7 @@ export function getMarsRoverTrackTexture(): THREE.CanvasTexture {
   }
 
   const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
   cachedMarsTrackTex = tex;
   return tex;
 }
@@ -603,16 +604,28 @@ export function InSightSurfaceInstruments({ baseY }: { baseY: number }) {
  * with Perseverance's conical backshell and supersonic parachute (PIA25219).
  */
 export function IngenuityAndBackshellProps({ baseY }: { baseY: number }) {
+  // Tapered carbon-fibre blade tip (≈25 cm piece, thin airfoil), extruded from a 2D outline
+  const bladeTipGeo = useMemo(() => {
+    const sh = new THREE.Shape();
+    sh.moveTo(0, -0.03);
+    sh.lineTo(0.2, -0.026);
+    sh.quadraticCurveTo(0.255, -0.012, 0.25, 0.012);
+    sh.lineTo(0.02, 0.034);
+    sh.lineTo(0.006, 0.006);
+    sh.lineTo(0.014, -0.004);
+    sh.closePath();
+    return new THREE.ExtrudeGeometry(sh, { depth: 0.006, bevelEnabled: false });
+  }, []);
+  useEffect(() => () => bladeTipGeo.dispose(), [bladeTipGeo]);
   return (
     <group position={[0, baseY, 0]}>
       {/* Detached carbon-fiber rotor blade tip lying on the sand ripple beside Ingenuity (Flight 72 damage) */}
-      <mesh position={[0.48, 0.036, 0.36]} rotation={[0.08, 0.58, 0.14]}>
-        <boxGeometry args={[0.22, 0.008, 0.052]} />
-        <meshStandardMaterial color="#1E2026" roughness={0.42} metalness={0.68} />
+      <mesh geometry={bladeTipGeo} position={[0.46, 0.012, -0.5]} rotation={[-Math.PI / 2 + 0.04, 0, 0.9]} castShadow>
+        <meshStandardMaterial color="#2E2A27" roughness={0.72} metalness={0.12} />
       </mesh>
 
       {/* Distant shattered Perseverance backshell + supersonic parachute resting on Martian sand (PIA25219) */}
-      <group position={[-2.35, -0.02, -2.6]} rotation={[0, 0.45, 0]}>
+      <group position={[-3.9, -0.02, -3.2]} rotation={[0, 0.45, 0]}>
         {/* Shattered cream-tan conical Perseverance backshell */}
         <mesh position={[0.12, 0.09, 0.12]} rotation={[0.22, 0.4, -0.18]} castShadow receiveShadow>
           <coneGeometry args={[0.26, 0.2, 14, 1, true]} />
@@ -628,6 +641,138 @@ export function IngenuityAndBackshellProps({ baseY }: { baseY: number }) {
           <meshStandardMaterial color="#E6D8C8" roughness={0.82} metalness={0.05} />
         </mesh>
       </group>
+    </group>
+  );
+}
+
+let cachedTroyTrenchTex: THREE.CanvasTexture | null = null;
+/** Narrow churned trench of bright sulfate-rich soil (alpha-blended edges), as gouged by Spirit's dragging wheel. */
+function getTroyTrenchTexture(): THREE.CanvasTexture {
+  if (cachedTroyTrenchTex) return cachedTroyTrenchTex;
+  const W = 64;
+  const H = 256;
+  const c = document.createElement("canvas");
+  c.width = W;
+  c.height = H;
+  const ctx = c.getContext("2d")!;
+  ctx.clearRect(0, 0, W, H);
+  let seed = 316;
+  const rnd = () => {
+    seed = (seed * 16807) % 2147483647;
+    return seed / 2147483647;
+  };
+  for (let y = 0; y < H; y++) {
+    const t = y / H;
+    // narrower and fainter toward the far end of the trench
+    const wobble = Math.sin(y * 0.09) * 2.5 + (rnd() - 0.5) * 2;
+    const half = (W * 0.2 + rnd() * 3) * (1 - t * 0.35);
+    const cx = W / 2 + wobble;
+    const fade = 1 - Math.pow(t, 3);
+    // darker disturbed rim
+    const rim = ctx.createLinearGradient(cx - half * 1.9, 0, cx + half * 1.9, 0);
+    rim.addColorStop(0, "rgba(120,52,28,0)");
+    rim.addColorStop(0.25, `rgba(112,48,26,${0.55 * fade})`);
+    rim.addColorStop(0.5, `rgba(96,40,22,${0.65 * fade})`);
+    rim.addColorStop(0.75, `rgba(112,48,26,${0.55 * fade})`);
+    rim.addColorStop(1, "rgba(120,52,28,0)");
+    ctx.fillStyle = rim;
+    ctx.fillRect(cx - half * 1.9, y, half * 3.8, 1);
+    // bright churned core
+    const core = ctx.createLinearGradient(cx - half, 0, cx + half, 0);
+    core.addColorStop(0, "rgba(226,200,150,0)");
+    core.addColorStop(0.3, `rgba(222,196,146,${0.8 * fade})`);
+    core.addColorStop(0.7, `rgba(228,204,156,${0.8 * fade})`);
+    core.addColorStop(1, "rgba(226,200,150,0)");
+    ctx.fillStyle = core;
+    ctx.fillRect(cx - half, y, half * 2, 1);
+  }
+  // clods
+  for (let i = 0; i < 160; i++) {
+    const y = rnd() * H;
+    const x = W / 2 + (rnd() - 0.5) * W * 0.55;
+    ctx.fillStyle = rnd() > 0.5 ? "rgba(245,228,190,0.8)" : "rgba(130,60,32,0.7)";
+    ctx.fillRect(x, y, 1 + rnd() * 2, 1 + rnd() * 2);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  cachedTroyTrenchTex = tex;
+  return tex;
+}
+
+/** MER-A wheel centres in the centred GLB frame (rover front = −Z, right = +X), metres. */
+const MER_WHEELS: [number, number][] = [
+  [0.525, -0.665],
+  [-0.525, -0.665],
+  [0.525, 0.045],
+  [-0.525, 0.045],
+  [0.525, 0.515],
+  [-0.525, 0.515],
+];
+
+/**
+ * SM-M-003 · Spirit at "Troy" (Opus M6): soil heaped around all six wheels, which sit sunk to their
+ * hubs, and a narrow trench of bright churned soil left by the dragging right-front wheel
+ * (Spirit drove backwards on five wheels, so the trench runs out ahead of the rover).
+ * Place inside the same yaw as the rover GLB; `groundY` is the local ground height.
+ */
+export function SpiritTroyProps({
+  groundY,
+  yaw = 0,
+  heightFn,
+}: {
+  groundY: number;
+  yaw?: number;
+  heightFn?: (x: number, z: number) => number;
+}) {
+  const trenchTex = useMemo(() => getTroyTrenchTexture(), []);
+  const bermGeo = useMemo(() => new THREE.SphereGeometry(1, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), []);
+  const bermMat = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: "#9C4E31", roughness: 1, metalness: 0 }),
+    [],
+  );
+  const brightMat = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: "#B88E6C", roughness: 1, metalness: 0 }),
+    [],
+  );
+  useEffect(
+    () => () => {
+      bermGeo.dispose();
+      bermMat.dispose();
+      brightMat.dispose();
+    },
+    [bermGeo, bermMat, brightMat],
+  );
+  // terrain height at a point given in the rover's (yawed) frame
+  const h = useMemo(() => {
+    const c = Math.cos(yaw);
+    const s = Math.sin(yaw);
+    return (x: number, z: number) => (heightFn ? heightFn(x * c + z * s, -x * s + z * c) : 0);
+  }, [yaw, heightFn]);
+  return (
+    <group position={[0, groundY, 0]}>
+      {MER_WHEELS.map(([x, z], i) => (
+        <mesh
+          key={i}
+          geometry={bermGeo}
+          material={i === 0 ? brightMat : bermMat}
+          position={[x + (x > 0 ? 0.02 : -0.02), h(x, z) - 0.02, z]}
+          scale={[0.13, 0.05, 0.2]}
+          receiveShadow
+        />
+      ))}
+      {/* Bright churned-soil trench running forward from the right-front wheel */}
+      <mesh position={[0.53, h(0.53, -1.42) + 0.012, -1.42]} rotation={[-Math.PI / 2, 0, 0.04]} receiveShadow>
+        <planeGeometry args={[0.36, 1.45]} />
+        <meshStandardMaterial
+          map={trenchTex}
+          transparent
+          depthWrite={false}
+          roughness={0.96}
+          metalness={0}
+          polygonOffset
+          polygonOffsetFactor={-2}
+        />
+      </mesh>
     </group>
   );
 }

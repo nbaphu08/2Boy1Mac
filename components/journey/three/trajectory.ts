@@ -184,16 +184,16 @@ export const BEAT_POSES: BeatPose[] = [
   },
   // 19: mars-insight (SM-M-006) — Elysium Planitia (6.0 m span InSight lander + SEIS/HP3)
   {
-    camPos: [509.35, 474.95, -367.4],
-    camLook: [506.6, 473.6, -376.0],
+    camPos: [508.6, 475.35, -370.2], // Opus M5: closer 3/4 view so the lander fills ~40 % of frame height
+    camLook: [506.5, 473.35, -375.8],
     rocketPos: [-16, 518, -404],
     rocketRot: [-0.22, 0.9, 0.06],
     rocketScale: 0.4,
   },
   // 20: mars-ingenuity (SM-M-007) — Jezero Crater ("Valinor Hills", true 0.49 m tall / 1.21 m rotor helicopter hero close-up)
   {
-    camPos: [608.15, 473.95, -372.9],
-    camLook: [606.82, 473.25, -376.0],
+    camPos: [607.75, 473.57, -374.45], // Opus M5: ~1.9 m from the 0.49 m helicopter
+    camLook: [606.8, 473.08, -376.05],
     rocketPos: [-18, 524, -408],
     rocketRot: [-0.28, 1.05, 0.08],
     rocketScale: 0.4,
