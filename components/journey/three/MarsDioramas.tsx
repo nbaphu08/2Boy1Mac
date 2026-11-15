@@ -347,17 +347,7 @@ export function HallTwoMarsDiorama({
       {slug === "mars-phoenix" && (
         <group>
           <PhoenixLanderModel baseY={DIORAMA_SURFACE_Y} scale={1.06} />
-          {/* Dug "Dodo–Goldilocks" subsurface white water-ice sample trench beside robotic arm */}
-          <group position={[1.22, DIORAMA_SURFACE_Y, 0.85]} rotation={[0, -0.45, 0]}>
-            <mesh position={[0, 0.008, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-              <planeGeometry args={[0.52, 0.28]} />
-              <meshStandardMaterial color="#3A1D13" roughness={0.96} />
-            </mesh>
-            <mesh position={[0.04, 0.012, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-              <planeGeometry args={[0.26, 0.15]} />
-              <meshStandardMaterial color="#E6EEF6" roughness={0.38} metalness={0.08} />
-            </mesh>
-          </group>
+          {/* Trench with exposed ice now lives in models/PhoenixLander.tsx (Opus M3) */}
         </group>
       )}
 

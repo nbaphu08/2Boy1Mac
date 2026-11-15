@@ -272,7 +272,7 @@ export function LunarRover({ scale = 1 }: { scale?: number }) {
       bumpStop: new THREE.MeshStandardMaterial({ color: "#3E3D3B", metalness: 0.5, roughness: 0.6, side: THREE.DoubleSide }),
       disc: new THREE.MeshStandardMaterial({ color: "#B4B1A8", metalness: 0.4, roughness: 0.55, envMap: env, side: THREE.DoubleSide }),
       discRing: new THREE.MeshStandardMaterial({ color: "#5E5D59", metalness: 0.5, roughness: 0.5, envMap: env, side: THREE.DoubleSide }),
-      fender: new THREE.MeshStandardMaterial({ color: "#A36A42", metalness: 0.12, roughness: 0.62, envMap: env, envMapIntensity: 0.6, side: THREE.DoubleSide }),
+      fender: new THREE.MeshStandardMaterial({ color: "#B9B7B1", metalness: 0.2, roughness: 0.55, envMap: env, envMapIntensity: 0.6, side: THREE.DoubleSide }),
       web: new THREE.MeshStandardMaterial({ map: getWebbingTexture(), alphaTest: 0.4, side: THREE.DoubleSide, metalness: 0.05, roughness: 0.85 }),
       dish: new THREE.MeshStandardMaterial({
         map: getDishMeshTexture(),
@@ -284,7 +284,7 @@ export function LunarRover({ scale = 1 }: { scale?: number }) {
         envMap: env,
       }),
       gold: new THREE.MeshStandardMaterial({ map: gold.map, bumpMap: gold.bumpMap, bumpScale: 1.2, metalness: 0.6, roughness: 0.38, envMap: env }),
-      lcru: new THREE.MeshStandardMaterial({ color: "#8E6E55", bumpMap: gold.bumpMap, bumpScale: 1.0, metalness: 0.25, roughness: 0.6, envMap: env, envMapIntensity: 0.6 }),
+      lcru: new THREE.MeshStandardMaterial({ color: "#8A7868", bumpMap: gold.bumpMap, bumpScale: 1.0, metalness: 0.25, roughness: 0.6, envMap: env, envMapIntensity: 0.6 }),
       glass: new THREE.MeshStandardMaterial({ color: "#0E1116", metalness: 0.9, roughness: 0.12, envMap: env }),
     };
     return { geos, mats };
