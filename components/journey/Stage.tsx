@@ -18,6 +18,7 @@ import {
   scrollToBeat,
 } from "@/lib/scroll/progress";
 import { useMuseum } from "@/lib/store";
+import { AudioTourController, AudioTourToggle } from "@/components/museum/AudioTour";
 import { ExhibitPanel } from "@/components/museum/ExhibitPanel";
 import { PassportSheet } from "@/components/museum/PassportSheet";
 import { BeatSection } from "./BeatOverlays";
@@ -112,6 +113,8 @@ function TopHudBar() {
           <span aria-hidden className="sm:hidden">&#9733; {visitedCount}/12</span>
           <span className="hidden sm:inline">{expedition.fieldLogShort(visitedCount)}</span>
         </button>
+        <span aria-hidden className="text-line">|</span>
+        <AudioTourToggle />
         <span aria-hidden className="text-line">|</span>
         <button
           type="button"
@@ -472,6 +475,7 @@ export default function Stage() {
       <ProgressRail />
       <ScrollLiveCaption />
       <ExhibitPanel />
+      <AudioTourController />
     </div>
   );
 }

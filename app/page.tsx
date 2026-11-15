@@ -3,6 +3,7 @@ import { journey } from "@/content/journey";
 import { beats } from "@/content/beats";
 import { site } from "@/content/site";
 import { Reveal } from "@/components/landing/Reveal";
+import { JourneyLink } from "@/components/landing/JourneyLink";
 import { HashRedirect } from "@/components/landing/HashRedirect";
 
 const hero = beats[0];
@@ -10,15 +11,14 @@ const L = site.landing;
 
 function VisitCta({ className = "" }: { className?: string }) {
   return (
-    <Link
-      href="/journey"
+    <JourneyLink
       className={`cta-visit group inline-flex min-h-12 items-center justify-center gap-3 rounded-full border border-platinum/70 bg-void/55 px-8 py-3 text-sm text-white shadow-[0_0_0_1px_rgba(157,184,255,0.0),0_10px_40px_-10px_rgba(157,184,255,0.35)] backdrop-blur-md transition-all duration-300 hover:border-starlight hover:bg-starlight hover:text-void focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-starlight sm:text-[15px] ${className}`}
     >
       {L.cta}
       <span aria-hidden className="transition-transform duration-300 group-hover:translate-x-1">
         &rarr;
       </span>
-    </Link>
+    </JourneyLink>
   );
 }
 
@@ -38,9 +38,9 @@ export default function Home() {
           aria-label={journey.ui.navLabel}
           className="font-hud flex items-center gap-4 rounded-full border border-line/80 bg-surface/65 px-4 py-2 text-[10px] backdrop-blur-md"
         >
-          <Link href="/journey" className="text-text transition-colors hover:text-starlight">
+          <JourneyLink className="text-text transition-colors hover:text-starlight">
             Journey
-          </Link>
+          </JourneyLink>
           <Link href="/collection" className="text-text transition-colors hover:text-starlight">
             Collection
           </Link>

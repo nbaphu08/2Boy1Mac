@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { expedition } from "@/content/guide";
 import {
+  audioManifest,
   getAudio,
   getAudioPref,
   markUserPaused,
@@ -16,18 +17,6 @@ type Phase = "checking" | "missing" | "countdown" | "ready" | "playing" | "pause
 
 const DELAY_MS = 2000;
 const t = expedition.audio;
-
-let manifestP: Promise<string[]> | null = null;
-function manifest() {
-  manifestP ??= fetch("/audio-manifest.json")
-    .then((r) => (r.ok ? r.json() : { slugs: [] }))
-    .then((j) => (Array.isArray(j.slugs) ? (j.slugs as string[]) : []))
-    .catch(() => {
-      manifestP = null;
-      return [] as string[];
-    });
-  return manifestP;
-}
 
 function fmt(s: number) {
   if (!isFinite(s) || s < 0) s = 0;
@@ -101,8 +90,8 @@ export function AudioGuide({ slug, auto }: { slug: string; auto: boolean }) {
 
     // Make sure nothing from a previous exhibit keeps playing.
     stopAudio();
-    manifest()
-      .then((slugs) => {
+    audioManifest()
+      .then(({ slugs }) => {
         if (dead) return;
         if (!slugs.includes(slug)) return set("missing");
         a.src = url;

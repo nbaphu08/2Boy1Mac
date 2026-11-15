@@ -143,3 +143,8 @@ button:focus-visible {
   text-transform: uppercase;
   letter-spacing: 0.14em;
 }
+
+@keyframes tour-level {
+  from { height: 25%; }
+  to { height: 100%; }
+}

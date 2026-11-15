@@ -83,3 +83,20 @@ export function subscribeAudioPref(l: () => void) {
     listeners.delete(l);
   };
 }
+
+// Build-time manifest of which narration files exist (exhibit clips + audio-tour clips).
+type Manifest = { slugs: string[]; tour: string[] };
+let manifestP: Promise<Manifest> | null = null;
+export function audioManifest(): Promise<Manifest> {
+  manifestP ??= fetch("/audio-manifest.json")
+    .then((r) => (r.ok ? r.json() : { slugs: [], tour: [] }))
+    .then((j) => ({
+      slugs: Array.isArray(j.slugs) ? (j.slugs as string[]) : [],
+      tour: Array.isArray(j.tour) ? (j.tour as string[]) : [],
+    }))
+    .catch(() => {
+      manifestP = null;
+      return { slugs: [], tour: [] } as Manifest;
+    });
+  return manifestP;
+}

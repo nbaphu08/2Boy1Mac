@@ -30,6 +30,14 @@ export const expedition = {
     region: "Audio guide player",
   },
 
+  // Audio tour (one short AI-narrated clip per beat on /journey; same on/off preference as the audio guide).
+  tour: {
+    on: "Audio tour on",
+    off: "Audio tour off",
+    start: "Start audio tour",
+    replay: "Replay this clip",
+  },
+
   // Field log (replaces "passport" wording in the HUD).
   fieldLog: (n: number) => `FIELD LOG · ${n} OF 12 FOUND`,
   fieldLogShort: (n: number) => `${n}/12 FOUND`,
