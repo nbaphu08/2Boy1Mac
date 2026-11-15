@@ -41,6 +41,19 @@ export function ExhibitPanel() {
         openExhibit(prev.slug);
       } else if (e.key === "ArrowRight" && next) {
         openExhibit(next.slug);
+      } else if (["PageDown", "PageUp", "ArrowDown", "ArrowUp", " ", "Home", "End"].includes(e.key)) {
+        const t = e.target as HTMLElement;
+        if (/^(INPUT|TEXTAREA|SELECT|BUTTON|A|SUMMARY)$/.test(t.tagName) && (e.key === " " || t.tagName === "INPUT" || t.tagName === "SELECT")) return;
+        const box = [...el.querySelectorAll<HTMLElement>("[class*=\"overflow-y-auto\"]")]
+          .filter((n) => n.scrollHeight > n.clientHeight + 4 && getComputedStyle(n).overflowY !== "visible")
+          .sort((a, b) => b.scrollHeight - a.scrollHeight)[0];
+        if (!box) return;
+        e.preventDefault();
+        const page = box.clientHeight * 0.9;
+        const dy = e.key === "PageDown" || (e.key === " " && !e.shiftKey) ? page : e.key === "PageUp" || e.key === " " ? -page : e.key === "ArrowDown" ? 60 : e.key === "ArrowUp" ? -60 : 0;
+        if (e.key === "Home") box.scrollTo({ top: 0 });
+        else if (e.key === "End") box.scrollTo({ top: box.scrollHeight });
+        else box.scrollBy({ top: dy });
       } else if (e.key === "Tab") {
         const items = [...el.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((n) => n.offsetParent !== null);
         if (!items.length) return;
@@ -74,6 +87,7 @@ export function ExhibitPanel() {
     <div
       ref={root}
       data-step-ignore
+      data-lenis-prevent
       role="dialog"
       aria-modal="true"
       aria-labelledby="exhibit-title"

@@ -283,6 +283,7 @@ export default function Stage() {
       window.clearTimeout(snapTimer);
       snapTimer = window.setTimeout(() => {
         if (!lenis || useMuseum.getState().reducedMotion) return;
+        if (useMuseum.getState().activeExhibit !== null || document.querySelector('[role="dialog"][aria-modal="true"]')) return;
         const pos = MIN_BEAT + window.scrollY / Math.max(window.innerHeight, 1);
         const nearest = Math.max(MIN_BEAT, Math.min(beats.length - 1, Math.round(pos)));
         const off = Math.abs(pos - nearest);
@@ -373,8 +374,10 @@ export default function Stage() {
     // Pause Lenis while ExhibitPanel modal is open
     const unsubStore = useMuseum.subscribe((s, p) => {
       if ((s.activeExhibit !== null) !== (p.activeExhibit !== null)) {
-        if (s.activeExhibit !== null) lenis?.stop();
-        else lenis?.start();
+        if (s.activeExhibit !== null) {
+          window.clearTimeout(snapTimer);
+          lenis?.stop();
+        } else lenis?.start();
       }
     });
 
@@ -384,6 +387,7 @@ export default function Stage() {
       if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
       if (useMuseum.getState().activeExhibit !== null) return;
       const t = e.target as HTMLElement | null;
+      if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
       if (t) {
         if (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
         // Space activates focused buttons/links natively.
