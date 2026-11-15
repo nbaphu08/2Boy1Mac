@@ -23,6 +23,21 @@ export function ExhibitPanel() {
   const next = idx >= 0 && idx < ORDER.length - 1 ? ORDER[idx + 1] : undefined;
   const open = !!ex;
 
+  // Browser Back closes the panel instead of leaving the journey (keeps the visitor's place).
+  useEffect(() => {
+    if (!open) return;
+    window.history.pushState({ ...(window.history.state ?? {}), smPanel: true }, "");
+    const onPop = () => {
+      if (useMuseum.getState().activeExhibit) useMuseum.getState().closeExhibit();
+    };
+    window.addEventListener("popstate", onPop);
+    return () => {
+      window.removeEventListener("popstate", onPop);
+      // Closed by button/Esc: drop the extra history entry we added.
+      if (window.history.state?.smPanel) window.history.back();
+    };
+  }, [open]);
+
   // Keyboard: Esc, arrows, focus trap. Focus moves into the dialog and returns on close.
   useEffect(() => {
     if (!open) return;
@@ -99,7 +114,7 @@ export function ExhibitPanel() {
           <span className="font-hud text-[11px] text-mute">
             {ex.hall === "moon" ? "Hall I · The Moon" : "Hall II · Mars"} · {ex.catalogNo}
           </span>
-          <button data-close type="button" onClick={closeExhibit} className="font-hud rounded border border-line px-3 py-1.5 text-[11px] text-text hover:border-platinum">
+          <button data-close type="button" onClick={closeExhibit} className="font-hud rounded border border-[#ff7a7a]/70 bg-[#ff5a5a]/15 px-3 py-1.5 text-[11px] text-[#ffc2c2] transition-colors hover:border-[#ff8a8a] hover:bg-[#ff5a5a]/30 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ff8a8a]">
             {site.close} ✕
           </button>
         </header>
