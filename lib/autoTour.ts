@@ -74,7 +74,7 @@ const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 function position(): number {
   const st = useMuseum.getState();
-  const isStatic = st.reducedMotion || st.lightweight || st.webglFailed;
+  const isStatic = st.lightweight || st.webglFailed;
   return isStatic ? scrollState.target : scrollState.current;
 }
 const nearest = () => Math.max(MIN_BEAT, Math.min(MAX_BEAT, Math.round(scrollState.target)));

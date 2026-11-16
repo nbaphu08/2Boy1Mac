@@ -87,7 +87,8 @@ function TopHudBar() {
   const [passportOpen, setPassportOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const lightweight = useMuseum((s) => s.lightweight);
-  const forced = useMuseum((s) => s.reducedMotion || s.webglFailed);
+  // Only a real WebGL failure forces static mode; reduced motion keeps the live (calmer) 3D journey.
+  const forced = useMuseum((s) => s.webglFailed);
   const isStatic = lightweight || forced;
 
   return (
@@ -241,11 +242,10 @@ function ScrollLiveCaption() {
 
 export default function Stage() {
   const trackRef = useRef<HTMLDivElement>(null);
-  const reducedMotion = useMuseum((s) => s.reducedMotion);
   const lightweight = useMuseum((s) => s.lightweight);
   const webglFailed = useMuseum((s) => s.webglFailed);
   const resolved = useMuseum((s) => s.modeResolved);
-  const isStatic = reducedMotion || lightweight || webglFailed;
+  const isStatic = lightweight || webglFailed;
 
   // Resolve capabilities before first paint so the WebGL canvas never mounts when it should not.
   useLayoutEffect(() => {

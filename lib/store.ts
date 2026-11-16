@@ -25,7 +25,8 @@ function loadVisitedAt(): Record<string, string> {
   }
 }
 
-const KEY_LW = "spacemuse:lightweight";
+// v2: default is Lightweight OFF on every device; older saved "on" values are ignored.
+const KEY_LW = "spacemuse:lightweight-v2";
 
 function loadLightweight(): boolean {
   try {

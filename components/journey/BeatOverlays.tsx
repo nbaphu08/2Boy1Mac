@@ -263,7 +263,7 @@ function ExhibitBeatOverlay({ beat }: { beat: Beat }) {
   const ex = beat.exhibitSlug ? exhibitBySlug(beat.exhibitSlug) : undefined;
   const openExhibit = useMuseum((s) => s.openExhibit);
   const visited = useMuseum((s) => s.visited);
-  const isStatic = useMuseum((s) => s.reducedMotion || s.lightweight || s.webglFailed);
+  const isStatic = useMuseum((s) => s.lightweight || s.webglFailed);
   if (!ex) return null;
   const g = guide[ex.slug];
 
@@ -596,10 +596,9 @@ function FadeLayer({ index, children }: { index: number; children: React.ReactNo
 }
 
 export function BeatSection({ beat, poster }: { beat: Beat; poster?: React.ReactNode }) {
-  const reducedMotion = useMuseum((s) => s.reducedMotion);
   const lightweight = useMuseum((s) => s.lightweight);
   const webglFailed = useMuseum((s) => s.webglFailed);
-  const isStatic = reducedMotion || lightweight || webglFailed;
+  const isStatic = lightweight || webglFailed;
   const index = beatIndexById(beat.id);
 
   let content: React.ReactNode = null;
